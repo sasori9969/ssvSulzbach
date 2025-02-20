@@ -30,12 +30,25 @@
     </div>
 
     <script>
-        document.getElementById('teilnehmer-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Verhindert das Neuladen der Seite
+document.getElementById('teilnehmer-form').addEventListener('submit', function(event) {
+    event.preventDefault();
 
-            // Hier wird die Verarbeitung der Formulardaten erfolgen (siehe unten)
-        });
-    </script>
+    const vorname = document.getElementById('vorname').value;
+    const nachname = document.getElementById('nachname').value;
+
+    fetch('daten_speichern.php', { // Pfad zum PHP-Skript
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'vorname=' + vorname + '&nachname=' + nachname
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert(data); // Zeigt die Rückmeldung vom Server an
+        document.getElementById('teilnehmer-form').reset(); // Setzt das Formular zurück
+    });
+});    </script>
 
 </body>
 </html>
