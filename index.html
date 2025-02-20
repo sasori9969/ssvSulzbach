@@ -1,1 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSV 1928 Sulzbach e.V.</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        #eingabe-formular {
+            width: 300px;
+            margin: 0 auto;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>SSV 1928 Sulzbach e.V.</h1>
 
+    <div id="eingabe-formular">
+        <h2>Teilnehmerdaten eingeben</h2>
+        <form id="teilnehmer-form">
+            <label for="vorname">Vorname:</label><br>
+            <input type="text" id="vorname" name="vorname" required><br><br>
+
+            <label for="nachname">Nachname:</label><br>
+            <input type="text" id="nachname" name="nachname" required><br><br>
+
+            <input type="submit" value="Speichern">
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('teilnehmer-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Verhindert das Neuladen der Seite
+
+            // Hier wird die Verarbeitung der Formulardaten erfolgen (siehe unten)
+        });
+    </script>
+
+</body>
+</html>
