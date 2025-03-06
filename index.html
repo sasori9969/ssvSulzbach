@@ -1,54 +1,120 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>SSV 1928 Sulzbach e.V.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSV1928 Sulzbach e.V.</title>
     <style>
-        body {
-            font-family: sans-serif;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        #eingabe-formular {
-            width: 300px;
-            margin: 0 auto;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0ffe0;
+            color: #006400;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #008000;
+            color: white;
             text-align: center;
+            padding: 1rem;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        nav {
+            width: 220px;
+            background-color: #d0ffd0;
+            padding: 20px;
+            height: 100vh;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav a {
+            display: block;
+            padding: 10px;
+            background-color: #c0ffc0;
+            text-decoration: none;
+            color: #006400;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        main {
+            flex: 1;
+            padding: 20px;
+            background-color: #c0ffc0;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+        }
+        input[type="text"], button {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #006400;
+        }
+        button {
+            background-color: #008000;
+            color: white;
+            cursor: pointer;
+        }
+        #teilnehmerListe {
+            list-style: none;
+            padding: 0;
+            max-width: 400px;
+        }
+        #teilnehmerListe li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #006400;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <h1>SSV 1928 Sulzbach e.V.</h1>
+    <header>
+        <h1>SSV1928 Sulzbach e.V.</h1>
+    </header>
 
-    <div id="eingabe-formular">
-        <h2>Teilnehmerdaten eingeben</h2>
-        <form id="teilnehmer-form">
-            <label for="vorname">Vorname:</label><br>
-            <input type="text" id="vorname" name="vorname" required><br><br>
-
-            <label for="nachname">Nachname:</label><br>
-            <input type="text" id="nachname" name="nachname" required><br><br>
-
-            <input type="submit" value="Speichern">
-        </form>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="#">Ergebnisse erfassen</a></li>
+                <li><a href="#">Ergebnisse ausgeben</a></li>
+                <li><a href="#">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+        </main>
     </div>
-
-    <script>
-document.getElementById('teilnehmer-form').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const vorname = document.getElementById('vorname').value;
-    const nachname = document.getElementById('nachname').value;
-
-    fetch('daten_speichern.php', { // Pfad zum PHP-Skript
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'vorname=' + vorname + '&nachname=' + nachname
-    })
-    .then(response => response.text())
-    .then(data => {
-        alert(data); // Zeigt die Rückmeldung vom Server an
-        document.getElementById('teilnehmer-form').reset(); // Setzt das Formular zurück
-    });
-});    </script>
-
 </body>
 </html>
