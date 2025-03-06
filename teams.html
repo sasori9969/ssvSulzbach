@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams anlegen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0ffe0;
+            color: #006400;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #008000;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        nav {
+            width: 220px;
+            background-color: #d0ffd0;
+            padding: 20px;
+            height: 100vh;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav a {
+            display: block;
+            padding: 10px;
+            background-color: #c0ffc0;
+            text-decoration: none;
+            color: #006400;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        main {
+            flex: 1;
+            padding: 20px;
+            background-color: #c0ffc0;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+        }
+        input[type="text"], button {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #006400;
+        }
+        button {
+            background-color: #008000;
+            color: white;
+            cursor: pointer;
+        }
+        #teamListe {
+            list-style: none;
+            padding: 0;
+            max-width: 400px;
+        }
+        #teamListe li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #006400;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Teams anlegen</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="#">Ergebnisse erfassen</a></li>
+                <li><a href="#">Ergebnisse ausgeben</a></li>
+                <li><a href="#">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+            <h2>Teams anlegen</h2>
+            <form id="teamForm">
+                <label for="teamname">Teamname:</label>
+                <input type="text" id="teamname" required>
+                <button type="submit">Hinzufügen</button>
+            </form>
+            <h3>Gespeicherte Teams:</h3>
+            <ul id="teamListe"></ul>
+        </main>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById("teamForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            let teamname = document.getElementById("teamname").value.trim();
+
+            if (teamname === "") {
+                alert("Bitte einen Teamnamen eingeben!");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "teams"), {
+                    teamname: teamname,
+                    timestamp: serverTimestamp()
+                });
+                alert("Team gespeichert!");
+                document.getElementById("teamForm").reset();
+            } catch (error) {
+                console.error("Fehler beim Speichern:", error);
+                alert("Fehler beim Speichern: " + error.message);
+            }
+        });
+
+        const q = query(collection(db, "teams"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            let list = document.getElementById("teamListe");
+            list.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                let data = docSnap.data();
+                let li = document.createElement("li");
+                li.innerHTML = `
+                    <span>${data.teamname}</span>
+                    <button class="delete-btn" data-id="${docSnap.id}">Löschen</button>
+                `;
+                list.appendChild(li);
+            });
+            document.querySelectorAll(".delete-btn").forEach(button => {
+                button.addEventListener("click", async (e) => {
+                    let id = e.target.getAttribute("data-id");
+                    if (confirm("Möchtest du dieses Team wirklich löschen?")) {
+                        await deleteDoc(doc(db, "teams", id));
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

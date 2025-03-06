@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teamzuordnung</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0ffe0;
+            color: #006400;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #008000;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        nav {
+            width: 220px;
+            background-color: #d0ffd0;
+            padding: 20px;
+            height: 100vh;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav a {
+            display: block;
+            padding: 10px;
+            background-color: #c0ffc0;
+            text-decoration: none;
+            color: #006400;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        main {
+            flex: 1;
+            padding: 20px;
+            background-color: #c0ffc0;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        select, button {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #006400;
+        }
+        button {
+            background-color: #008000;
+            color: white;
+            cursor: pointer;
+        }
+        .teilnehmer-liste {
+            list-style: none;
+            padding: 0;
+        }
+        .teilnehmer-liste li {
+            background-color: #006400;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Teamzuordnung</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="#">Ergebnisse erfassen</a></li>
+                <li><a href="#">Ergebnisse ausgeben</a></li>
+                <li><a href="#">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+            <h2>Teamzuordnung</h2>
+
+            <label for="teamAuswahl">Wähle ein Team:</label>
+            <select id="teamAuswahl"></select>
+            <br>    
+            <h3>Wähle 3 Teilnehmer:</h3>
+            <br>
+            <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
+            <br>
+            <button id="speichern">Team speichern</button>
+
+            <h3>Alle Teams:</h3>
+            <br>
+            <ul id="teamsListe"></ul>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const teamAuswahl = document.getElementById("teamAuswahl");
+        const teilnehmerListe = document.getElementById("teilnehmerListe");
+        const teamsListe = document.getElementById("teamsListe");
+        const speichernButton = document.getElementById("speichern");
+
+        let ausgewaehlteTeilnehmer = [];
+
+        async function ladeTeams() {
+            const teamsSnapshot = await getDocs(collection(db, "teams"));
+            teamAuswahl.innerHTML = "<option value=''>Wähle ein Team</option>";
+
+            teamsSnapshot.forEach(docSnap => {
+                const team = docSnap.data();
+                const option = document.createElement("option");
+                option.value = docSnap.id;
+                option.textContent = team.teamname; // KORREKTUR: "teamname" statt "name"
+                teamAuswahl.appendChild(option);
+            });
+        }
+
+        async function ladeTeilnehmer() {
+            const teilnehmerSnapshot = await getDocs(collection(db, "teilnehmer"));
+            teilnehmerListe.innerHTML = "";
+
+            teilnehmerSnapshot.forEach(docSnap => {
+                const teilnehmer = docSnap.data();
+                const li = document.createElement("li");
+                li.textContent = `${teilnehmer.vorname} ${teilnehmer.name}`;
+                li.setAttribute("data-id", docSnap.id);
+
+                li.addEventListener("click", () => {
+                    if (ausgewaehlteTeilnehmer.includes(docSnap.id)) {
+                        ausgewaehlteTeilnehmer = ausgewaehlteTeilnehmer.filter(id => id !== docSnap.id);
+                        li.style.backgroundColor = "#006400";
+                    } else if (ausgewaehlteTeilnehmer.length < 3) {
+                        ausgewaehlteTeilnehmer.push(docSnap.id);
+                        li.style.backgroundColor = "#00cc00";
+                    }
+                });
+
+                teilnehmerListe.appendChild(li);
+            });
+        }
+
+        async function speichereZuordnung() {
+            const teamId = teamAuswahl.value;
+            if (!teamId || ausgewaehlteTeilnehmer.length !== 3) {
+                alert("Bitte ein Team wählen und genau 3 Teilnehmer zuordnen!");
+                return;
+            }
+
+            const teamRef = doc(db, "teams", teamId);
+            await updateDoc(teamRef, { mitglieder: ausgewaehlteTeilnehmer });
+
+            alert("Team erfolgreich gespeichert!");
+            ausgewaehlteTeilnehmer = [];
+            ladeTeamsListe();
+            ladeTeilnehmer();
+        }
+
+        async function ladeTeamsListe() {
+            const teamsSnapshot = await getDocs(collection(db, "teams"));
+            teamsListe.innerHTML = "";
+
+            for (const docSnap of teamsSnapshot.docs) {
+                const team = docSnap.data();
+                const li = document.createElement("li");
+
+                if (team.mitglieder && team.mitglieder.length > 0) {
+                    let teilnehmerNamen = [];
+
+                    for (const teilnehmerId of team.mitglieder) {
+                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
+                        if (teilnehmerDoc.exists()) {
+                            const teilnehmer = teilnehmerDoc.data();
+                            teilnehmerNamen.push(`${teilnehmer.vorname} ${teilnehmer.name}`);
+                        }
+                    }
+
+                    li.textContent = `${team.teamname}: ${teilnehmerNamen.join(", ")}`;
+                } else {
+                    li.textContent = `${team.teamname}: Keine Mitglieder`;
+                }
+
+                teamsListe.appendChild(li);
+            }
+        }
+
+        speichernButton.addEventListener("click", speichereZuordnung);
+
+        ladeTeams();
+        ladeTeilnehmer();
+        ladeTeamsListe();
+    </script>
+</body>
+</html>
