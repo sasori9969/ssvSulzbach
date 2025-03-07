@@ -76,6 +76,129 @@
             background-color: #008000;
             color: white;
         }
+        
+        /* Neue CSS-Ergänzungen */
+        /* Status-Meldungen */
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .status.erfolg {
+            background-color: #90ee90;
+            border: 1px solid #008000;
+        }
+
+        .status.fehler {
+            background-color: #ffcccb;
+            border: 1px solid #ff0000;
+            color: #8b0000;
+        }
+
+        /* Teilnehmer-Auswahl */
+        .teilnehmer-liste li {
+            transition: background-color 0.3s ease;
+        }
+
+        .teilnehmer-liste li:hover {
+            background-color: #008500;
+        }
+
+        .teilnehmer-liste li.ausgewaehlt {
+            background-color: #004d00;
+            border: 2px solid #ffffff;
+        }
+
+        /* Navigation verbessern */
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        nav ul li {
+            margin-bottom: 10px;
+        }
+
+        nav ul li a {
+            display: block;
+            padding: 8px;
+            color: #006400;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        nav ul li a:hover {
+            background-color: #90ee90;
+        }
+
+        nav ul li a.aktiv {
+            background-color: #008000;
+            color: white;
+        }
+
+        /* Lade-Animation */
+        .lade-anzeige {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .lade-kreis {
+            width: 40px;
+            height: 40px;
+            border: 5px solid #d0ffd0;
+            border-top: 5px solid #008000;
+            border-radius: 50%;
+            animation: drehen 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes drehen {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Aktionen-Buttons */
+        .aktion-btn {
+            padding: 5px 10px;
+            background-color: #008000;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .aktion-btn:hover {
+            background-color: #006400;
+        }
+
+        /* Responsivität verbessern */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            nav {
+                width: 100%;
+                height: auto;
+                margin-bottom: 20px;
+            }
+            
+            main {
+                margin: 0;
+                padding: 10px;
+            }
+        }
+
+        /* Button-Zustände */
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -88,7 +211,7 @@
                 <li><a href="index.html">Home</a></li>
                 <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
                 <li><a href="teams.html">Teams anlegen</a></li>
-                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="zuordnung.html" class="aktiv">Teamzuordnung</a></li>
                 <li><a href="#">Ergebnisse erfassen</a></li>
                 <li><a href="#">Ergebnisse ausgeben</a></li>
                 <li><a href="#">Statistik</a></li>
@@ -96,17 +219,27 @@
         </nav>
         <main>
             <h2>Teamzuordnung</h2>
+            <div id="statusMeldung" class="status" style="display: none;"></div>
+            
             <label for="teamAuswahl">Wähle ein Team:</label>
             <select id="teamAuswahl"></select>
+            
             <h3>Wähle 3 Teilnehmer:</h3>
             <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
+            
             <button id="speichern">Team speichern</button>
+            
             <h3>Alle Teams:</h3>
+            <div id="ladeAnzeige" class="lade-anzeige">
+                <div class="lade-kreis"></div>
+                <p>Daten werden geladen...</p>
+            </div>
             <table>
                 <thead>
                     <tr>
                         <th>Teamname</th>
                         <th>Mitglieder</th>
+                        <th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody id="teamsListe"></tbody>
@@ -115,8 +248,9 @@
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getFirestore, collection, updateDoc, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { getFirestore, collection, updateDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
+        // Firebase-Konfiguration sollte idealerweise in einer separaten Datei erfolgen
         const firebaseConfig = {
             apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
             authDomain: "schuetzenverein-519a6.firebaseapp.com",
@@ -133,41 +267,245 @@
         const teilnehmerListe = document.getElementById("teilnehmerListe");
         const teamsListe = document.getElementById("teamsListe");
         const speichernButton = document.getElementById("speichern");
+        const ladeAnzeige = document.getElementById("ladeAnzeige");
 
-        async function ladeTeamsListe() {
-            const teamsSnapshot = await getDocs(collection(db, "teams"));
-            teamsListe.innerHTML = "";
+        // Ausgewählte Teilnehmer speichern
+        const ausgewaehlteTeilnehmer = new Set();
+        const maxTeilnehmer = 3;
 
-            for (const docSnap of teamsSnapshot.docs) {
-                const team = docSnap.data();
-                const tr = document.createElement("tr");
-                const tdName = document.createElement("td");
-                const tdMitglieder = document.createElement("td");
+        // Lade-Animation zeigen/verstecken
+        function zeigeLoader(anzeigen) {
+            ladeAnzeige.style.display = anzeigen ? "block" : "none";
+        }
 
-                tdName.textContent = team.teamname;
+        // Status-Anzeige für Feedback
+        function zeigeStatus(nachricht, istFehler = false) {
+            const statusElement = document.getElementById("statusMeldung");
+            statusElement.textContent = nachricht;
+            statusElement.className = istFehler ? "status fehler" : "status erfolg";
+            statusElement.style.display = "block";
+            
+            // Nach 3 Sekunden ausblenden
+            setTimeout(() => {
+                statusElement.style.display = "none";
+            }, 3000);
+        }
+
+        // Teams laden und in Dropdown anzeigen
+        async function ladeTeams() {
+            try {
+                zeigeLoader(true);
+                const teamsSnapshot = await getDocs(collection(db, "teams"));
+                teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
                 
-                if (team.mitglieder && team.mitglieder.length > 0) {
-                    let teilnehmerNamen = [];
-                    for (const teilnehmerId of team.mitglieder) {
-                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
-                        if (teilnehmerDoc.exists()) {
-                            const teilnehmer = teilnehmerDoc.data();
-                            teilnehmerNamen.push(`${teilnehmer.vorname} ${teilnehmer.name}`);
-                        }
-                    }
-                    tdMitglieder.textContent = teilnehmerNamen.join(", ");
-                } else {
-                    tdMitglieder.textContent = "Keine Mitglieder";
+                for (const docSnap of teamsSnapshot.docs) {
+                    const team = docSnap.data();
+                    const option = document.createElement("option");
+                    option.value = docSnap.id;
+                    option.textContent = team.teamname;
+                    teamAuswahl.appendChild(option);
                 }
-                
-                tr.appendChild(tdName);
-                tr.appendChild(tdMitglieder);
-                teamsListe.appendChild(tr);
+            } catch (error) {
+                console.error("Fehler beim Laden der Teams:", error);
+                zeigeStatus("Fehler beim Laden der Teams. Bitte versuchen Sie es später erneut.", true);
+            } finally {
+                zeigeLoader(false);
             }
         }
 
-        speichernButton.addEventListener("click", ladeTeamsListe);
-        ladeTeamsListe();
+        // Teilnehmer laden und anzeigen
+        async function ladeTeilnehmer() {
+            try {
+                zeigeLoader(true);
+                const teilnehmerSnapshot = await getDocs(collection(db, "teilnehmer"));
+                teilnehmerListe.innerHTML = "";
+                
+                for (const docSnap of teilnehmerSnapshot.docs) {
+                    const teilnehmer = docSnap.data();
+                    const li = document.createElement("li");
+                    li.dataset.id = docSnap.id;
+                    li.textContent = `${teilnehmer.vorname} ${teilnehmer.name}`;
+                    
+                    // Eventlistener für Auswahl
+                    li.addEventListener("click", function() {
+                        toggleTeilnehmerAuswahl(this);
+                    });
+                    
+                    teilnehmerListe.appendChild(li);
+                }
+            } catch (error) {
+                console.error("Fehler beim Laden der Teilnehmer:", error);
+                zeigeStatus("Fehler beim Laden der Teilnehmer. Bitte versuchen Sie es später erneut.", true);
+            } finally {
+                zeigeLoader(false);
+            }
+        }
+
+        // Teilnehmer auswählen oder Auswahl aufheben
+        function toggleTeilnehmerAuswahl(element) {
+            const teilnehmerId = element.dataset.id;
+            
+            if (element.classList.contains("ausgewaehlt")) {
+                // Auswahl aufheben
+                element.classList.remove("ausgewaehlt");
+                ausgewaehlteTeilnehmer.delete(teilnehmerId);
+            } else {
+                // Nur auswählen, wenn noch nicht 3 Teilnehmer ausgewählt sind
+                if (ausgewaehlteTeilnehmer.size < maxTeilnehmer) {
+                    element.classList.add("ausgewaehlt");
+                    ausgewaehlteTeilnehmer.add(teilnehmerId);
+                } else {
+                    zeigeStatus(`Es können maximal ${maxTeilnehmer} Teilnehmer ausgewählt werden.`, true);
+                }
+            }
+            
+            // Button aktivieren/deaktivieren je nach Auswahl
+            aktualisiereSpeichernButton();
+        }
+
+        // Speichern-Button aktualisieren
+        function aktualisiereSpeichernButton() {
+            const teamSelected = teamAuswahl.value !== "";
+            speichernButton.disabled = !(teamSelected && ausgewaehlteTeilnehmer.size > 0);
+        }
+
+        // Team-Zuordnung speichern
+        async function speichereTeam() {
+            const teamId = teamAuswahl.value;
+            
+            if (!teamId) {
+                zeigeStatus("Bitte wählen Sie ein Team aus.", true);
+                return;
+            }
+            
+            if (ausgewaehlteTeilnehmer.size === 0) {
+                zeigeStatus("Bitte wählen Sie mindestens einen Teilnehmer aus.", true);
+                return;
+            }
+            
+            try {
+                zeigeLoader(true);
+                // Team-Dokument aktualisieren
+                await updateDoc(doc(db, "teams", teamId), {
+                    mitglieder: Array.from(ausgewaehlteTeilnehmer)
+                });
+                
+                // Erfolg anzeigen
+                zeigeStatus("Team erfolgreich gespeichert!");
+                
+                // Liste aktualisieren
+                await ladeTeamsListe();
+                
+                // Auswahl zurücksetzen
+                ausgewaehlteTeilnehmer.clear();
+                document.querySelectorAll(".teilnehmer-liste li.ausgewaehlt").forEach(li => {
+                    li.classList.remove("ausgewaehlt");
+                });
+                
+                aktualisiereSpeichernButton();
+                
+            } catch (error) {
+                console.error("Fehler beim Speichern des Teams:", error);
+                zeigeStatus("Fehler beim Speichern. Bitte versuchen Sie es später erneut.", true);
+            } finally {
+                zeigeLoader(false);
+            }
+        }
+
+        // Teamliste aktualisieren
+        async function ladeTeamsListe() {
+            try {
+                zeigeLoader(true);
+                const teamsSnapshot = await getDocs(collection(db, "teams"));
+                teamsListe.innerHTML = "";
+
+                for (const docSnap of teamsSnapshot.docs) {
+                    const team = docSnap.data();
+                    const tr = document.createElement("tr");
+                    const tdName = document.createElement("td");
+                    const tdMitglieder = document.createElement("td");
+                    const tdAktionen = document.createElement("td");
+
+                    tdName.textContent = team.teamname;
+                    
+                    // Mitglieder laden und anzeigen
+                    if (team.mitglieder && team.mitglieder.length > 0) {
+                        const teilnehmerNamen = [];
+                        for (const teilnehmerId of team.mitglieder) {
+                            try {
+                                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
+                                if (teilnehmerDoc.exists()) {
+                                    const teilnehmer = teilnehmerDoc.data();
+                                    teilnehmerNamen.push(`${teilnehmer.vorname} ${teilnehmer.name}`);
+                                }
+                            } catch (error) {
+                                console.error("Fehler beim Laden eines Teilnehmers:", error);
+                            }
+                        }
+                        tdMitglieder.textContent = teilnehmerNamen.join(", ");
+                    } else {
+                        tdMitglieder.textContent = "Keine Mitglieder";
+                    }
+                    
+                    // Bearbeiten-Button hinzufügen
+                    const bearbeitenButton = document.createElement("button");
+                    bearbeitenButton.textContent = "Bearbeiten";
+                    bearbeitenButton.className = "aktion-btn";
+                    bearbeitenButton.addEventListener("click", () => bearbeiteTeam(docSnap.id, team));
+                    tdAktionen.appendChild(bearbeitenButton);
+                    
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdMitglieder);
+                    tr.appendChild(tdAktionen);
+                    teamsListe.appendChild(tr);
+                }
+            } catch (error) {
+                console.error("Fehler beim Laden der Teams:", error);
+                zeigeStatus("Fehler beim Laden der Teams. Bitte versuchen Sie es später erneut.", true);
+            } finally {
+                zeigeLoader(false);
+            }
+        }
+
+        // Team zur Bearbeitung laden
+        function bearbeiteTeam(teamId, teamDaten) {
+            // Team auswählen
+            teamAuswahl.value = teamId;
+            
+            // Teilnehmer auswählen
+            ausgewaehlteTeilnehmer.clear();
+            document.querySelectorAll(".teilnehmer-liste li").forEach(li => {
+                li.classList.remove("ausgewaehlt");
+                
+                // Wenn Teilnehmer im Team ist, auswählen
+                if (teamDaten.mitglieder && teamDaten.mitglieder.includes(li.dataset.id)) {
+                    li.classList.add("ausgewaehlt");
+                    ausgewaehlteTeilnehmer.add(li.dataset.id);
+                }
+            });
+            
+            aktualisiereSpeichernButton();
+            
+            // Zur Bearbeitungsansicht scrollen
+            teamAuswahl.scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Event-Listener
+        teamAuswahl.addEventListener("change", aktualisiereSpeichernButton);
+        speichernButton.addEventListener("click", speichereTeam);
+
+        // Initialisierung
+        window.addEventListener("DOMContentLoaded", async () => {
+            try {
+                await ladeTeams();
+                await ladeTeilnehmer();
+                await ladeTeamsListe();
+                aktualisiereSpeichernButton();
+            } catch (error) {
+                console.error("Fehler bei der Initialisierung:", error);
+                zeigeStatus("Es gab ein Problem beim Laden der Daten. Bitte aktualisieren Sie die Seite.", true);
+            }
+        });
     </script>
 </body>
 </html>
