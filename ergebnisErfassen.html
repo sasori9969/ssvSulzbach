@@ -146,6 +146,7 @@
                 <table id="ergebnisseTabelle">
                     <thead>
                         <tr>
+                            <th>Vorname</th>
                             <th>Name</th>
                             <th>Ergebnis</th>
                             <th>Datum</th>
@@ -171,6 +172,7 @@
                     <thead>
                         <tr>
                             <th>Team</th>
+                            <th>Vorname</th>
                             <th>Name</th>
                             <th>Ergebnis</th>
                             <th>Datum</th>
@@ -221,7 +223,7 @@
                 const data = doc.data();
                 const option = document.createElement('option');
                 option.value = doc.id;
-                option.textContent = data.name;
+                option.textContent = `${data.vorname} ${data.name}`; // Vorname und Name anzeigen
                 teilnehmerSelect.appendChild(option);
             });
         }
@@ -255,49 +257,71 @@
                 return;
             }
             
-            // Suche alle Teilnehmer, die diesem Team zugeordnet sind
-            const q = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
-            const snapshot = await getDocs(q);
-            
-            if (snapshot.empty) {
-                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                teamMitgliedSelect.disabled = true;
-                return;
-            }
-            
-            // Für jede Zuordnung den Teilnehmer laden
-            const promises = snapshot.docs.map(async (docSnap) => {
-                const zuordnung = docSnap.data();
-                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
+            try {
+                // Suche alle Teilnehmer, die diesem Team zugeordnet sind
+                const q = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
+                const snapshot = await getDocs(q);
                 
-                if (teilnehmerDoc.exists()) {
-                    const teilnehmerData = teilnehmerDoc.data();
-                    return {
-                        id: teilnehmerDoc.id,
-                        name: teilnehmerData.name
-                    };
+                if (snapshot.empty) {
+                    teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+                    teamMitgliedSelect.disabled = true;
+                    return;
                 }
-                return null;
-            });
-            
-            const mitglieder = (await Promise.all(promises)).filter(m => m !== null);
-            
-            if (mitglieder.length === 0) {
-                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+                
+                // Für jede Zuordnung den Teilnehmer laden
+                const promises = snapshot.docs.map(async (docSnap) => {
+                    const zuordnung = docSnap.data();
+                    
+                    // Prüfen, ob teilnehmerId vorhanden ist
+                    if (!zuordnung.teilnehmerId) {
+                        console.error("Fehlende teilnehmerId in der Zuordnung:", docSnap.id);
+                        return null;
+                    }
+                    
+                    try {
+                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
+                        
+                        if (teilnehmerDoc.exists()) {
+                            const teilnehmerData = teilnehmerDoc.data();
+                            return {
+                                id: teilnehmerDoc.id,
+                                vorname: teilnehmerData.vorname || "",  // Falls kein Vorname vorhanden
+                                name: teilnehmerData.name || ""         // Falls kein Name vorhanden
+                            };
+                        } else {
+                            console.error("Teilnehmer nicht gefunden:", zuordnung.teilnehmerId);
+                            return null;
+                        }
+                    } catch (error) {
+                        console.error("Fehler beim Laden des Teilnehmers:", error);
+                        return null;
+                    }
+                });
+                
+                const mitglieder = (await Promise.all(promises)).filter(m => m !== null);
+                
+                if (mitglieder.length === 0) {
+                    teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+                    teamMitgliedSelect.disabled = true;
+                    return;
+                }
+                
+                mitglieder.sort((a, b) => a.name.localeCompare(b.name));
+                
+                mitglieder.forEach(mitglied => {
+                    const option = document.createElement('option');
+                    option.value = mitglied.id;
+                    option.textContent = `${mitglied.vorname} ${mitglied.name}`;
+                    teamMitgliedSelect.appendChild(option);
+                });
+                
+                teamMitgliedSelect.disabled = false;
+            } catch (error) {
+                console.error("Fehler beim Laden der Teammitglieder:", error);
+                alert("Fehler beim Laden der Teammitglieder: " + error.message);
+                teamMitgliedSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
                 teamMitgliedSelect.disabled = true;
-                return;
             }
-            
-            mitglieder.sort((a, b) => a.name.localeCompare(b.name));
-            
-            mitglieder.forEach(mitglied => {
-                const option = document.createElement('option');
-                option.value = mitglied.id;
-                option.textContent = mitglied.name;
-                teamMitgliedSelect.appendChild(option);
-            });
-            
-            teamMitgliedSelect.disabled = false;
         });
         
         // Ergebnis für Einzelteilnehmer speichern
@@ -378,17 +402,29 @@
                 const promises = snapshot.docs.map(async (docSnap) => {
                     const data = docSnap.data();
                     
-                    // Teilnehmernamen laden
-                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                    if (!teilnehmerDoc.exists()) return null;
-                    
-                    const teilnehmerName = teilnehmerDoc.data().name;
-                    
-                    // Datum formatieren
-                    const timestamp = data.timestamp?.toDate();
-                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                    
-                    return { name: teilnehmerName, ergebnis: data.ergebnis, datum: dateStr };
+                    try {
+                        // Teilnehmerdaten laden
+                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                        if (!teilnehmerDoc.exists()) return null;
+                        
+                        const teilnehmerData = teilnehmerDoc.data();
+                        const vorname = teilnehmerData.vorname || "";
+                        const name = teilnehmerData.name || "";
+                        
+                        // Datum formatieren
+                        const timestamp = data.timestamp?.toDate();
+                        const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                        
+                        return { 
+                            vorname: vorname, 
+                            name: name, 
+                            ergebnis: data.ergebnis, 
+                            datum: dateStr 
+                        };
+                    } catch (error) {
+                        console.error("Fehler beim Laden der Teilnehmerdaten:", error);
+                        return null;
+                    }
                 });
                 
                 const results = (await Promise.all(promises)).filter(r => r !== null);
@@ -396,6 +432,7 @@
                 results.forEach(result => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
+                        <td>${result.vorname}</td>
                         <td>${result.name}</td>
                         <td>${result.ergebnis}</td>
                         <td>${result.datum}</td>
@@ -413,30 +450,51 @@
                 const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
                 tableBody.innerHTML = '';
                 
+                if (snapshot.empty) {
+                    console.log("Keine Team-Ergebnisse gefunden");
+                    return;
+                }
+                
                 const promises = snapshot.docs.map(async (docSnap) => {
                     const data = docSnap.data();
                     
-                    // Team laden
-                    const teamDoc = await getDoc(doc(db, "teams", data.teamId));
-                    if (!teamDoc.exists()) return null;
-                    
-                    // Teilnehmer laden
-                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                    if (!teilnehmerDoc.exists()) return null;
-                    
-                    const teamName = teamDoc.data().teamname;
-                    const teilnehmerName = teilnehmerDoc.data().name;
-                    
-                    // Datum formatieren
-                    const timestamp = data.timestamp?.toDate();
-                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                    
-                    return { 
-                        team: teamName, 
-                        name: teilnehmerName, 
-                        ergebnis: data.ergebnis, 
-                        datum: dateStr 
-                    };
+                    try {
+                        // Team laden
+                        const teamDoc = await getDoc(doc(db, "teams", data.teamId));
+                        if (!teamDoc.exists()) {
+                            console.error("Team nicht gefunden:", data.teamId);
+                            return null;
+                        }
+                        
+                        // Teilnehmer laden
+                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                        if (!teilnehmerDoc.exists()) {
+                            console.error("Teilnehmer nicht gefunden:", data.teilnehmerId);
+                            return null;
+                        }
+                        
+                        const teamData = teamDoc.data();
+                        const teilnehmerData = teilnehmerDoc.data();
+                        
+                        const teamName = teamData.teamname || "";
+                        const vorname = teilnehmerData.vorname || "";
+                        const name = teilnehmerData.name || "";
+                        
+                        // Datum formatieren
+                        const timestamp = data.timestamp?.toDate();
+                        const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                        
+                        return { 
+                            team: teamName, 
+                            vorname: vorname,
+                            name: name, 
+                            ergebnis: data.ergebnis, 
+                            datum: dateStr 
+                        };
+                    } catch (error) {
+                        console.error("Fehler beim Laden der Daten:", error);
+                        return null;
+                    }
                 });
                 
                 const results = (await Promise.all(promises)).filter(r => r !== null);
@@ -445,6 +503,7 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${result.team}</td>
+                        <td>${result.vorname}</td>
                         <td>${result.name}</td>
                         <td>${result.ergebnis}</td>
                         <td>${result.datum}</td>
