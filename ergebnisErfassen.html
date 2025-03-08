@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ergebnisse erfassen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0ffe0;
+            color: #006400;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #008000;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        nav {
+            width: 220px;
+            background-color: #d0ffd0;
+            padding: 20px;
+            height: 100vh;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav a {
+            display: block;
+            padding: 10px;
+            background-color: #c0ffc0;
+            text-decoration: none;
+            color: #006400;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        main {
+            flex: 1;
+            padding: 20px;
+            background-color: #c0ffc0;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #d0ffd0;
+            border: 1px solid #006400;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #008000;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 0 5px 5px 5px;
+            border: 1px solid #006400;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        select, input, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #006400;
+        }
+        button {
+            background-color: #008000;
+            color: white;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #006400;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #d0ffd0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Ergebnisse erfassen</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
+                <li><a href="#">Ergebnisse ausgeben</a></li>
+                <li><a href="#">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+            <h2>Ergebnisse erfassen</h2>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="alleSchuetzen">Alle Teilnehmer</div>
+                <div class="tab" data-tab="teamSchuetzen">Nach Team</div>
+            </div>
+            
+            <div id="alleSchuetzen" class="tab-content active">
+                <h3>Ergebnis für einzelnen Teilnehmer erfassen</h3>
+                <select id="teilnehmerSelect">
+                    <option value="">-- Teilnehmer auswählen --</option>
+                </select>
+                <input type="number" id="ergebnisEinzel" placeholder="Ergebnis eingeben" min="0">
+                <button id="ergebnisEinzelSpeichern">Ergebnis speichern</button>
+                
+                <h3>Letzte Ergebnisse</h3>
+                <table id="ergebnisseTabelle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Ergebnis</th>
+                            <th>Datum</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <div id="teamSchuetzen" class="tab-content">
+                <h3>Ergebnis für Teammitglied erfassen</h3>
+                <select id="teamSelect">
+                    <option value="">-- Team auswählen --</option>
+                </select>
+                <select id="teamMitgliedSelect" disabled>
+                    <option value="">-- Erst Team auswählen --</option>
+                </select>
+                <input type="number" id="ergebnisTeam" placeholder="Ergebnis eingeben" min="0">
+                <button id="ergebnisTeamSpeichern">Ergebnis speichern</button>
+                
+                <h3>Team-Ergebnisse</h3>
+                <table id="teamErgebnisseTabelle">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Name</th>
+                            <th>Ergebnis</th>
+                            <th>Datum</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Tab-Funktionalität
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tab.getAttribute('data-tab')).classList.add('active');
+            });
+        });
+        
+        // Lade alle Teilnehmer
+        async function loadTeilnehmer() {
+            const teilnehmerSelect = document.getElementById('teilnehmerSelect');
+            teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer auswählen --</option>';
+            
+            const q = query(collection(db, "teilnehmer"), orderBy("name"));
+            const snapshot = await getDocs(q);
+            
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = data.name;
+                teilnehmerSelect.appendChild(option);
+            });
+        }
+        
+        // Lade alle Teams
+        async function loadTeams() {
+            const teamSelect = document.getElementById('teamSelect');
+            teamSelect.innerHTML = '<option value="">-- Team auswählen --</option>';
+            
+            const q = query(collection(db, "teams"), orderBy("teamname"));
+            const snapshot = await getDocs(q);
+            
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = data.teamname;
+                teamSelect.appendChild(option);
+            });
+        }
+        
+        // Lade Teammitglieder wenn Team ausgewählt wurde
+        document.getElementById('teamSelect').addEventListener('change', async function() {
+            const teamId = this.value;
+            const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
+            
+            teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+            
+            if (!teamId) {
+                teamMitgliedSelect.disabled = true;
+                return;
+            }
+            
+            // Suche alle Teilnehmer, die diesem Team zugeordnet sind
+            const q = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
+            const snapshot = await getDocs(q);
+            
+            if (snapshot.empty) {
+                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+                teamMitgliedSelect.disabled = true;
+                return;
+            }
+            
+            // Für jede Zuordnung den Teilnehmer laden
+            const promises = snapshot.docs.map(async (docSnap) => {
+                const zuordnung = docSnap.data();
+                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
+                
+                if (teilnehmerDoc.exists()) {
+                    const teilnehmerData = teilnehmerDoc.data();
+                    return {
+                        id: teilnehmerDoc.id,
+                        name: teilnehmerData.name
+                    };
+                }
+                return null;
+            });
+            
+            const mitglieder = (await Promise.all(promises)).filter(m => m !== null);
+            
+            if (mitglieder.length === 0) {
+                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+                teamMitgliedSelect.disabled = true;
+                return;
+            }
+            
+            mitglieder.sort((a, b) => a.name.localeCompare(b.name));
+            
+            mitglieder.forEach(mitglied => {
+                const option = document.createElement('option');
+                option.value = mitglied.id;
+                option.textContent = mitglied.name;
+                teamMitgliedSelect.appendChild(option);
+            });
+            
+            teamMitgliedSelect.disabled = false;
+        });
+        
+        // Ergebnis für Einzelteilnehmer speichern
+        document.getElementById('ergebnisEinzelSpeichern').addEventListener('click', async function() {
+            const teilnehmerId = document.getElementById('teilnehmerSelect').value;
+            const ergebnis = parseInt(document.getElementById('ergebnisEinzel').value);
+            
+            if (!teilnehmerId) {
+                alert('Bitte einen Teilnehmer auswählen!');
+                return;
+            }
+            
+            if (isNaN(ergebnis)) {
+                alert('Bitte ein gültiges Ergebnis eingeben!');
+                return;
+            }
+            
+            try {
+                await addDoc(collection(db, "ergebnisse"), {
+                    teilnehmerId: teilnehmerId,
+                    ergebnis: ergebnis,
+                    timestamp: serverTimestamp()
+                });
+                
+                alert('Ergebnis gespeichert!');
+                document.getElementById('ergebnisEinzel').value = '';
+            } catch (error) {
+                console.error("Fehler beim Speichern:", error);
+                alert("Fehler beim Speichern: " + error.message);
+            }
+        });
+        
+        // Ergebnis für Teammitglied speichern
+        document.getElementById('ergebnisTeamSpeichern').addEventListener('click', async function() {
+            const teamId = document.getElementById('teamSelect').value;
+            const teilnehmerId = document.getElementById('teamMitgliedSelect').value;
+            const ergebnis = parseInt(document.getElementById('ergebnisTeam').value);
+            
+            if (!teamId) {
+                alert('Bitte ein Team auswählen!');
+                return;
+            }
+            
+            if (!teilnehmerId) {
+                alert('Bitte einen Teilnehmer auswählen!');
+                return;
+            }
+            
+            if (isNaN(ergebnis)) {
+                alert('Bitte ein gültiges Ergebnis eingeben!');
+                return;
+            }
+            
+            try {
+                await addDoc(collection(db, "ergebnisse"), {
+                    teamId: teamId,
+                    teilnehmerId: teilnehmerId,
+                    ergebnis: ergebnis,
+                    timestamp: serverTimestamp()
+                });
+                
+                alert('Ergebnis gespeichert!');
+                document.getElementById('ergebnisTeam').value = '';
+            } catch (error) {
+                console.error("Fehler beim Speichern:", error);
+                alert("Fehler beim Speichern: " + error.message);
+            }
+        });
+        
+        // Ergebnisse anzeigen (für alle Teilnehmer)
+        function displayErgebnisse() {
+            const q = query(collection(db, "ergebnisse"), orderBy("timestamp", "desc"));
+            
+            onSnapshot(q, async (snapshot) => {
+                const tableBody = document.querySelector('#ergebnisseTabelle tbody');
+                tableBody.innerHTML = '';
+                
+                const promises = snapshot.docs.map(async (docSnap) => {
+                    const data = docSnap.data();
+                    
+                    // Teilnehmernamen laden
+                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                    if (!teilnehmerDoc.exists()) return null;
+                    
+                    const teilnehmerName = teilnehmerDoc.data().name;
+                    
+                    // Datum formatieren
+                    const timestamp = data.timestamp?.toDate();
+                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                    
+                    return { name: teilnehmerName, ergebnis: data.ergebnis, datum: dateStr };
+                });
+                
+                const results = (await Promise.all(promises)).filter(r => r !== null);
+                
+                results.forEach(result => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${result.name}</td>
+                        <td>${result.ergebnis}</td>
+                        <td>${result.datum}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+        }
+        
+        // Team-Ergebnisse anzeigen
+        function displayTeamErgebnisse() {
+            const q = query(collection(db, "ergebnisse"), where("teamId", "!=", null), orderBy("teamId"), orderBy("timestamp", "desc"));
+            
+            onSnapshot(q, async (snapshot) => {
+                const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
+                tableBody.innerHTML = '';
+                
+                const promises = snapshot.docs.map(async (docSnap) => {
+                    const data = docSnap.data();
+                    
+                    // Team laden
+                    const teamDoc = await getDoc(doc(db, "teams", data.teamId));
+                    if (!teamDoc.exists()) return null;
+                    
+                    // Teilnehmer laden
+                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                    if (!teilnehmerDoc.exists()) return null;
+                    
+                    const teamName = teamDoc.data().teamname;
+                    const teilnehmerName = teilnehmerDoc.data().name;
+                    
+                    // Datum formatieren
+                    const timestamp = data.timestamp?.toDate();
+                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                    
+                    return { 
+                        team: teamName, 
+                        name: teilnehmerName, 
+                        ergebnis: data.ergebnis, 
+                        datum: dateStr 
+                    };
+                });
+                
+                const results = (await Promise.all(promises)).filter(r => r !== null);
+                
+                results.forEach(result => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${result.team}</td>
+                        <td>${result.name}</td>
+                        <td>${result.ergebnis}</td>
+                        <td>${result.datum}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            });
+        }
+        
+        // Initialisierung der Seite
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTeilnehmer();
+            loadTeams();
+            displayErgebnisse();
+            displayTeamErgebnisse();
+        });
+    </script>
+</body>
+</html>
