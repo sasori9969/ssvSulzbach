@@ -108,6 +108,17 @@
         th {
             background-color: #d0ffd0;
         }
+        .debug-info {
+            background-color: #f8f8f8;
+            border: 1px dashed #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -180,13 +191,15 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+                
+                <div id="debugInfo" class="debug-info"></div>
             </div>
         </main>
     </div>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, serverTimestamp, onSnapshot, query, orderBy, where, limit } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
@@ -199,6 +212,43 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        
+        // Debugging-Funktion
+        function logDebug(message, data = null) {
+            console.log(message, data);
+            
+            // Auch in Debug-Div anzeigen für einfache Fehlersuche
+            const debugDiv = document.getElementById('debugInfo');
+            if (debugDiv) {
+                const timestamp = new Date().toLocaleTimeString();
+                let logMessage = `[${timestamp}] ${message}`;
+                
+                if (data) {
+                    if (typeof data === 'object') {
+                        try {
+                            logMessage += `: ${JSON.stringify(data, null, 2)}`;
+                        } catch (e) {
+                            logMessage += `: [Objekt konnte nicht dargestellt werden]`;
+                        }
+                    } else {
+                        logMessage += `: ${data}`;
+                    }
+                }
+                
+                const logEntry = document.createElement('div');
+                logEntry.textContent = logMessage;
+                debugDiv.appendChild(logEntry);
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+            }
+        }
+        
+        // Debug-Modus aktivieren/deaktivieren (für Produktionsumgebung auf false setzen)
+        const DEBUG_MODE = true;
+        
+        if (DEBUG_MODE) {
+            document.getElementById('debugInfo').style.display = 'block';
+            logDebug("Debug-Modus aktiviert");
+        }
         
         // Tab-Funktionalität
         document.querySelectorAll('.tab').forEach(tab => {
@@ -213,36 +263,62 @@
         
         // Lade alle Teilnehmer
         async function loadTeilnehmer() {
-            const teilnehmerSelect = document.getElementById('teilnehmerSelect');
-            teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer auswählen --</option>';
-            
-            const q = query(collection(db, "teilnehmer"), orderBy("name"));
-            const snapshot = await getDocs(q);
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = `${data.vorname} ${data.name}`; // Vorname und Name anzeigen
-                teilnehmerSelect.appendChild(option);
-            });
+            try {
+                const teilnehmerSelect = document.getElementById('teilnehmerSelect');
+                teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer auswählen --</option>';
+                
+                const q = query(collection(db, "teilnehmer"), orderBy("name"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    logDebug("Keine Teilnehmer gefunden");
+                    return;
+                }
+                
+                logDebug(`${snapshot.size} Teilnehmer geladen`);
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = `${data.vorname || ""} ${data.name || ""}`.trim();
+                    teilnehmerSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Fehler beim Laden der Teilnehmer:", error);
+                logDebug("Fehler beim Laden der Teilnehmer", error.message);
+                alert("Fehler beim Laden der Teilnehmer: " + error.message);
+            }
         }
         
         // Lade alle Teams
         async function loadTeams() {
-            const teamSelect = document.getElementById('teamSelect');
-            teamSelect.innerHTML = '<option value="">-- Team auswählen --</option>';
-            
-            const q = query(collection(db, "teams"), orderBy("teamname"));
-            const snapshot = await getDocs(q);
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = data.teamname;
-                teamSelect.appendChild(option);
-            });
+            try {
+                const teamSelect = document.getElementById('teamSelect');
+                teamSelect.innerHTML = '<option value="">-- Team auswählen --</option>';
+                
+                const q = query(collection(db, "teams"), orderBy("teamname"));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    logDebug("Keine Teams gefunden");
+                    return;
+                }
+                
+                logDebug(`${snapshot.size} Teams geladen`);
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = data.teamname || "Unbenanntes Team";
+                    teamSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Fehler beim Laden der Teams:", error);
+                logDebug("Fehler beim Laden der Teams", error.message);
+                alert("Fehler beim Laden der Teams: " + error.message);
+            }
         }
         
         // Lade Teammitglieder wenn Team ausgewählt wurde
@@ -251,76 +327,112 @@
             const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
             
             teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+            teamMitgliedSelect.disabled = true;
             
             if (!teamId) {
-                teamMitgliedSelect.disabled = true;
+                logDebug("Kein Team ausgewählt");
                 return;
             }
             
+            logDebug("Team ausgewählt", teamId);
+            
             try {
-                // Suche alle Teilnehmer, die diesem Team zugeordnet sind
+                // Zuerst prüfen, ob das Team existiert
+                const teamDoc = await getDoc(doc(db, "teams", teamId));
+                if (!teamDoc.exists()) {
+                    logDebug("Team nicht gefunden", teamId);
+                    return;
+                }
+                
+                const teamData = teamDoc.data();
+                logDebug("Team gefunden", { id: teamId, name: teamData.teamname });
+                
+                // Suche alle Zuordnungen für dieses Team
                 const q = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
                 const snapshot = await getDocs(q);
                 
+                logDebug(`${snapshot.size} Zuordnungen für Team ${teamId} gefunden`);
+                
                 if (snapshot.empty) {
                     teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                    teamMitgliedSelect.disabled = true;
                     return;
                 }
                 
-                // Für jede Zuordnung den Teilnehmer laden
-                const promises = snapshot.docs.map(async (docSnap) => {
-                    const zuordnung = docSnap.data();
+                // Für alle gefundenen Zuordnungen die Teilnehmerdaten laden
+                const teilnehmerPromises = [];
+                
+                snapshot.forEach(zuordnungDoc => {
+                    const zuordnung = zuordnungDoc.data();
+                    logDebug("Zuordnung gefunden", { 
+                        id: zuordnungDoc.id, 
+                        teamId: zuordnung.teamId, 
+                        teilnehmerId: zuordnung.teilnehmerId 
+                    });
                     
-                    // Prüfen, ob teilnehmerId vorhanden ist
                     if (!zuordnung.teilnehmerId) {
-                        console.error("Fehlende teilnehmerId in der Zuordnung:", docSnap.id);
-                        return null;
+                        logDebug("Fehlende teilnehmerId in Zuordnung", zuordnungDoc.id);
+                        return;
                     }
                     
-                    try {
-                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
-                        
-                        if (teilnehmerDoc.exists()) {
+                    // Teilnehmer-Dokument laden
+                    const teilnehmerPromise = getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId))
+                        .then(teilnehmerDoc => {
+                            if (!teilnehmerDoc.exists()) {
+                                logDebug("Teilnehmer nicht gefunden", zuordnung.teilnehmerId);
+                                return null;
+                            }
+                            
                             const teilnehmerData = teilnehmerDoc.data();
                             return {
                                 id: teilnehmerDoc.id,
-                                vorname: teilnehmerData.vorname || "",  // Falls kein Vorname vorhanden
-                                name: teilnehmerData.name || ""         // Falls kein Name vorhanden
+                                vorname: teilnehmerData.vorname || "",
+                                name: teilnehmerData.name || ""
                             };
-                        } else {
-                            console.error("Teilnehmer nicht gefunden:", zuordnung.teilnehmerId);
+                        })
+                        .catch(error => {
+                            logDebug("Fehler beim Laden des Teilnehmers", {
+                                teilnehmerId: zuordnung.teilnehmerId,
+                                error: error.message
+                            });
                             return null;
-                        }
-                    } catch (error) {
-                        console.error("Fehler beim Laden des Teilnehmers:", error);
-                        return null;
-                    }
+                        });
+                    
+                    teilnehmerPromises.push(teilnehmerPromise);
                 });
                 
-                const mitglieder = (await Promise.all(promises)).filter(m => m !== null);
+                // Alle Teilnehmer-Promises auflösen
+                const teilnehmer = (await Promise.all(teilnehmerPromises))
+                    .filter(t => t !== null);
                 
-                if (mitglieder.length === 0) {
-                    teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                    teamMitgliedSelect.disabled = true;
+                logDebug(`${teilnehmer.length} gültige Teammitglieder gefunden`);
+                
+                if (teilnehmer.length === 0) {
+                    teamMitgliedSelect.innerHTML = '<option value="">Keine gültigen Mitglieder gefunden</option>';
                     return;
                 }
                 
-                mitglieder.sort((a, b) => a.name.localeCompare(b.name));
+                // Nach Name sortieren
+                teilnehmer.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
                 
-                mitglieder.forEach(mitglied => {
+                // Options für jeden Teilnehmer erstellen
+                teilnehmer.forEach(t => {
                     const option = document.createElement('option');
-                    option.value = mitglied.id;
-                    option.textContent = `${mitglied.vorname} ${mitglied.name}`;
+                    option.value = t.id;
+                    option.textContent = `${t.vorname} ${t.name}`.trim();
                     teamMitgliedSelect.appendChild(option);
                 });
                 
+                // Select-Element aktivieren
                 teamMitgliedSelect.disabled = false;
+                
             } catch (error) {
                 console.error("Fehler beim Laden der Teammitglieder:", error);
+                logDebug("Fehler beim Laden der Teammitglieder", error.message);
                 alert("Fehler beim Laden der Teammitglieder: " + error.message);
-                teamMitgliedSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
-                teamMitgliedSelect.disabled = true;
             }
         });
         
@@ -334,22 +446,29 @@
                 return;
             }
             
-            if (isNaN(ergebnis)) {
+            if (isNaN(ergebnis) || ergebnis < 0) {
                 alert('Bitte ein gültiges Ergebnis eingeben!');
                 return;
             }
             
             try {
-                await addDoc(collection(db, "ergebnisse"), {
+                const docRef = await addDoc(collection(db, "ergebnisse"), {
                     teilnehmerId: teilnehmerId,
                     ergebnis: ergebnis,
                     timestamp: serverTimestamp()
                 });
                 
-                alert('Ergebnis gespeichert!');
+                logDebug("Ergebnis gespeichert", { 
+                    id: docRef.id, 
+                    teilnehmerId: teilnehmerId, 
+                    ergebnis: ergebnis 
+                });
+                
+                alert('Ergebnis erfolgreich gespeichert!');
                 document.getElementById('ergebnisEinzel').value = '';
             } catch (error) {
                 console.error("Fehler beim Speichern:", error);
+                logDebug("Fehler beim Speichern des Ergebnisses", error.message);
                 alert("Fehler beim Speichern: " + error.message);
             }
         });
@@ -370,155 +489,239 @@
                 return;
             }
             
-            if (isNaN(ergebnis)) {
+            if (isNaN(ergebnis) || ergebnis < 0) {
                 alert('Bitte ein gültiges Ergebnis eingeben!');
                 return;
             }
             
             try {
-                await addDoc(collection(db, "ergebnisse"), {
+                const docRef = await addDoc(collection(db, "ergebnisse"), {
                     teamId: teamId,
                     teilnehmerId: teilnehmerId,
                     ergebnis: ergebnis,
                     timestamp: serverTimestamp()
                 });
                 
-                alert('Ergebnis gespeichert!');
+                logDebug("Team-Ergebnis gespeichert", { 
+                    id: docRef.id, 
+                    teamId: teamId,
+                    teilnehmerId: teilnehmerId, 
+                    ergebnis: ergebnis 
+                });
+                
+                alert('Ergebnis erfolgreich gespeichert!');
                 document.getElementById('ergebnisTeam').value = '';
             } catch (error) {
                 console.error("Fehler beim Speichern:", error);
+                logDebug("Fehler beim Speichern des Team-Ergebnisses", error.message);
                 alert("Fehler beim Speichern: " + error.message);
             }
         });
         
         // Ergebnisse anzeigen (für alle Teilnehmer)
         function displayErgebnisse() {
-            const q = query(collection(db, "ergebnisse"), orderBy("timestamp", "desc"));
-            
-            onSnapshot(q, async (snapshot) => {
-                const tableBody = document.querySelector('#ergebnisseTabelle tbody');
-                tableBody.innerHTML = '';
+            try {
+                const q = query(
+                    collection(db, "ergebnisse"), 
+                    orderBy("timestamp", "desc"),
+                    limit(50)  // Begrenze auf die letzten 50 Ergebnisse für bessere Performance
+                );
                 
-                const promises = snapshot.docs.map(async (docSnap) => {
-                    const data = docSnap.data();
+                onSnapshot(q, async (snapshot) => {
+                    const tableBody = document.querySelector('#ergebnisseTabelle tbody');
+                    tableBody.innerHTML = '';
                     
-                    try {
-                        // Teilnehmerdaten laden
-                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                        if (!teilnehmerDoc.exists()) return null;
-                        
-                        const teilnehmerData = teilnehmerDoc.data();
-                        const vorname = teilnehmerData.vorname || "";
-                        const name = teilnehmerData.name || "";
-                        
-                        // Datum formatieren
-                        const timestamp = data.timestamp?.toDate();
-                        const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                        
-                        return { 
-                            vorname: vorname, 
-                            name: name, 
-                            ergebnis: data.ergebnis, 
-                            datum: dateStr 
-                        };
-                    } catch (error) {
-                        console.error("Fehler beim Laden der Teilnehmerdaten:", error);
-                        return null;
+                    if (snapshot.empty) {
+                        logDebug("Keine Ergebnisse gefunden");
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="4" style="text-align: center;">Keine Ergebnisse vorhanden</td>';
+                        tableBody.appendChild(row);
+                        return;
                     }
+                    
+                    logDebug(`${snapshot.size} Ergebnisse geladen`);
+                    
+                    // Lade die Teilnehmerdaten für alle Ergebnisse
+                    const promises = snapshot.docs.map(async (docSnap) => {
+                        const data = docSnap.data();
+                        
+                        if (!data.teilnehmerId) {
+                            logDebug("Fehlende teilnehmerId in Ergebnis", docSnap.id);
+                            return null;
+                        }
+                        
+                        try {
+                            // Teilnehmerdaten laden
+                            const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                            if (!teilnehmerDoc.exists()) {
+                                logDebug("Teilnehmer für Ergebnis nicht gefunden", data.teilnehmerId);
+                                return null;
+                            }
+                            
+                            const teilnehmerData = teilnehmerDoc.data();
+                            const vorname = teilnehmerData.vorname || "";
+                            const name = teilnehmerData.name || "";
+                            
+                            // Datum formatieren
+                            const timestamp = data.timestamp?.toDate();
+                            const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                            
+                            return { 
+                                vorname: vorname, 
+                                name: name, 
+                                ergebnis: data.ergebnis, 
+                                datum: dateStr 
+                            };
+                        } catch (error) {
+                            logDebug("Fehler beim Laden der Teilnehmerdaten für Ergebnis", {
+                                ergebnisId: docSnap.id,
+                                teilnehmerId: data.teilnehmerId,
+                                error: error.message
+                            });
+                            return null;
+                        }
+                    });
+                    
+                    const results = (await Promise.all(promises)).filter(r => r !== null);
+                    
+                    if (results.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="4" style="text-align: center;">Keine gültigen Ergebnisse vorhanden</td>';
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    results.forEach(result => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${result.vorname}</td>
+                            <td>${result.name}</td>
+                            <td>${result.ergebnis}</td>
+                            <td>${result.datum}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
                 });
-                
-                const results = (await Promise.all(promises)).filter(r => r !== null);
-                
-                results.forEach(result => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${result.vorname}</td>
-                        <td>${result.name}</td>
-                        <td>${result.ergebnis}</td>
-                        <td>${result.datum}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            });
+            } catch (error) {
+                console.error("Fehler beim Anzeigen der Ergebnisse:", error);
+                logDebug("Fehler beim Anzeigen der Ergebnisse", error.message);
+            }
         }
         
         // Team-Ergebnisse anzeigen
         function displayTeamErgebnisse() {
-            const q = query(collection(db, "ergebnisse"), where("teamId", "!=", null), orderBy("teamId"), orderBy("timestamp", "desc"));
-            
-            onSnapshot(q, async (snapshot) => {
-                const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
-                tableBody.innerHTML = '';
+            try {
+                const q = query(
+                    collection(db, "ergebnisse"),
+                    where("teamId", "!=", null),
+                    orderBy("teamId"),
+                    orderBy("timestamp", "desc"),
+                    limit(50)  // Begrenze auf die letzten 50 Ergebnisse für bessere Performance
+                );
                 
-                if (snapshot.empty) {
-                    console.log("Keine Team-Ergebnisse gefunden");
-                    return;
-                }
-                
-                const promises = snapshot.docs.map(async (docSnap) => {
-                    const data = docSnap.data();
+                onSnapshot(q, async (snapshot) => {
+                    const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
+                    tableBody.innerHTML = '';
                     
-                    try {
-                        // Team laden
-                        const teamDoc = await getDoc(doc(db, "teams", data.teamId));
-                        if (!teamDoc.exists()) {
-                            console.error("Team nicht gefunden:", data.teamId);
-                            return null;
-                        }
-                        
-                        // Teilnehmer laden
-                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                        if (!teilnehmerDoc.exists()) {
-                            console.error("Teilnehmer nicht gefunden:", data.teilnehmerId);
-                            return null;
-                        }
-                        
-                        const teamData = teamDoc.data();
-                        const teilnehmerData = teilnehmerDoc.data();
-                        
-                        const teamName = teamData.teamname || "";
-                        const vorname = teilnehmerData.vorname || "";
-                        const name = teilnehmerData.name || "";
-                        
-                        // Datum formatieren
-                        const timestamp = data.timestamp?.toDate();
-                        const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                        
-                        return { 
-                            team: teamName, 
-                            vorname: vorname,
-                            name: name, 
-                            ergebnis: data.ergebnis, 
-                            datum: dateStr 
-                        };
-                    } catch (error) {
-                        console.error("Fehler beim Laden der Daten:", error);
-                        return null;
+                    if (snapshot.empty) {
+                        logDebug("Keine Team-Ergebnisse gefunden");
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5" style="text-align: center;">Keine Team-Ergebnisse vorhanden</td>';
+                        tableBody.appendChild(row);
+                        return;
                     }
+                    
+                    logDebug(`${snapshot.size} Team-Ergebnisse geladen`);
+                    
+                    const promises = snapshot.docs.map(async (docSnap) => {
+                        const data = docSnap.data();
+                        
+                        if (!data.teamId || !data.teilnehmerId) {
+                            logDebug("Fehlende teamId oder teilnehmerId in Team-Ergebnis", docSnap.id);
+                            return null;
+                        }
+                        
+                        try {
+                            // Team laden
+                            const teamDoc = await getDoc(doc(db, "teams", data.teamId));
+                            if (!teamDoc.exists()) {
+                                logDebug("Team für Ergebnis nicht gefunden", data.teamId);
+                                return null;
+                            }
+                            
+                            // Teilnehmer laden
+                            const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                            if (!teilnehmerDoc.exists()) {
+                                logDebug("Teilnehmer für Team-Ergebnis nicht gefunden", data.teilnehmerId);
+                                return null;
+                            }
+                            
+                            const teamData = teamDoc.data();
+                            const teilnehmerData = teilnehmerDoc.data();
+                            
+                            const teamName = teamData.teamname || "";
+                            const vorname = teilnehmerData.vorname || "";
+                            const name = teilnehmerData.name || "";
+                            
+                            // Datum formatieren
+                            const timestamp = data.timestamp?.toDate();
+                            const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+                            
+                            return { 
+                                team: teamName, 
+                                vorname: vorname,
+                                name: name, 
+                                ergebnis: data.ergebnis, 
+                                datum: dateStr 
+                            };
+                        } catch (error) {
+                            logDebug("Fehler beim Laden der Daten für Team-Ergebnis", {
+                                ergebnisId: docSnap.id,
+                                teamId: data.teamId,
+                                teilnehmerId: data.teilnehmerId,
+                                error: error.message
+                            });
+                            return null;
+                        }
+                    });
+                    
+                    const results = (await Promise.all(promises)).filter(r => r !== null);
+                    
+                    if (results.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5" style="text-align: center;">Keine gültigen Team-Ergebnisse vorhanden</td>';
+                        tableBody.appendChild(row);
+                        return;
+                    }
+                    
+                    results.forEach(result => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${result.team}</td>
+                            <td>${result.vorname}</td>
+                            <td>${result.name}</td>
+                            <td>${result.ergebnis}</td>
+                            <td>${result.datum}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
                 });
-                
-                const results = (await Promise.all(promises)).filter(r => r !== null);
-                
-                results.forEach(result => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${result.team}</td>
-                        <td>${result.vorname}</td>
-                        <td>${result.name}</td>
-                        <td>${result.ergebnis}</td>
-                        <td>${result.datum}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            });
+            } catch (error) {
+                console.error("Fehler beim Anzeigen der Team-Ergebnisse:", error);
+                logDebug("Fehler beim Anzeigen der Team-Ergebnisse", error.message);
+            }
         }
         
         // Initialisierung der Seite
         document.addEventListener('DOMContentLoaded', () => {
+            logDebug("Seite wird initialisiert");
+            
             loadTeilnehmer();
             loadTeams();
             displayErgebnisse();
             displayTeamErgebnisse();
+            
+            logDebug("Initialisierung abgeschlossen");
         });
     </script>
 </body>
