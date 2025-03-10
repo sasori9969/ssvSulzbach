@@ -355,155 +355,77 @@
             }
         }
         
-        // Lade Teammitglieder wenn Team ausgewählt wurde
-        document.getElementById('teamSelect').addEventListener('change', async function() {
-            const teamId = this.value;
-            const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
-            
-            debug("Team ausgewählt", teamId);
-            
-            teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
-            
-            if (!teamId) {
-                teamMitgliedSelect.disabled = true;
-                return;
-            }
-            
+// Lade Teammitglieder wenn Team ausgewählt wurde
+document.getElementById('teamSelect').addEventListener('change', async function() {
+    const teamId = this.value;
+    const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
+
+    debug("Team ausgewählt", teamId);
+
+    teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+    teamMitgliedSelect.disabled = true;
+
+    if (!teamId) return;
+
+    try {
+        const zuordnungQ = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
+        const zuordnungSnap = await getDocs(zuordnungQ);
+
+        debug(`${zuordnungSnap.size} Zuordnungen für Team ${teamId} gefunden`);
+
+        if (zuordnungSnap.empty) {
+            debug("Keine Zuordnungen gefunden");
+            teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+            return;
+        }
+
+        const promises = zuordnungSnap.docs.map(async (docSnap) => {
+            const zuordnung = docSnap.data();
+            if (!zuordnung.teilnehmerId) return null;
+
             try {
-                // Team-Informationen anzeigen
-                const teamDoc = await getDoc(doc(db, "teams", teamId));
-                if (teamDoc.exists()) {
-                    const teamData = teamDoc.data();
-                    debug("Team gefunden", { 
-                        "id": teamId, 
-                        "name": teamData.teamname 
-                    });
+                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
+                if (teilnehmerDoc.exists()) {
+                    const teilnehmerData = teilnehmerDoc.data();
+                    return {
+                        id: teilnehmerDoc.id,
+                        vorname: teilnehmerData.vorname || "",
+                        name: teilnehmerData.name || ""
+                    };
                 } else {
-                    debug("Team nicht gefunden", teamId);
+                    debug("Teilnehmer nicht gefunden", zuordnung.teilnehmerId);
+                    return null;
                 }
-                
-                // METHODE 1: Suche alle Teilnehmer, die diesem Team zugeordnet sind
-                // Prüfe die Struktur der teamzuordnung-Collection
-                const zuordnungQ = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
-                const zuordnungSnap = await getDocs(zuordnungQ);
-                
-                debug(`${zuordnungSnap.size} Zuordnungen für Team ${teamId} gefunden`);
-                
-                let mitglieder = [];
-                
-                if (zuordnungSnap.empty) {
-                    // METHODE 2: Versuche alternative Struktur - vielleicht ist teamId direkt im Teilnehmer gespeichert
-                    debug("Keine Zuordnungen gefunden, versuche direkte Teilnehmerabfrage");
-                    mitglieder = await directQueryTeamMembers(teamId);
-                    
-                    if (mitglieder.length === 0) {
-                        // METHODE 3: Versuche die umgekehrte Beziehung - teilnehmerId im Team
-                        debug("Prüfe Team-Dokument auf teilnehmerIds");
-                        if (teamDoc.exists()) {
-                            const teamData = teamDoc.data();
-                            if (teamData.teilnehmerIds && Array.isArray(teamData.teilnehmerIds)) {
-                                debug(`${teamData.teilnehmerIds.length} TeilnehmerIds im Team gefunden`);
-                                
-                                // Laden aller referenzierten Teilnehmer
-                                const promises = teamData.teilnehmerIds.map(async (teilnehmerId) => {
-                                    try {
-                                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
-                                        if (teilnehmerDoc.exists()) {
-                                            const teilnehmerData = teilnehmerDoc.data();
-                                            return {
-                                                id: teilnehmerDoc.id,
-                                                vorname: teilnehmerData.vorname || "",
-                                                name: teilnehmerData.name || ""
-                                            };
-                                        } else {
-                                            debug(`Teilnehmer ${teilnehmerId} nicht gefunden`);
-                                            return null;
-                                        }
-                                    } catch (error) {
-                                        debug(`Fehler beim Laden des Teilnehmers ${teilnehmerId}`, error.message);
-                                        return null;
-                                    }
-                                });
-                                
-                                mitglieder = (await Promise.all(promises)).filter(t => t !== null);
-                            }
-                        }
-                    }
-                    
-                    // Wenn immer noch keine Mitglieder, zeige Hinweis
-                    if (mitglieder.length === 0) {
-                        debug("Keine Teammitglieder gefunden!");
-                        teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                        teamMitgliedSelect.disabled = true;
-                        return;
-                    }
-                } else {
-                    // Standardfall: teamzuordnung-Collection verwenden
-                    const promises = zuordnungSnap.docs.map(async (docSnap) => {
-                        const zuordnung = docSnap.data();
-                        
-                        debug("Zuordnung gefunden", zuordnung);
-                        
-                        // Prüfen, ob teilnehmerId vorhanden ist
-                        if (!zuordnung.teilnehmerId) {
-                            debug("Fehlende teilnehmerId in der Zuordnung", docSnap.id);
-                            return null;
-                        }
-                        
-                        try {
-                            const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
-                            
-                            if (teilnehmerDoc.exists()) {
-                                const teilnehmerData = teilnehmerDoc.data();
-                                return {
-                                    id: teilnehmerDoc.id,
-                                    vorname: teilnehmerData.vorname || "",
-                                    name: teilnehmerData.name || ""
-                                };
-                            } else {
-                                debug("Teilnehmer nicht gefunden", zuordnung.teilnehmerId);
-                                return null;
-                            }
-                        } catch (error) {
-                            debug("Fehler beim Laden des Teilnehmers", error.message);
-                            return null;
-                        }
-                    });
-                    
-                    mitglieder = (await Promise.all(promises)).filter(m => m !== null);
-                }
-                
-                debug(`${mitglieder.length} Teammitglieder gefunden`);
-                
-                if (mitglieder.length === 0) {
-                    teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                    teamMitgliedSelect.disabled = true;
-                    return;
-                }
-                
-                // Sortieren der Teammitglieder nach Namen
-                mitglieder.sort((a, b) => {
-                    const nameA = (a.name || "").toLowerCase();
-                    const nameB = (b.name || "").toLowerCase();
-                    return nameA.localeCompare(nameB);
-                });
-                
-                mitglieder.forEach(mitglied => {
-                    const option = document.createElement('option');
-                    option.value = mitglied.id;
-                    option.textContent = `${mitglied.vorname} ${mitglied.name}`.trim();
-                    teamMitgliedSelect.appendChild(option);
-                });
-                
-                teamMitgliedSelect.disabled = false;
             } catch (error) {
-                debug("Fehler beim Laden der Teammitglieder", error.message);
-                alert("Fehler beim Laden der Teammitglieder: " + error.message);
-                teamMitgliedSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
-                teamMitgliedSelect.disabled = true;
+                debug("Fehler beim Laden des Teilnehmers", error.message);
+                return null;
             }
         });
-        
+
+        const mitglieder = (await Promise.all(promises)).filter(m => m !== null);
+
+        if (mitglieder.length === 0) {
+            debug("Keine Teammitglieder gefunden!");
+            teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+            return;
+        }
+
+        mitglieder.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+        mitglieder.forEach(mitglied => {
+            const option = document.createElement('option');
+            option.value = mitglied.id;
+            option.textContent = `${mitglied.vorname} ${mitglied.name}`.trim();
+            teamMitgliedSelect.appendChild(option);
+        });
+
+        teamMitgliedSelect.disabled = false;
+    } catch (error) {
+        debug("Fehler beim Laden der Teammitglieder", error.message);
+        alert("Fehler beim Laden der Teammitglieder: " + error.message);
+        teamMitgliedSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
+    }
+});        
         // Ergebnis für Einzelteilnehmer speichern
         document.getElementById('ergebnisEinzelSpeichern').addEventListener('click', async function() {
             const teilnehmerId = document.getElementById('teilnehmerSelect').value;
