@@ -562,87 +562,86 @@ document.getElementById('teamSelect').addEventListener('change', async function(
             }
         }
         
-        // Team-Ergebnisse anzeigen
-        function displayTeamErgebnisse() {
-            try {
-                // Nur Ergebnisse mit teamId
-                const q = query(
-                    collection(db, "ergebnisse"), 
-                    where("teamId", "!=", null), 
-                    orderBy("teamId"), 
-                    orderBy("timestamp", "desc")
-                );
-                
-                onSnapshot(q, async (snapshot) => {
-                    const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
-                    tableBody.innerHTML = '';
-                    
-                    if (snapshot.empty) {
-                        debug("Keine Team-Ergebnisse gefunden");
-                        return;
-                    }
-                    
-                    const promises = snapshot.docs.map(async (docSnap) => {
-                        const data = docSnap.data();
-                        
-                        try {
-                            // Team laden
-                            const teamDoc = await getDoc(doc(db, "teams", data.teamId));
-                            if (!teamDoc.exists()) {
-                                debug("Team nicht gefunden für Ergebnis", data.teamId);
-                                return null;
-                            }
-                            
-                            // Teilnehmer laden
-                            const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                            if (!teilnehmerDoc.exists()) {
-                                debug("Teilnehmer nicht gefunden für Ergebnis", data.teilnehmerId);
-                                return null;
-                            }
-                            
-                            const teamData = teamDoc.data();
-                            const teilnehmerData = teilnehmerDoc.data();
-                            
-                            const teamName = teamData.teamname || "";
-                            const vorname = teilnehmerData.vorname || "";
-                            const name = teilnehmerData.name || "";
-                            
-                            // Datum formatieren
-                            const timestamp = data.timestamp?.toDate();
-                            const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                            
-                            return { 
-                                team: teamName, 
-                                vorname: vorname,
-                                name: name, 
-                                ergebnis: data.ergebnis, 
-                                datum: dateStr 
-                            };
-                        } catch (error) {
-                            debug("Fehler beim Laden der Daten für Team-Ergebnis", error.message);
-                            return null;
-                        }
-                    });
-                    
-                    const results = (await Promise.all(promises)).filter(r => r !== null);
-                    
-                    results.forEach(result => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${result.team}</td>
-                            <td>${result.vorname}</td>
-                            <td>${result.name}</td>
-                            <td>${result.ergebnis}</td>
-                            <td>${result.datum}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                });
-            } catch (error) {
-                debug("Fehler beim Anzeigen der Team-Ergebnisse", error.message);
+// Team-Ergebnisse anzeigen
+function displayTeamErgebnisse() {
+    try {
+        // Nur Ergebnisse mit teamId
+        const q = query(
+            collection(db, "ergebnisse"), 
+            where("teamId", "!=", null), 
+            orderBy("teamId"), 
+            orderBy("timestamp", "desc")
+        );
+
+        onSnapshot(q, async (snapshot) => {
+            const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
+            tableBody.innerHTML = '';
+
+            if (snapshot.empty) {
+                debug("Keine Team-Ergebnisse gefunden");
+                return;
             }
-        }
-        
+
+            const promises = snapshot.docs.map(async (docSnap) => {
+                const data = docSnap.data();
+
+                try {
+                    // Team laden
+                    const teamDoc = await getDoc(doc(db, "teams", data.teamId));
+                    if (!teamDoc.exists()) {
+                        debug("Team nicht gefunden für Ergebnis", data.teamId);
+                        return null;
+                    }
+
+                    // Teilnehmer laden
+                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
+                    if (!teilnehmerDoc.exists()) {
+                        debug("Teilnehmer nicht gefunden für Ergebnis", data.teilnehmerId);
+                        return null;
+                    }
+
+                    const teamData = teamDoc.data();
+                    const teilnehmerData = teilnehmerDoc.data();
+
+                    const teamName = teamData.teamname || "";
+                    const vorname = teilnehmerData.vorname || "";
+                    const name = teilnehmerData.name || "";
+
+                    // Datum formatieren
+                    const timestamp = data.timestamp?.toDate();
+                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+
+                    return { 
+                        team: teamName, 
+                        vorname: vorname,
+                        name: name, 
+                        ergebnis: data.ergebnis, 
+                        datum: dateStr 
+                    };
+                } catch (error) {
+                    debug("Fehler beim Laden der Daten für Team-Ergebnis", error.message);
+                    return null;
+                }
+            });
+
+            const results = (await Promise.all(promises)).filter(r => r !== null);
+
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${result.team}</td>
+                    <td>${result.vorname}</td>
+                    <td>${result.name}</td>
+                    <td>${result.ergebnis}</td>
+                    <td>${result.datum}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        });
+    } catch (error) {
+        debug("Fehler beim Anzeigen der Team-Ergebnisse", error.message);
+    }
+}        
         // Initialisierung der Seite
         document.addEventListener('DOMContentLoaded', () => {
             debug("Initialisierung abgeschlossen");
