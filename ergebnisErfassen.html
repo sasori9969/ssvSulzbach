@@ -368,23 +368,27 @@ document.getElementById('teamSelect').addEventListener('change', async function(
     if (!teamId) return;
 
     try {
-        const zuordnungQ = query(collection(db, "teamzuordnung"), where("teamId", "==", teamId));
-        const zuordnungSnap = await getDocs(zuordnungQ);
+        const teamDoc = await getDoc(doc(db, "teams", teamId));
+        if (!teamDoc.exists()) {
+            debug("Team nicht gefunden");
+            teamMitgliedSelect.innerHTML = '<option value="">Team nicht gefunden</option>';
+            return;
+        }
 
-        debug(`${zuordnungSnap.size} Zuordnungen für Team ${teamId} gefunden`);
+        const teamData = teamDoc.data();
+        const mitgliederIds = teamData.mitglieder || [];
 
-        if (zuordnungSnap.empty) {
-            debug("Keine Zuordnungen gefunden");
+        debug(`${mitgliederIds.length} Mitglieder für Team ${teamId} gefunden`);
+
+        if (mitgliederIds.length === 0) {
+            debug("Keine Mitglieder im Team");
             teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
             return;
         }
 
-        const promises = zuordnungSnap.docs.map(async (docSnap) => {
-            const zuordnung = docSnap.data();
-            if (!zuordnung.teilnehmerId) return null;
-
+        const promises = mitgliederIds.map(async (mitgliedId) => {
             try {
-                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", zuordnung.teilnehmerId));
+                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", mitgliedId));
                 if (teilnehmerDoc.exists()) {
                     const teilnehmerData = teilnehmerDoc.data();
                     return {
@@ -393,7 +397,7 @@ document.getElementById('teamSelect').addEventListener('change', async function(
                         name: teilnehmerData.name || ""
                     };
                 } else {
-                    debug("Teilnehmer nicht gefunden", zuordnung.teilnehmerId);
+                    debug("Teilnehmer nicht gefunden", mitgliederIds);
                     return null;
                 }
             } catch (error) {
@@ -425,8 +429,7 @@ document.getElementById('teamSelect').addEventListener('change', async function(
         alert("Fehler beim Laden der Teammitglieder: " + error.message);
         teamMitgliedSelect.innerHTML = '<option value="">Fehler beim Laden</option>';
     }
-});        
-        // Ergebnis für Einzelteilnehmer speichern
+});        // Ergebnis für Einzelteilnehmer speichern
         document.getElementById('ergebnisEinzelSpeichern').addEventListener('click', async function() {
             const teilnehmerId = document.getElementById('teilnehmerSelect').value;
             const ergebnis = parseInt(document.getElementById('ergebnisEinzel').value);
