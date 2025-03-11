@@ -1,8 +1,10 @@
+/* Grundlegende Styles für alle Seiten */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
+
 body {
     font-family: Arial, sans-serif;
     background-color: #e0ffe0;
@@ -11,26 +13,31 @@ body {
     flex-direction: column;
     height: 100vh;
 }
+
 header {
     background-color: #008000;
     color: white;
     text-align: center;
     padding: 1rem;
 }
+
 .container {
     display: flex;
     flex: 1;
 }
+
 nav {
     width: 220px;
     background-color: #d0ffd0;
     padding: 20px;
     height: 100vh;
 }
+
 nav ul {
     list-style: none;
     padding: 0;
 }
+
 nav a {
     display: block;
     padding: 10px;
@@ -40,6 +47,7 @@ nav a {
     margin-bottom: 5px;
     border-radius: 3px;
 }
+
 main {
     flex: 1;
     padding: 20px;
@@ -47,27 +55,32 @@ main {
     border-radius: 5px;
     margin: 20px;
 }
+
 form {
     max-width: 400px;
 }
-input[type="text"], button {
+
+select, input, button {
     display: block;
     width: 100%;
-    margin-top: 10px;
+    margin: 10px 0;
     padding: 8px;
     border-radius: 5px;
     border: 1px solid #006400;
 }
+
 button {
     background-color: #008000;
     color: white;
     cursor: pointer;
 }
+
 #teilnehmerListe {
     list-style: none;
     padding: 0;
     max-width: 400px;
 }
+
 #teilnehmerListe li {
     display: flex;
     justify-content: space-between;
@@ -79,6 +92,7 @@ button {
     margin-top: 5px;
     font-size: 0.9rem;
 }
+
 .delete-btn {
     background: none;
     border: none;
@@ -87,33 +101,36 @@ button {
     cursor: pointer;
     text-decoration: underline;
 }
-.container {
-    display: flex;
-}
+
 .column {
     flex: 1;
     margin: 10px;
     padding: 20px;
     border: 1px solid #ddd;
 }
+
 table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
 }
+
 th, td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
 }
+
 th {
     background-color: #f2f2f2;
 }
+
 #teamListe {
     list-style: none;
     padding: 0;
     max-width: 400px;
 }
+
 #teamListe li {
     display: flex;
     justify-content: space-between;
@@ -125,6 +142,7 @@ th {
     margin-top: 5px;
     font-size: 0.9rem;
 }
+
 .status {
     padding: 10px;
     border-radius: 5px;
@@ -142,104 +160,182 @@ th {
     border: 1px solid #ff0000;
     color: #8b0000;
 }
-        /* Teilnehmer-Auswahl */
-        .teilnehmer-liste li {
-            transition: background-color 0.3s ease;
-        }
 
-        .teilnehmer-liste li:hover {
-            background-color: #008500;
-        }
+/* Teilnehmer-Auswahl */
+.teilnehmer-liste li {
+    transition: background-color 0.3s ease;
+}
 
-        .teilnehmer-liste li.ausgewaehlt {
-    background-color: #ff8c00; /* Dunkles Orange */
+.teilnehmer-liste li:hover {
+    background-color: #008500;
+}
+
+.teilnehmer-liste li.ausgewaehlt {
+    background-color: #ff8c00;
+    /* Dunkles Orange */
     border: 2px solid #ffffff;
 }
-        /* Navigation verbessern */
-        nav ul {
-            list-style: none;
-            padding: 0;
-        }
 
-        nav ul li {
-            margin-bottom: 10px;
-        }
+/* Navigation verbessern */
+nav ul {
+    list-style: none;
+    padding: 0;
+}
 
-        nav ul li a {
-            display: block;
-            padding: 8px;
-            color: #006400;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
+nav ul li {
+    margin-bottom: 10px;
+}
 
-        nav ul li a:hover {
-            background-color: #90ee90;
-        }
+nav ul li a {
+    display: block;
+    padding: 8px;
+    color: #006400;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
 
-        nav ul li a.aktiv {
-            background-color: #008000;
-            color: white;
-        }
+nav ul li a:hover {
+    background-color: #90ee90;
+}
 
-        /* Lade-Animation */
-        .lade-anzeige {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
+nav ul li a.aktiv {
+    background-color: #008000;
+    color: white;
+}
 
-        .lade-kreis {
-            width: 40px;
-            height: 40px;
-            border: 5px solid #d0ffd0;
-            border-top: 5px solid #008000;
-            border-radius: 50%;
-            animation: drehen 1s linear infinite;
-            margin: 0 auto 10px;
-        }
+/* Lade-Animation */
+.lade-anzeige {
+    display: none;
+    text-align: center;
+    margin: 20px 0;
+}
 
-        @keyframes drehen {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+.lade-kreis {
+    width: 40px;
+    height: 40px;
+    border: 5px solid #d0ffd0;
+    border-top: 5px solid #008000;
+    border-radius: 50%;
+    animation: drehen 1s linear infinite;
+    margin: 0 auto 10px;
+}
 
-        /* Aktionen-Buttons */
-        .aktion-btn {
-            padding: 5px 10px;
-            background-color: #008000;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            margin-right: 5px;
-        }
+@keyframes drehen {
+    0% {
+        transform: rotate(0deg);
+    }
 
-        .aktion-btn:hover {
-            background-color: #006400;
-        }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 
-        /* Responsivität verbessern */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            nav {
-                width: 100%;
-                height: auto;
-                margin-bottom: 20px;
-            }
-            
-            main {
-                margin: 0;
-                padding: 10px;
-            }
-        }
+/* Aktionen-Buttons */
+.aktion-btn {
+    padding: 5px 10px;
+    background-color: #008000;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 5px;
+}
 
-        /* Button-Zustände */
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
+.aktion-btn:hover {
+    background-color: #006400;
+}
+
+/* Responsivität verbessern */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    nav {
+        width: 100%;
+        height: auto;
+        margin-bottom: 20px;
+    }
+
+    main {
+        margin: 0;
+        padding: 10px;
+    }
+}
+
+/* Button-Zustände */
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.tab {
+    padding: 10px 20px;
+    background-color: #d0ffd0;
+    border: 1px solid #006400;
+    border-radius: 5px 5px 0 0;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+.tab.active {
+    background-color: #008000;
+    color: white;
+}
+
+.tab-content {
+    display: none;
+    background-color: white;
+    padding: 20px;
+    border-radius: 0 5px 5px 5px;
+    border: 1px solid #006400;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table,
+th,
+td {
+    border: 1px solid #006400;
+}
+
+th,
+td {
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #d0ffd0;
+}
+
+#teamTotals {
+    margin-top: 20px;
+    background-color: #d0ffd0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #006400;
+}
+
+#teamTotals h3 {
+    margin-bottom: 10px;
+}
+
+.total-row {
+    font-weight: bold;
+    background-color: #b0ffb0;
+}
