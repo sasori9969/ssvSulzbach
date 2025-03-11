@@ -126,7 +126,7 @@
 </head>
 <body>
     <header>
-        <h1>Schützenverein - Ergebnisse erfassen1</h1>
+        <h1>Schützenverein - Ergebnisse erfassen</h1>
     </header>
     <div class="container">
         <nav>
@@ -195,159 +195,159 @@
                     <tbody></tbody>
                 </table>
                 
-                <div id="teamTotals">
-                    <h3>Team-Gesamtergebnisse</h3>
-                    <table id="teamTotalsTabelle">
-                        <thead>
-                            <tr>
-                                <th>Team</th>
-                                <th id="sortByTotal">Gesamtergebnis</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </main>
-        </div>
-        
-        <script type="module">
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-            import { 
-                getFirestore, 
-                collection, 
-                addDoc, 
-                doc, 
-                getDoc, 
-                getDocs, 
-                serverTimestamp, 
-                onSnapshot, 
-                query, 
-                orderBy, 
-                where 
-            } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    <div id="teamTotals">
+                <h3>Team-Gesamtergebnisse</h3>
+                <table id="teamTotalsTabelle">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th id="sortByTotal">Gesamtergebnis</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
     
-            const firebaseConfig = {
-                apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
-                authDomain: "schuetzenverein-519a6.firebaseapp.com",
-                projectId: "schuetzenverein-519a6",
-                storageBucket: "schuetzenverein-519a6.appspot.com",
-                messagingSenderId: "469364345310",
-                appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
-            };
-    
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-    
-            let currentSortDirection = "desc"; // Standardmäßig absteigend sortieren
-    
-            // Funktion zum Sortieren der Tabelle nach Gesamtergebnis
-            function sortTableByTotal(direction) {
-                const tableBody = document.querySelector('#teamTotalsTabelle tbody');
-                const rows = Array.from(tableBody.querySelectorAll('tr'));
-    
-                rows.sort((a, b) => {
-                    const totalA = parseInt(a.querySelector('td:nth-child(2)').textContent.split(' ')[0]);
-                    const totalB = parseInt(b.querySelector('td:nth-child(2)').textContent.split(' ')[0]);
-    
-                    if (direction === "asc") {
-                        return totalA - totalB;
-                    } else {
-                        return totalB - totalA;
-                    }
-                });
-    
-                // Alte Zeilen entfernen
-                tableBody.innerHTML = '';
-    
-                // Sortierte Zeilen wieder einfügen
-                rows.forEach(row => tableBody.appendChild(row));
-            }
-    
-            // Klick-Event auf die Spaltenüberschrift "Gesamtergebnis"
-            document.getElementById('sortByTotal').addEventListener('click', () => {
-                currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc"; // Richtung umschalten
-                sortTableByTotal(currentSortDirection);
-            });
-    
-            // Berechne und zeige die Team-Gesamtergebnisse an
-            async function calculateTeamTotals() {
-                try {
-                    // Alle Teams laden
-                    const teamsSnapshot = await getDocs(query(collection(db, "teams"), orderBy("teamname")));
-                    
-                    // Alle Ergebnisse laden - kein Filter, wir filtern später im Code
-                    const ergebnisseSnapshot = await getDocs(collection(db, "ergebnisse"));
-                    
-                    // Ergebnisse nach Team gruppieren
-                    const teamErgebnisse = {};
-                    
-                    ergebnisseSnapshot.forEach(doc => {
-                        const data = doc.data();
-                        // Ignoriere Einträge ohne teamId
-                        if (!data.teamId) return;
-                        
-                        const teamId = data.teamId;
-                        const ergebnis = data.ergebnis || 0;
-                        
-                        if (!teamErgebnisse[teamId]) {
-                            teamErgebnisse[teamId] = {
-                                summe: 0,
-                                ergebnisse: []
-                            };
-                        }
-                        
-                        teamErgebnisse[teamId].summe += ergebnis;
-                        teamErgebnisse[teamId].ergebnisse.push(ergebnis);
-                    });
-                    
-                    // Team-Namen zuordnen und in Tabelle anzeigen
-                    const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
-                    teamTotalsTableBody.innerHTML = '';
-                    
-                    const teamTotalsArray = [];
-                    
-                    for (const teamDoc of teamsSnapshot.docs) {
-                        const teamId = teamDoc.id;
-                        const teamName = teamDoc.data().teamname || "";
-                        
-                        const teamData = teamErgebnisse[teamId] || { summe: 0, ergebnisse: [] };
-                        
-                        teamTotalsArray.push({
-                            teamId: teamId,
-                            teamName: teamName,
-                            summe: teamData.summe,
-                            anzahlErgebnisse: teamData.ergebnisse.length
-                        });
-                    }
-                    
-                    // Nach Teamnamen sortieren (Standard)
-                    teamTotalsArray.sort((a, b) => a.teamName.localeCompare(b.teamName));
-                    
-                    // In Tabelle anzeigen
-                    teamTotalsArray.forEach(teamTotal => {
-                        const row = document.createElement('tr');
-                        row.className = 'total-row';
-                        row.innerHTML = `
-                            <td>${teamTotal.teamName}</td>
-                            <td>${teamTotal.summe} (${teamTotal.anzahlErgebnisse} Ergebnisse)</td>
-                        `;
-                        teamTotalsTableBody.appendChild(row);
-                    });
-    
-                    // Nach dem Laden standardmäßig absteigend sortieren
-                    sortTableByTotal(currentSortDirection);
-                } catch (error) {
-                    console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            doc, 
+            getDoc, 
+            getDocs, 
+            serverTimestamp, 
+            onSnapshot, 
+            query, 
+            orderBy, 
+            where 
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentSortDirection = "desc"; // Standardmäßig absteigend sortieren
+
+        // Funktion zum Sortieren der Tabelle nach Gesamtergebnis
+        function sortTableByTotal(direction) {
+            const tableBody = document.querySelector('#teamTotalsTabelle tbody');
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                const totalA = parseInt(a.querySelector('td:nth-child(2)').textContent.split(' ')[0]);
+                const totalB = parseInt(b.querySelector('td:nth-child(2)').textContent.split(' ')[0]);
+
+                if (direction === "asc") {
+                    return totalA - totalB;
+                } else {
+                    return totalB - totalA;
                 }
-            }
-    
-            // Initialisierung der Seite
-            document.addEventListener('DOMContentLoaded', () => {
-                loadTeilnehmer();
-                loadTeams();
-                displayErgebnisse();
-                displayTeamErgebnisse();
             });
-        </script>
-    </body>
-    </html>
+
+            // Alte Zeilen entfernen
+            tableBody.innerHTML = '';
+
+            // Sortierte Zeilen wieder einfügen
+            rows.forEach(row => tableBody.appendChild(row));
+        }
+
+        // Klick-Event auf die Spaltenüberschrift "Gesamtergebnis"
+        document.getElementById('sortByTotal').addEventListener('click', () => {
+            currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc"; // Richtung umschalten
+            sortTableByTotal(currentSortDirection);
+        });
+
+        // Berechne und zeige die Team-Gesamtergebnisse an
+        async function calculateTeamTotals() {
+            try {
+                // Alle Teams laden
+                const teamsSnapshot = await getDocs(query(collection(db, "teams"), orderBy("teamname")));
+                
+                // Alle Ergebnisse laden - kein Filter, wir filtern später im Code
+                const ergebnisseSnapshot = await getDocs(collection(db, "ergebnisse"));
+                
+                // Ergebnisse nach Team gruppieren
+                const teamErgebnisse = {};
+                
+                ergebnisseSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Ignoriere Einträge ohne teamId
+                    if (!data.teamId) return;
+                    
+                    const teamId = data.teamId;
+                    const ergebnis = data.ergebnis || 0;
+                    
+                    if (!teamErgebnisse[teamId]) {
+                        teamErgebnisse[teamId] = {
+                            summe: 0,
+                            ergebnisse: []
+                        };
+                    }
+                    
+                    teamErgebnisse[teamId].summe += ergebnis;
+                    teamErgebnisse[teamId].ergebnisse.push(ergebnis);
+                });
+                
+                // Team-Namen zuordnen und in Tabelle anzeigen
+                const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
+                teamTotalsTableBody.innerHTML = '';
+                
+                const teamTotalsArray = [];
+                
+                for (const teamDoc of teamsSnapshot.docs) {
+                    const teamId = teamDoc.id;
+                    const teamName = teamDoc.data().teamname || "";
+                    
+                    const teamData = teamErgebnisse[teamId] || { summe: 0, ergebnisse: [] };
+                    
+                    teamTotalsArray.push({
+                        teamId: teamId,
+                        teamName: teamName,
+                        summe: teamData.summe,
+                        anzahlErgebnisse: teamData.ergebnisse.length
+                    });
+                }
+                
+                // Nach Teamnamen sortieren (Standard)
+                teamTotalsArray.sort((a, b) => a.teamName.localeCompare(b.teamName));
+                
+                // In Tabelle anzeigen
+                teamTotalsArray.forEach(teamTotal => {
+                    const row = document.createElement('tr');
+                    row.className = 'total-row';
+                    row.innerHTML = `
+                        <td>${teamTotal.teamName}</td>
+                        <td>${teamTotal.summe} (${teamTotal.anzahlErgebnisse} Ergebnisse)</td>
+                    `;
+                    teamTotalsTableBody.appendChild(row);
+                });
+
+                // Nach dem Laden standardmäßig absteigend sortieren
+                sortTableByTotal(currentSortDirection);
+            } catch (error) {
+                console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
+            }
+        }
+
+        // Initialisierung der Seite
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTeilnehmer();
+            loadTeams();
+            displayErgebnisse();
+            displayTeamErgebnisse();
+        });
+    </script>
+</body>
+</html>
