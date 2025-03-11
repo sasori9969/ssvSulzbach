@@ -563,85 +563,66 @@ document.getElementById('teamSelect').addEventListener('change', async function(
         }
         
 // Team-Ergebnisse anzeigen
-function displayTeamErgebnisse() {
+async function ladeTeamsListe() {
     try {
-        // Nur Ergebnisse mit teamId
-        const q = query(
-            collection(db, "ergebnisse"), 
-            where("teamId", "!=", null), 
-            orderBy("teamId"), 
-            orderBy("timestamp", "desc")
-        );
+        zeigeLoader(true);
+        const teamsSnapshot = await getDocs(collection(db, "teams"));
+        teamsListe.innerHTML = "";
 
-        onSnapshot(q, async (snapshot) => {
-            const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
-            tableBody.innerHTML = '';
+        for (const docSnap of teamsSnapshot.docs) {
+            const team = docSnap.data();
+            const tr = document.createElement("tr");
+            const tdName = document.createElement("td");
+            const tdMitglieder = document.createElement("td");
+            const tdErgebnis = document.createElement("td");
+            const tdAktionen = document.createElement("td");
 
-            if (snapshot.empty) {
-                debug("Keine Team-Ergebnisse gefunden");
-                return;
-            }
+            tdName.textContent = team.teamname;
 
-            const promises = snapshot.docs.map(async (docSnap) => {
-                const data = docSnap.data();
-
-                try {
-                    // Team laden
-                    const teamDoc = await getDoc(doc(db, "teams", data.teamId));
-                    if (!teamDoc.exists()) {
-                        debug("Team nicht gefunden für Ergebnis", data.teamId);
-                        return null;
+            // Mitglieder und Ergebnisse laden
+            let gesamtErgebnis = 0;
+            const teilnehmerNamen = [];
+            if (team.mitglieder && team.mitglieder.length > 0) {
+                for (const teilnehmerId of team.mitglieder) {
+                    try {
+                        const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
+                        if (teilnehmerDoc.exists()) {
+                            const teilnehmer = teilnehmerDoc.data();
+                            teilnehmerNamen.push(`${teilnehmer.vorname} ${teilnehmer.name}`);
+                            
+                            // Prüfen, ob der Teilnehmer ein Ergebnis hat
+                            if (teilnehmer.ergebnis) {
+                                gesamtErgebnis += parseInt(teilnehmer.ergebnis, 10) || 0;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Fehler beim Laden eines Teilnehmers:", error);
                     }
-
-                    // Teilnehmer laden
-                    const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", data.teilnehmerId));
-                    if (!teilnehmerDoc.exists()) {
-                        debug("Teilnehmer nicht gefunden für Ergebnis", data.teilnehmerId);
-                        return null;
-                    }
-
-                    const teamData = teamDoc.data();
-                    const teilnehmerData = teilnehmerDoc.data();
-
-                    const teamName = teamData.teamname || "";
-                    const vorname = teilnehmerData.vorname || "";
-                    const name = teilnehmerData.name || "";
-
-                    // Datum formatieren
-                    const timestamp = data.timestamp?.toDate();
-                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-
-                    return { 
-                        team: teamName, 
-                        vorname: vorname,
-                        name: name, 
-                        ergebnis: data.ergebnis, 
-                        datum: dateStr 
-                    };
-                } catch (error) {
-                    debug("Fehler beim Laden der Daten für Team-Ergebnis", error.message);
-                    return null;
                 }
-            });
+            }
+            tdMitglieder.textContent = teilnehmerNamen.join(", ");
+            tdErgebnis.textContent = gesamtErgebnis; // Summe der Ergebnisse anzeigen
 
-            const results = (await Promise.all(promises)).filter(r => r !== null);
+            // Bearbeiten-Button hinzufügen
+            const bearbeitenButton = document.createElement("button");
+            bearbeitenButton.textContent = "Bearbeiten";
+            bearbeitenButton.className = "aktion-btn";
+            bearbeitenButton.addEventListener("click", () => bearbeiteTeam(docSnap.id, team));
+            tdAktionen.appendChild(bearbeitenButton);
 
-            results.forEach(result => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${result.team}</td>
-                    <td>${result.vorname}</td>
-                    <td>${result.name}</td>
-                    <td>${result.ergebnis}</td>
-                    <td>${result.datum}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-        });
+            tr.appendChild(tdName);
+            tr.appendChild(tdMitglieder);
+            tr.appendChild(tdErgebnis);
+            tr.appendChild(tdAktionen);
+            teamsListe.appendChild(tr);
+        }
     } catch (error) {
-        debug("Fehler beim Anzeigen der Team-Ergebnisse", error.message);
+        console.error("Fehler beim Laden der Teams:", error);
+        zeigeStatus("Fehler beim Laden der Teams. Bitte versuchen Sie es später erneut.", true);
+    } finally {
+        zeigeLoader(false);
     }
-}        
+}
         // Initialisierung der Seite
         document.addEventListener('DOMContentLoaded', () => {
             debug("Initialisierung abgeschlossen");
