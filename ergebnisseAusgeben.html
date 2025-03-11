@@ -185,50 +185,60 @@
         const db = getFirestore(app);
 
         async function loadData() {
-            const teilnehmerCache = {};
-            const teamsCache = {};
-            const einzelErgebnisse = {};
-            const teamErgebnisse = {};
+            try {
+                const [teilnehmerSnapshot, teamsSnapshot, ergebnisseSnapshot] = await Promise.all([
+                    getDocs(query(collection(db, "teilnehmer"))),
+                    getDocs(query(collection(db, "teams"))),
+                    getDocs(query(collection(db, "ergebnisse")))
+                ]);
 
-            // Teilnehmer laden
-            const teilnehmerSnapshot = await getDocs(query(collection(db, "teilnehmer")));
-            teilnehmerSnapshot.forEach(doc => {
-                teilnehmerCache[doc.id] = doc.data();
-            });
+                const teilnehmerCache = {};
+                const teamsCache = {};
+                const einzelErgebnisse = {};
+                const teamErgebnisse = {};
 
-            // Teams laden
-            const teamsSnapshot = await getDocs(query(collection(db, "teams")));
-            teamsSnapshot.forEach(doc => {
-                teamsCache[doc.id] = doc.data();
-            });
+                teilnehmerSnapshot.forEach(doc => {
+                    teilnehmerCache[doc.id] = doc.data();
+                });
 
-            // Ergebnisse laden und verarbeiten
-            const ergebnisseSnapshot = await getDocs(query(collection(db, "ergebnisse")));
-            ergebnisseSnapshot.forEach(doc => {
-                const ergebnis = doc.data();
-                if (ergebnis.teilnehmerId) {
-                    // Einzelergebnisse
-                    if (!einzelErgebnisse[ergebnis.teilnehmerId] || ergebnis.ergebnis > einzelErgebnisse[ergebnis.teilnehmerId].ergebnis) {
-                        einzelErgebnisse[ergebnis.teilnehmerId] = {
-                            name: `${teilnehmerCache[ergebnis.teilnehmerId].vorname || ""} ${teilnehmerCache[ergebnis.teilnehmerId].name || ""}`.trim(),
-                            ergebnis: ergebnis.ergebnis
-                        };
+                teamsSnapshot.forEach(doc => {
+                    teamsCache[doc.id] = doc.data();
+                });
+
+                ergebnisseSnapshot.forEach(doc => {
+                    const ergebnis = doc.data();
+                    if (ergebnis.teilnehmerId) {
+                        updateEinzelErgebnisse(einzelErgebnisse, ergebnis, teilnehmerCache);
                     }
-                }
-                if (ergebnis.teamId) {
-                    // Mannschaftsergebnisse
-                    if (!teamErgebnisse[ergebnis.teamId]) {
-                        teamErgebnisse[ergebnis.teamId] = {
-                            name: teamsCache[ergebnis.teamId].teamname,
-                            ergebnis: 0
-                        };
+                    if (ergebnis.teamId) {
+                        updateTeamErgebnisse(teamErgebnisse, ergebnis, teamsCache);
                     }
-                    teamErgebnisse[ergebnis.teamId].ergebnis += ergebnis.ergebnis;
-                }
-            });
+                });
 
-            displayResults(einzelErgebnisse, "einzelErgebnisseTabelle");
-            displayResults(teamErgebnisse, "teamErgebnisseTabelle");
+                displayResults(einzelErgebnisse, "einzelErgebnisseTabelle");
+                displayResults(teamErgebnisse, "teamErgebnisseTabelle");
+            } catch (error) {
+                console.error("Fehler beim Laden der Daten:", error);
+            }
+        }
+
+        function updateEinzelErgebnisse(einzelErgebnisse, ergebnis, teilnehmerCache) {
+            if (!einzelErgebnisse[ergebnis.teilnehmerId] || ergebnis.ergebnis > einzelErgebnisse[ergebnis.teilnehmerId].ergebnis) {
+                einzelErgebnisse[ergebnis.teilnehmerId] = {
+                    name: `${teilnehmerCache[ergebnis.teilnehmerId].vorname || ""} ${teilnehmerCache[ergebnis.teilnehmerId].name || ""}`.trim(),
+                    ergebnis: ergebnis.ergebnis
+                };
+            }
+        }
+
+        function updateTeamErgebnisse(teamErgebnisse, ergebnis, teamsCache) {
+            if (!teamErgebnisse[ergebnis.teamId]) {
+                teamErgebnisse[ergebnis.teamId] = {
+                    name: teamsCache[ergebnis.teamId].teamname,
+                    ergebnis: 0
+                };
+            }
+            teamErgebnisse[ergebnis.teamId].ergebnis += ergebnis.ergebnis;
         }
 
         function displayResults(results, tableId) {
