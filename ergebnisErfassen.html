@@ -595,15 +595,9 @@
                 });
                 
                 // Team-Namen zuordnen und in Tabelle anzeigen
-    //            const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
-
-                const gesamtErgebnisHeader = document.querySelector('#teamTotalsTabelle th:nth-child(2)');
-gesamtErgebnisHeader.style.cursor = 'pointer'; // Zeiger-Cursor hinzufügen
-gesamtErgebnisHeader.addEventListener('click', () => {
-    sortTeamTotals();
-});
-teamTotalsTableBody.innerHTML = '';
-
+                const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
+                teamTotalsTableBody.innerHTML = '';
+                
                 
                 const teamTotalsArray = [];
                 
