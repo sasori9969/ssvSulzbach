@@ -594,77 +594,50 @@
                     teamErgebnisse[teamId].ergebnisse.push(ergebnis);
                 });
                 
-        // Team-Namen zuordnen und in Tabelle anzeigen
-        const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
-        teamTotalsTableBody.innerHTML = '';
+                // Team-Namen zuordnen und in Tabelle anzeigen
+    //            const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
 
-        const gesamtErgebnisHeader = document.querySelector('#teamTotalsTabelle th:nth-child(2)');
-        gesamtErgebnisHeader.style.cursor = 'pointer'; // Zeiger-Cursor hinzufügen
-        gesamtErgebnisHeader.addEventListener('click', () => {
-            sortTeamTotals();
-        });
+                const gesamtErgebnisHeader = document.querySelector('#teamTotalsTabelle th:nth-child(2)');
+gesamtErgebnisHeader.style.cursor = 'pointer'; // Zeiger-Cursor hinzufügen
+gesamtErgebnisHeader.addEventListener('click', () => {
+    sortTeamTotals();
+});
+teamTotalsTableBody.innerHTML = '';
 
-        const teamTotalsArray = [];
-
-        for (const teamDoc of teamsSnapshot.docs) {
-            // ... (vorheriger Code)
-
-            teamTotalsArray.push({
-                teamId: teamId,
-                teamName: teamName,
-                summe: teamData.summe,
-                anzahlErgebnisse: teamData.ergebnisse.length
-            });
-        }
-
-        // Nach Teamnamen sortieren
-        teamTotalsArray.sort((a, b) => a.teamName.localeCompare(b.teamName));
-
-        // In Tabelle anzeigen
-        teamTotalsArray.forEach(teamTotal => {
-            const row = document.createElement('tr');
-            row.className = 'total-row';
-            row.innerHTML = `
-                <td>${teamTotal.teamName}</td>
-                <td>${teamTotal.summe}</td>
-            `;
-            teamTotalsTableBody.appendChild(row);
-        });
-    } catch (error) {
-        console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
-    }
-}
-
-function sortTeamTotals() {
-    const teamTotalsArray = [];
-    const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
-    teamTotalsTableBody.innerHTML = '';
-
-    // Daten aus der Tabelle in das Array extrahieren
-    document.querySelectorAll('#teamTotalsTabelle tbody tr').forEach(row => {
-        const teamName = row.cells[0].textContent;
-        const summe = parseInt(row.cells[1].textContent); // Extrahiere die Summe
-
-        teamTotalsArray.push({
-            teamName: teamName,
-            summe: summe
-        });
-    });
-
-    // Sortiere das Array nach der Summe (absteigend)
-    teamTotalsArray.sort((a, b) => b.summe - a.summe);
-
-    // Tabelle neu rendern
-    teamTotalsArray.forEach(teamTotal => {
-        const row = document.createElement('tr');
-        row.className = 'total-row';
-        row.innerHTML = `
-            <td>${teamTotal.teamName}</td>
-            <td>${teamTotal.summe}</td>
-        `;
-        teamTotalsTableBody.appendChild(row);
-    });
-}
+                
+                const teamTotalsArray = [];
+                
+                for (const teamDoc of teamsSnapshot.docs) {
+                    const teamId = teamDoc.id;
+                    const teamName = teamDoc.data().teamname || "";
+                    
+                    const teamData = teamErgebnisse[teamId] || { summe: 0, ergebnisse: [] };
+                    
+                    teamTotalsArray.push({
+                        teamId: teamId,
+                        teamName: teamName,
+                        summe: teamData.summe,
+                        anzahlErgebnisse: teamData.ergebnisse.length
+                    });
+                }
+                
+                // Nach Teamnamen sortieren
+                teamTotalsArray.sort((a, b) => a.teamName.localeCompare(b.teamName));
+                
+                // In Tabelle anzeigen
+                teamTotalsArray.forEach(teamTotal => {
+                    const row = document.createElement('tr');
+                    row.className = 'total-row';
+                    row.innerHTML = `
+                        <td>${teamTotal.teamName}</td>
+                        <td>${teamTotal.summe} (${teamTotal.anzahlErgebnisse} Ergebnisse)</td>
+                    `;
+                    teamTotalsTableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
+            }
+        }        
         // Initialisierung der Seite
         document.addEventListener('DOMContentLoaded', () => {
             loadTeilnehmer();
