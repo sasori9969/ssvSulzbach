@@ -3,66 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ergebnisse ausgeben</title>
+    <title>SSV1928 Sulzbach e.V.</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            background-color: #e0ffe0;
+            color: #006400;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #008000;
+            color: white;
+            text-align: center;
+            padding: 1rem;
         }
         .container {
             display: flex;
-        }
-        .column {
             flex: 1;
-            margin: 10px;
+        }
+        nav {
+            width: 220px;
+            background-color: #d0ffd0;
             padding: 20px;
-            border: 1px solid #ddd;
+            height: 100vh;
         }
-        table {
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        nav a {
+            display: block;
+            padding: 10px;
+            background-color: #c0ffc0;
+            text-decoration: none;
+            color: #006400;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        main {
+            flex: 1;
+            padding: 20px;
+            background-color: #c0ffc0;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+        }
+        input[type="text"], button {
+            display: block;
             width: 100%;
-            border-collapse: collapse;
             margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ddd;
             padding: 8px;
-            text-align: left;
+            border-radius: 5px;
+            border: 1px solid #006400;
         }
-        th {
-            background-color: #f2f2f2;
+        button {
+            background-color: #008000;
+            color: white;
+            cursor: pointer;
+        }
+        #teilnehmerListe {
+            list-style: none;
+            padding: 0;
+            max-width: 400px;
+        }
+        #teilnehmerListe li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #006400;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <h1>Ergebnisse</h1>
+    <header>
+        <h1>SSV1928 Sulzbach e.V.</h1>
+    </header>
+
     <div class="container">
-        <div class="column">
-            <h2>Einzelergebnisse</h2>
-            <table id="einzelErgebnisseTabelle">
-                <thead>
-                    <tr>
-                        <th>Platz</th>
-                        <th>Name</th>
-                        <th>Punktzahl</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        <div class="column">
-            <h2>Mannschaftsergebnisse</h2>
-            <table id="teamErgebnisseTabelle">
-                <thead>
-                    <tr>
-                        <th>Platz</th>
-                        <th>Team</th>
-                        <th>Punktzahl</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
+                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
+                <li><a href="#">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+        </main>
     </div>
-    <script type="module" src="ergebnisseAusgeben.js"></script>
 </body>
 </html>
