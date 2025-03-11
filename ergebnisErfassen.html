@@ -141,7 +141,7 @@
 </head>
 <body>
     <header>
-        <h1>Schützenverein - Ergebnisse erfassen1</h1>
+        <h1>Schützenverein - Ergebnisse erfassen2</h1>
     </header>
     <div class="container">
         <nav>
@@ -260,21 +260,21 @@
   //   Debug-Funktion
     //    const DEBUG = true;
         
-    //    function debug(message, data = null) {
-     //       if (!DEBUG) return;
+       function debug(message, data = null) {
+            if (!DEBUG) return;
             
-     //       const timestamp = new Date().toLocaleTimeString();
-      //      let logMessage = `[${timestamp}] ${message}`;
+            const timestamp = new Date().toLocaleTimeString();
+            let logMessage = `[${timestamp}] ${message}`;
             
-      //      if (data) {
-       //         if (typeof data === 'object') {
-        //            logMessage += `: ${JSON.stringify(data)}`;
-        //        } else {
-         //           logMessage += `: ${data}`;
-          //      }
-           // }
+            if (data) {
+                if (typeof data === 'object') {
+                    logMessage += `: ${JSON.stringify(data)}`;
+                } else {
+                    logMessage += `: ${data}`;
+                }
+            }
             
-      //      console.log(logMessage);
+            console.log(logMessage);
             
             // Debug-Output ins UI schreiben
    //         const debugOutput = document.getElementById('debugOutput');
@@ -283,8 +283,8 @@
          //           debugOutput.style.display = 'block';
            //     }
                 
-           //     const logLine = document.createElement('div');
-           //     logLine.textContent = logMessage;
+                const logLine = document.createElement('div');
+                logLine.textContent = logMessage;
            //     debugOutput.appendChild(logLine);
            //     debugOutput.scrollTop = debugOutput.scrollHeight;
         //    }
