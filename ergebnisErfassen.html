@@ -380,31 +380,31 @@
         });
     
         function displayErgebnisse() {
-            const q = query(collection(db, "ergebnisse"), orderBy("timestamp", "desc"));
-            onSnapshot(q, async (snapshot) => {
-                ergebnisseCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const tableBody = document.querySelector('#ergebnisseTabelle tbody');
-                tableBody.innerHTML = '';
-                const promises = ergebnisseCache.map(async (ergebnis) => {
-                    const teilnehmer = teilnehmerCache.find(t => t.id === ergebnis.teilnehmerId);
-                    if (!teilnehmer) return null;
-                    const timestamp = ergebnis.timestamp?.toDate();
-                    const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-                    return { vorname: teilnehmer.vorname, name: teilnehmer.name, ergebnis: ergebnis.ergebnis, datum: dateStr };
-                });
-                const results = (await Promise.all(promises)).filter(r => r !== null);
-                results.forEach(result => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><span class="math-inline">\{result\.vorname\}</td\>
-    <td\></span>{result.name}</td>
-                        <td><span class="math-inline">\{result\.ergebnis\}</td\>
-    <td\></span>{result.datum}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            });
-        }
+    const q = query(collection(db, "ergebnisse"), orderBy("timestamp", "desc"));
+    onSnapshot(q, async (snapshot) => {
+        ergebnisseCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const tableBody = document.querySelector('#ergebnisseTabelle tbody');
+        tableBody.innerHTML = '';
+        const promises = ergebnisseCache.map(async (ergebnis) => {
+            const teilnehmer = teilnehmerCache.find(t => t.id === ergebnis.teilnehmerId);
+            if (!teilnehmer) return null;
+            const timestamp = ergebnis.timestamp?.toDate();
+            const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+            return { vorname: teilnehmer.vorname, name: teilnehmer.name, ergebnis: ergebnis.ergebnis, datum: dateStr };
+        });
+        const results = (await Promise.all(promises)).filter(r => r !== null);
+        results.forEach(result => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${result.vorname}</td>
+                <td>${result.name}</td>
+                <td>${result.ergebnis}</td>
+                <td>${result.datum}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    });
+}
     
         function displayTeamErgebnisse() {
             const q = query(
