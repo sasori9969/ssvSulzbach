@@ -167,5 +167,88 @@
             </div>
         </main>
     </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function loadData() {
+            const teilnehmerCache = {};
+            const teamsCache = {};
+            const einzelErgebnisse = {};
+            const teamErgebnisse = {};
+
+            // Teilnehmer laden
+            const teilnehmerSnapshot = await getDocs(query(collection(db, "teilnehmer")));
+            teilnehmerSnapshot.forEach(doc => {
+                teilnehmerCache[doc.id] = doc.data();
+            });
+
+            // Teams laden
+            const teamsSnapshot = await getDocs(query(collection(db, "teams")));
+            teamsSnapshot.forEach(doc => {
+                teamsCache[doc.id] = doc.data();
+            });
+
+            // Ergebnisse laden und verarbeiten
+            const ergebnisseSnapshot = await getDocs(query(collection(db, "ergebnisse")));
+            ergebnisseSnapshot.forEach(doc => {
+                const ergebnis = doc.data();
+                if (ergebnis.teilnehmerId) {
+                    // Einzelergebnisse
+                    if (!einzelErgebnisse[ergebnis.teilnehmerId] || ergebnis.ergebnis > einzelErgebnisse[ergebnis.teilnehmerId].ergebnis) {
+                        einzelErgebnisse[ergebnis.teilnehmerId] = {
+                            name: `${teilnehmerCache[ergebnis.teilnehmerId].vorname || ""} ${teilnehmerCache[ergebnis.teilnehmerId].name || ""}`.trim(),
+                            ergebnis: ergebnis.ergebnis
+                        };
+                    }
+                }
+                if (ergebnis.teamId) {
+                    // Mannschaftsergebnisse
+                    if (!teamErgebnisse[ergebnis.teamId]) {
+                        teamErgebnisse[ergebnis.teamId] = {
+                            name: teamsCache[ergebnis.teamId].teamname,
+                            ergebnis: 0
+                        };
+                    }
+                    teamErgebnisse[ergebnis.teamId].ergebnis += ergebnis.ergebnis;
+                }
+            });
+
+            displayResults(einzelErgebnisse, "einzelErgebnisseTabelle");
+            displayResults(teamErgebnisse, "teamErgebnisseTabelle");
+        }
+
+        function displayResults(results, tableId) {
+            const tableBody = document.querySelector(`#${tableId} tbody`);
+            tableBody.innerHTML = "";
+
+            const sortedResults = Object.entries(results).sort(([, a], [, b]) => b.ergebnis - a.ergebnis);
+
+            sortedResults.forEach(([id, result], index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${result.name}</td>
+                    <td>${result.ergebnis}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        loadData();
+    </script>
 </body>
 </html>
