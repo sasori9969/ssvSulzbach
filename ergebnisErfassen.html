@@ -256,22 +256,23 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // Debug-Funktion
-        const DEBUG = true;
+ 
+  //   Debug-Funktion
+    //    const DEBUG = true;
         
-        function debug(message, data = null) {
-            if (!DEBUG) return;
+    //    function debug(message, data = null) {
+     //       if (!DEBUG) return;
             
-            const timestamp = new Date().toLocaleTimeString();
-            let logMessage = `[${timestamp}] ${message}`;
+     //       const timestamp = new Date().toLocaleTimeString();
+      //      let logMessage = `[${timestamp}] ${message}`;
             
-            if (data) {
-                if (typeof data === 'object') {
-                    logMessage += `: ${JSON.stringify(data)}`;
-                } else {
-                    logMessage += `: ${data}`;
-                }
-            }
+      //      if (data) {
+       //         if (typeof data === 'object') {
+        //            logMessage += `: ${JSON.stringify(data)}`;
+        //        } else {
+         //           logMessage += `: ${data}`;
+          //      }
+           // }
             
             console.log(logMessage);
             
@@ -290,7 +291,9 @@
         }
         
         debug("Debug-Modus aktiviert");
-        debug("Seite wird initialisiert");
+        debug("Seite wird initialisiert"); 
+
+        
         
         // Tab-Funktionalität
         document.querySelectorAll('.tab').forEach(tab => {
