@@ -52,7 +52,21 @@
         </main>
     </div>
     <script type="module">
-       import { db } from "./firebase-config.js"; // Pfad zur Datei
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, updateDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        // Firebase-Konfiguration sollte idealerweise in einer separaten Datei erfolgen
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
         const teamAuswahl = document.getElementById("teamAuswahl");
         const teilnehmerListe = document.getElementById("teilnehmerListe");
