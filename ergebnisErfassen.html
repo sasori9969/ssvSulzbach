@@ -511,11 +511,23 @@ console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
 }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-loadTeilnehmer();
-loadTeams();
-displayErgebnisse();
-displayTeamErgebnisse();
-});
-</script>
-                    
+        // Tab-Umschaltung
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTeilnehmer();
+            loadTeams();
+            displayErgebnisse();
+            displayTeamErgebnisse();
+        });
+    </script>
+</body>
+</html>
