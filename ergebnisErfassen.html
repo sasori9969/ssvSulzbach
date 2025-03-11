@@ -258,7 +258,7 @@
         
  
   //   Debug-Funktion
-    //    const DEBUG = true;
+        const DEBUG = true;
         
        function debug(message, data = null) {
             if (!DEBUG) return;
@@ -277,21 +277,21 @@
             console.log(logMessage);
             
             // Debug-Output ins UI schreiben
-   //         const debugOutput = document.getElementById('debugOutput');
-     //       if (debugOutput) {
-       //         if (debugOutput.style.display !== 'block') {
-         //           debugOutput.style.display = 'block';
-           //     }
+            const debugOutput = document.getElementById('debugOutput');
+            if (debugOutput) {
+                if (debugOutput.style.display !== 'block') {
+                    debugOutput.style.display = 'block';
+                }
                 
                 const logLine = document.createElement('div');
                 logLine.textContent = logMessage;
-           //     debugOutput.appendChild(logLine);
-           //     debugOutput.scrollTop = debugOutput.scrollHeight;
-        //    }
-       // }
+                debugOutput.appendChild(logLine);
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+        }
         
-     //   debug("Debug-Modus aktiviert");
-     //   debug("Seite wird initialisiert"); 
+        debug("Debug-Modus aktiviert");
+        debug("Seite wird initialisiert"); 
 
         
         
