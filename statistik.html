@@ -194,7 +194,7 @@
             const tableBody = document.querySelector("#besteSchuetzenTable tbody");
             tableBody.innerHTML = "";
 
-            const sortedResults = Object.entries(einzelErgebnisse).sort(([, a], [, b]) => b.ergebnis - a.ergebnis).slice(0, 10);
+            const sortedResults = Object.entries(einzelErgebnisse).sort(([, a], [, b]) => b.ergebnis - a.ergebnis).slice(0, 3);
 
             sortedResults.forEach(([id, result]) => {
                 const row = document.createElement("tr");
