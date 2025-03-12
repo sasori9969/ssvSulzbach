@@ -110,7 +110,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
@@ -138,19 +138,20 @@
                 document.getElementById("anzahlTeilnehmer").textContent = anzahlTeilnehmer;
                 document.getElementById("anzahlTeams").textContent = anzahlTeams;
 
+                // Caching the data
                 const teilnehmerCache = {};
-                const teamsCache = {};
-                const einzelErgebnisse = {};
-                const teamErgebnisse = {};
-                const teamDurchschnitt = {};
-
                 teilnehmerSnapshot.forEach(doc => {
                     teilnehmerCache[doc.id] = doc.data();
                 });
 
+                const teamsCache = {};
                 teamsSnapshot.forEach(doc => {
-                    teamsCache[doc.id] = doc.data();
+                    teamsCache[doc.id] = { ...doc.data(), mitglieder: doc.data().mitglieder || [] }; // Ensure mitglieder is always an array
                 });
+
+                const einzelErgebnisse = {};
+                const teamErgebnisse = {};
+                const teamDurchschnitt = {};
 
                 ergebnisseSnapshot.forEach(doc => {
                     const ergebnis = doc.data();
@@ -166,6 +167,7 @@
                 displayBesteTeams(teamErgebnisse);
                 calculateTeamAverages(teamErgebnisse, teamsCache, teamDurchschnitt);
                 displayTeamAverages(teamDurchschnitt);
+
             } catch (error) {
                 console.error("Fehler beim Laden der Daten:", error);
             }
@@ -221,24 +223,23 @@
                 tableBody.appendChild(row);
             });
         }
-        
-        function calculateTeamAverages(teamErgebnisse, teamsCache, teamDurchschnitt){
-        
-           for (const teamId in teamErgebnisse) {
+
+        function calculateTeamAverages(teamErgebnisse, teamsCache, teamDurchschnitt) {
+            for (const teamId in teamErgebnisse) {
                 const teamData = teamErgebnisse[teamId];
                 const teamName = teamData.name;
                 const team = teamsCache[teamId];
-                
-                const mitgliederCount = team.mitglieder ? team.mitglieder.length : 0;
-                if(mitgliederCount > 0){
+
+                const mitgliederCount = team.mitglieder.length;
+                if (mitgliederCount > 0) {
                     teamDurchschnitt[teamId] = {
                         name: teamName,
-                        durchschnitt: teamData.ergebnis/mitgliederCount
+                        durchschnitt: teamData.ergebnis / mitgliederCount
                     };
                 }
             }
         }
-        
+
         function displayTeamAverages(teamDurchschnitt) {
             const tableBody = document.querySelector("#durchschnittTeamErgebnisseTable tbody");
             tableBody.innerHTML = "";
