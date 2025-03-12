@@ -34,23 +34,32 @@
         button[type="submit"]:hover {
             background-color: #45a049;
         }
-        
+
         .delete-btn {
             background-color: #f44336;
             color: white;
-            padding: 3px 6px; /* Größe reduziert */
+            padding: 3px 6px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             margin-left: 10px;
-            font-size: 0.8em; /* Schriftgröße etwas kleiner */
+            min-width: 60px; /* Minimale Breite, um den Button klein zu halten */
+            text-align: center; /* Text zentrieren */
         }
 
         .delete-btn:hover {
             background-color: #da190b;
         }
-        #teamListe li{
+
+        #teamListe li {
             margin-bottom: 5px;
+            display: flex; /* Flexbox für horizontale Anordnung */
+            align-items: center; /* Zentrieren der Elemente vertikal */
+            gap: 10px;
+        }
+
+        #teamListe li span{
+            flex-grow: 1;
         }
     </style>
 </head>
@@ -97,7 +106,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        document.getElementById("teamForm").addEventListener("submit", async function(e) {
+        document.getElementById("teamForm").addEventListener("submit", async function (e) {
             e.preventDefault();
             let teamname = document.getElementById("teamname").value.trim();
 

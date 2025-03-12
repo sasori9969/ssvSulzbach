@@ -34,22 +34,31 @@
         button[type="submit"]:hover {
             background-color: #45a049;
         }
+
         .delete-btn {
             background-color: #f44336;
             color: white;
-            padding: 3px 6px; /* Größe reduziert */
+            padding: 3px 6px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             margin-left: 10px;
-            font-size: 0.8em; /* Schriftgröße etwas kleiner */
+            min-width: 60px; /* Minimale Breite, um den Button klein zu halten */
+            text-align: center; /* Text zentrieren */
         }
 
         .delete-btn:hover {
             background-color: #da190b;
         }
-        #teilnehmerListe li{
+
+        #teilnehmerListe li {
             margin-bottom: 5px;
+            display: flex; /* Flexbox für horizontale Anordnung */
+            align-items: center; /* Zentrieren der Elemente vertikal */
+            gap: 10px;
+        }
+        #teilnehmerListe li span{
+            flex-grow: 1;
         }
     </style>
 </head>
@@ -98,7 +107,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        document.getElementById("teilnehmerForm").addEventListener("submit", async function(e) {
+        document.getElementById("teilnehmerForm").addEventListener("submit", async function (e) {
             e.preventDefault();
             let vorname = document.getElementById("vorname").value.trim();
             let name = document.getElementById("name").value.trim();
@@ -130,7 +139,7 @@
                 let data = docSnap.data();
                 let li = document.createElement("li");
                 li.innerHTML = `
-                    <span>${data.name}, ${data.vorname}</span>
+                    <span>${data.vorname}, ${data.name}</span>
                     <button class="delete-btn" data-id="${docSnap.id}">Löschen</button>
                 `;
                 list.appendChild(li);
