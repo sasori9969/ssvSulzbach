@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistik</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .statistik-section {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .statistik-section h3 {
+            margin-top: 0;
+        }
+
+        .statistik-value {
+            font-weight: bold;
+        }
+
+        .statistik-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .statistik-table th,
+        .statistik-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .statistik-table th {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Statistik</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
+                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
+                <li><a href="statistik.html">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+            <h2>Übersicht</h2>
+
+            <div class="statistik-section">
+                <h3>Teilnehmer</h3>
+                <p>Anzahl Teilnehmer: <span id="anzahlTeilnehmer" class="statistik-value"></span></p>
+            </div>
+
+            <div class="statistik-section">
+                <h3>Teams</h3>
+                <p>Anzahl Teams: <span id="anzahlTeams" class="statistik-value"></span></p>
+            </div>
+
+            <div class="statistik-section">
+                <h3>Beste Schützen (Einzel)</h3>
+                <table id="besteSchuetzenTable" class="statistik-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Bestes Ergebnis</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="statistik-section">
+                <h3>Beste Teams</h3>
+                <table id="besteTeamsTable" class="statistik-table">
+                    <thead>
+                        <tr>
+                            <th>Teamname</th>
+                            <th>Gesamtergebnis</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+             <div class="statistik-section">
+                <h3>Durchschnittliche Ergebnisse pro Teammitglied</h3>
+                <table id="durchschnittTeamErgebnisseTable" class="statistik-table">
+                    <thead>
+                        <tr>
+                            <th>Teamname</th>
+                            <th>Durchschnittliches Ergebnis</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
+            authDomain: "schuetzenverein-519a6.firebaseapp.com",
+            projectId: "schuetzenverein-519a6",
+            storageBucket: "schuetzenverein-519a6.appspot.com",
+            messagingSenderId: "469364345310",
+            appId: "1:469364345310:web:a7a7f2c33e92d40a52b54f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function loadStatistik() {
+            try {
+                const [teilnehmerSnapshot, teamsSnapshot, ergebnisseSnapshot] = await Promise.all([
+                    getDocs(collection(db, "teilnehmer")),
+                    getDocs(collection(db, "teams")),
+                    getDocs(collection(db, "ergebnisse"))
+                ]);
+
+                const anzahlTeilnehmer = teilnehmerSnapshot.size;
+                const anzahlTeams = teamsSnapshot.size;
+
+                document.getElementById("anzahlTeilnehmer").textContent = anzahlTeilnehmer;
+                document.getElementById("anzahlTeams").textContent = anzahlTeams;
+
+                const teilnehmerCache = {};
+                const teamsCache = {};
+                const einzelErgebnisse = {};
+                const teamErgebnisse = {};
+                const teamDurchschnitt = {};
+
+                teilnehmerSnapshot.forEach(doc => {
+                    teilnehmerCache[doc.id] = doc.data();
+                });
+
+                teamsSnapshot.forEach(doc => {
+                    teamsCache[doc.id] = doc.data();
+                });
+
+                ergebnisseSnapshot.forEach(doc => {
+                    const ergebnis = doc.data();
+                    if (ergebnis.teilnehmerId) {
+                        updateEinzelErgebnisse(einzelErgebnisse, ergebnis, teilnehmerCache);
+                    }
+                    if (ergebnis.teamId) {
+                        updateTeamErgebnisse(teamErgebnisse, ergebnis, teamsCache);
+                    }
+                });
+
+                displayBesteSchuetzen(einzelErgebnisse);
+                displayBesteTeams(teamErgebnisse);
+                calculateTeamAverages(teamErgebnisse, teamsCache, teamDurchschnitt);
+                displayTeamAverages(teamDurchschnitt);
+            } catch (error) {
+                console.error("Fehler beim Laden der Daten:", error);
+            }
+        }
+
+        function updateEinzelErgebnisse(einzelErgebnisse, ergebnis, teilnehmerCache) {
+            if (!einzelErgebnisse[ergebnis.teilnehmerId] || ergebnis.ergebnis > einzelErgebnisse[ergebnis.teilnehmerId].ergebnis) {
+                einzelErgebnisse[ergebnis.teilnehmerId] = {
+                    name: `${teilnehmerCache[ergebnis.teilnehmerId].vorname || ""} ${teilnehmerCache[ergebnis.teilnehmerId].name || ""}`.trim(),
+                    ergebnis: ergebnis.ergebnis
+                };
+            }
+        }
+
+        function updateTeamErgebnisse(teamErgebnisse, ergebnis, teamsCache) {
+            if (!teamErgebnisse[ergebnis.teamId]) {
+                teamErgebnisse[ergebnis.teamId] = {
+                    name: teamsCache[ergebnis.teamId].teamname,
+                    ergebnis: 0
+                };
+            }
+            teamErgebnisse[ergebnis.teamId].ergebnis += ergebnis.ergebnis;
+        }
+
+        function displayBesteSchuetzen(einzelErgebnisse) {
+            const tableBody = document.querySelector("#besteSchuetzenTable tbody");
+            tableBody.innerHTML = "";
+
+            const sortedResults = Object.entries(einzelErgebnisse).sort(([, a], [, b]) => b.ergebnis - a.ergebnis).slice(0, 10);
+
+            sortedResults.forEach(([id, result]) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${result.name}</td>
+                    <td>${result.ergebnis}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function displayBesteTeams(teamErgebnisse) {
+            const tableBody = document.querySelector("#besteTeamsTable tbody");
+            tableBody.innerHTML = "";
+
+            const sortedResults = Object.entries(teamErgebnisse).sort(([, a], [, b]) => b.ergebnis - a.ergebnis);
+
+            sortedResults.forEach(([id, result]) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${result.name}</td>
+                    <td>${result.ergebnis}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function calculateTeamAverages(teamErgebnisse, teamsCache, teamDurchschnitt){
+        
+           for (const teamId in teamErgebnisse) {
+                const teamData = teamErgebnisse[teamId];
+                const teamName = teamData.name;
+                const team = teamsCache[teamId];
+                
+                const mitgliederCount = team.mitglieder ? team.mitglieder.length : 0;
+                if(mitgliederCount > 0){
+                    teamDurchschnitt[teamId] = {
+                        name: teamName,
+                        durchschnitt: teamData.ergebnis/mitgliederCount
+                    };
+                }
+            }
+        }
+        
+        function displayTeamAverages(teamDurchschnitt) {
+            const tableBody = document.querySelector("#durchschnittTeamErgebnisseTable tbody");
+            tableBody.innerHTML = "";
+
+            const sortedResults = Object.entries(teamDurchschnitt).sort(([, a], [, b]) => b.durchschnitt - a.durchschnitt);
+
+            sortedResults.forEach(([id, result]) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${result.name}</td>
+                    <td>${result.durchschnitt.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        loadStatistik();
+    </script>
+</body>
+</html>
