@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teamzuordnung</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Neue Stile für die Teilnehmerauswahl */
+        .teilnehmer-liste li {
+            cursor: pointer;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .teilnehmer-liste li.ausgewaehlt {
+            background-color: #ffe6e6; /* Hellroter Hintergrund */
+            color: #f44336; /* Rote Schriftfarbe */
+            font-weight: bold;
+        }
+        .aktion-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 3px 6px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            min-width: 60px; /* Minimale Breite, um den Button klein zu halten */
+            text-align: center; /* Text zentrieren */
+        }
+        .aktion-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 <body>
     <header>
