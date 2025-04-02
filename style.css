@@ -70,11 +70,19 @@ select, input, button {
 }
 
 button {
-    background-color: #008000;
+    background-color: #4CAF50; /* Standard-Grün */
     color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
+    font-size: 16px; /* Standard-Schriftgröße */
+    transition: background-color 0.3s ease; /* Sanfter Übergang für Hover-Effekt */
 }
 
+button:hover {
+    background-color: #45a049; /* Dunkleres Grün bei Hover */
+}
 #teilnehmerListe {
     list-style: none;
     padding: 0;
