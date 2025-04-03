@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script>
-        console.log("jsPDF loaded:", window.jsPDF);
-        console.log("jsPDF-autotable loaded:", window.jspdfAutoTable);
-    </script>
 </head>
 <body>
     <header>
@@ -152,52 +148,57 @@
                 tableBody.appendChild(row);
             });
         }
-        // Function to generate PDF from a table
-        function generatePDF(tableId, title) {
-            const { jsPDF } = window;
-            const doc = new jsPDF();
-            const table = document.getElementById(tableId);
 
-            // Convert table to array of arrays
-            const tableData = [];
-            const rows = table.querySelectorAll('tr');
-            rows.forEach(row => {
-                const rowData = [];
-                const cells = row.querySelectorAll('td, th');
-                cells.forEach(cell => {
-                    rowData.push(cell.textContent);
-                });
-                tableData.push(rowData);
+        document.addEventListener('DOMContentLoaded', function() {
+            // PDF-Generierungsfunktion
+            window.generatePDF = function(tableId, title) {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    if (!jsPDF) {
+                        throw new Error("jsPDF nicht verfügbar");
+                    }
+                    
+                    const doc = new jsPDF();
+                    const table = document.getElementById(tableId);
+
+                    const tableData = [];
+                    const rows = table.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const rowData = [];
+                        const cells = row.querySelectorAll('td, th');
+                        cells.forEach(cell => {
+                            rowData.push(cell.textContent);
+                        });
+                        tableData.push(rowData);
+                    });
+
+                    doc.text(title, 10, 10);
+                    
+                    doc.autoTable({
+                        head: [tableData[0]],
+                        body: tableData.slice(1),
+                        startY: 20
+                    });
+
+                    doc.save(`${title}.pdf`);
+                } catch (error) {
+                    console.error("Fehler beim PDF-Export:", error);
+                    alert("Fehler beim PDF-Export: " + error.message);
+                }
+            };
+
+            // Event Listener hinzufügen
+            document.getElementById('pdfEinzelButton').addEventListener('click', () => {
+                generatePDF('einzelErgebnisseTabelle', 'Einzelergebnisse');
             });
 
-            // Add title to the PDF
-            doc.text(title, 10, 10);
+            document.getElementById('pdfTeamButton').addEventListener('click', () => {
+                generatePDF('teamErgebnisseTabelle', 'Mannschaftsergebnisse');
+            });
 
-            // Add table to the PDF
-            try {
-                doc.autoTable({
-                    head: [tableData[0]],
-                    body: tableData.slice(1),
-                    startY: 20
-                });
-            } catch (error) {
-                console.error("Error generating PDF:", error);
-            }
-
-            // Save the PDF
-            doc.save(`${title}.pdf`);
-        }
-
-        // Event listeners for the buttons
-        document.getElementById('pdfEinzelButton').addEventListener('click', () => {
-            generatePDF('einzelErgebnisseTabelle', 'Einzelergebnisse');
+            // Daten laden
+            loadData();
         });
-
-        document.getElementById('pdfTeamButton').addEventListener('click', () => {
-            generatePDF('teamErgebnisseTabelle', 'Mannschaftsergebnisse');
-        });
-
-        loadData();
     </script>
 </body>
 </html>
