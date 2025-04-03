@@ -243,3 +243,59 @@ table th {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Statistik */
+.statistik-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.statistik-section h3 {
+    margin-top: 0;
+}
+
+.statistik-value {
+    font-weight: bold;
+}
+
+.statistik-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.statistik-table th,
+.statistik-table td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    text-align: left;
+}
+
+.statistik-table th {
+    background-color: #f0f0f0;
+}
+
+/* Teilnehmerliste */
+#teilnehmerListe li {
+    margin-bottom: 5px;
+    display: flex; /* Flexbox für horizontale Anordnung */
+    align-items: center; /* Zentrieren der Elemente vertikal */
+    gap: 10px;
+}
+#teilnehmerListe li span{
+    flex-grow: 10;
+}
+
+/* Teamliste */
+#teamListe li {
+    margin-bottom: 5px;
+    display: flex; /* Flexbox für horizontale Anordnung */
+    align-items: center; /* Zentrieren der Elemente vertikal */
+    gap: 10px;
+}
+
+#teamListe li span{
+    flex-grow: 1;
+}

@@ -5,62 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teilnehmer anlegen</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Neue Stile für Teilnehmer.html */
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        button[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button[type="submit"]:hover {
-            background-color: #45a049;
-        }
-
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            padding: 3px 6px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 10px;
-            min-width: 60px; /* Minimale Breite, um den Button klein zu halten */
-            text-align: center; /* Text zentrieren */
-        }
-
-        .delete-btn:hover {
-            background-color: #da190b;
-        }
-
-        #teilnehmerListe li {
-            margin-bottom: 5px;
-            display: flex; /* Flexbox für horizontale Anordnung */
-            align-items: center; /* Zentrieren der Elemente vertikal */
-            gap: 10px;
-        }
-        #teilnehmerListe li span{
-            flex-grow: 10;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -85,7 +29,7 @@
                 <input type="text" id="vorname" required>
                 <label for="name">Name:</label>
                 <input type="text" id="name" required>
-                <button type="submit">Hinzufügen</button>
+                <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </form>
             <h3>Gespeicherte Teilnehmer:</h3>
             <ul id="teilnehmerListe"></ul>
