@@ -130,6 +130,7 @@ table th {
     margin-bottom: 5px;
     border-radius: 4px;
     color: var(--text-color);
+    background-color: white; /* Hintergrundfarbe hinzufügen */
 }
 
 .teilnehmer-liste li.ausgewaehlt {
@@ -137,7 +138,6 @@ table th {
     color: var(--secondary-color); /* Rote Schriftfarbe */
     font-weight: bold;
 }
-
 .aktion-btn {
     background-color: var(--secondary-color);
     color: white;
