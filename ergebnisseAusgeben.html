@@ -6,6 +6,11 @@
     <title>SSV1928 Sulzbach e.V.</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        console.log("jsPDF loaded:", window.jsPDF);
+        console.log("jsPDF-autotable loaded:", window.jspdfAutoTable);
+    </script>
 </head>
 <body>
     <header>
@@ -169,7 +174,15 @@
             doc.text(title, 10, 10);
 
             // Add table to the PDF
-            doc.table(10, 20, tableData, { autoSize: true });
+            try {
+                doc.autoTable({
+                    head: [tableData[0]],
+                    body: tableData.slice(1),
+                    startY: 20
+                });
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+            }
 
             // Save the PDF
             doc.save(`${title}.pdf`);
