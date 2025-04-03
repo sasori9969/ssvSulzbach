@@ -24,6 +24,19 @@
         #scheibenContainer {
             margin-top: 20px;
         }
+        #scheibenTabelle {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #scheibenTabelle th, #scheibenTabelle td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #scheibenTabelle th {
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -54,9 +67,26 @@
 
             <div id="scheibenErfassung">
                 <h3>Scheiben-Daten</h3>
-                <div id="scheibenContainer">
-                    <!-- Hier werden die Eingabefelder für die Scheiben dynamisch erstellt -->
-                </div>
+                <table id="scheibenTabelle">
+                    <thead>
+                        <tr>
+                            <th>Scheibe</th>
+                            <th>Wert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Gesamt</th>
+                            <td id="gesamtSumme"></td>
+                        </tr>
+                        <tr>
+                            <th>Durchschnitt</th>
+                            <td id="durchschnittSumme"></td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </main>
     </div>
@@ -87,16 +117,22 @@
             }
 
             document.getElementById('scheibenErfassung').style.display = 'block';
-            const scheibenContainer = document.getElementById('scheibenContainer');
-            scheibenContainer.innerHTML = '';
+            const scheibenTabelleBody = document.querySelector('#scheibenTabelle tbody');
+            scheibenTabelleBody.innerHTML = '';
+            let gesamtSumme = 0;
             for (let i = 0; i < scheibenWerte.length; i++) {
-                const scheibenDiv = document.createElement('div');
-                scheibenDiv.innerHTML = `
-                    <h4>Scheibe ${i + 1}</h4>
-                    <p>Wert: ${scheibenWerte[i]}</p>
+                const scheibenWert = scheibenWerte[i];
+                gesamtSumme += scheibenWert;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${scheibenWert}</td>
                 `;
-                scheibenContainer.appendChild(scheibenDiv);
+                scheibenTabelleBody.appendChild(row);
             }
+            const durchschnitt = scheibenWerte.length > 0 ? gesamtSumme / scheibenWerte.length : 0;
+            document.getElementById('gesamtSumme').textContent = gesamtSumme;
+            document.getElementById('durchschnittSumme').textContent = durchschnitt.toFixed(2);
         });
     </script>
 </body>
