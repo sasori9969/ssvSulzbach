@@ -21,6 +21,9 @@
         #scheibenErfassung {
             display: none;
         }
+        #scheibenContainer {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -65,15 +68,32 @@
                 alert('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).');
                 return;
             }
+
+            const scheibenWerte = [];
+            for (let i = 1; i <= anzahlScheiben; i++) {
+                let wert = null;
+                while (wert === null) {
+                    const input = prompt(`Ringe Scheibe ${i}:`);
+                    if (input === null) {
+                        return;
+                    }
+                    wert = parseInt(input);
+                    if (isNaN(wert) || wert < 0) {
+                        alert('Bitte einen gültigen Wert eingeben (mindestens 0).');
+                        wert = null;
+                    }
+                }
+                scheibenWerte.push(wert);
+            }
+
             document.getElementById('scheibenErfassung').style.display = 'block';
             const scheibenContainer = document.getElementById('scheibenContainer');
             scheibenContainer.innerHTML = '';
-            for (let i = 1; i <= anzahlScheiben; i++) {
+            for (let i = 0; i < scheibenWerte.length; i++) {
                 const scheibenDiv = document.createElement('div');
                 scheibenDiv.innerHTML = `
-                    <h4>Scheibe ${i}</h4>
-                    <label for="scheibe${i}Wert">Wert:</label>
-                    <input type="number" id="scheibe${i}Wert" min="0" required><br>
+                    <h4>Scheibe ${i + 1}</h4>
+                    <p>Wert: ${scheibenWerte[i]}</p>
                 `;
                 scheibenContainer.appendChild(scheibenDiv);
             }
