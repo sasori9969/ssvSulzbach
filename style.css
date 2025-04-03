@@ -1,283 +1,178 @@
-/* Grundlegende Styles für alle Seiten */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* Farbpalette */
+:root {
+    --primary-color: #4CAF50; /* Grün */
+    --primary-color-hover: #45a049;
+    --secondary-color: #f44336; /* Rot */
+    --secondary-color-hover: #da190b;
+    --text-color: #333;
+    --background-color: #f8f8f8;
+    --border-color: #ccc;
 }
 
+/* Allgemeine Stile */
 body {
     font-family: Arial, sans-serif;
-    background-color: #e0ffe0;
-    color: #006400;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+    color: var(--text-color);
+    background-color: var(--background-color);
+    margin: 0;
 }
 
-header {
-    background-color: #008000;
-    color: white;
-    text-align: center;
-    padding: 1rem;
+h1, h2, h3 {
+    color: var(--text-color);
+}
+
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+h3 {
+    font-size: 1.2em;
 }
 
 .container {
-    display: flex;
-    flex: 1;
-}
-
-nav {
-    width: 220px;
-    background-color: #d0ffd0;
+    width: 80%;
+    margin: 0 auto;
     padding: 20px;
-    height: 100vh;
 }
 
-nav ul {
-    list-style: none;
-    padding: 0;
-}
-
-nav a {
-    display: block;
-    padding: 10px;
-    background-color: #c0ffc0;
-    text-decoration: none;
-    color: #006400;
-    margin-bottom: 5px;
-    border-radius: 3px;
-}
-
-main {
-    flex: 1;
-    padding: 20px;
-    background-color: #c0ffc0;
-    border-radius: 5px;
-    margin: 20px;
-}
-
-form {
-    max-width: 400px;
-}
-
-select, input, button {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #006400;
-}
-
-button {
-    background-color: #4CAF50; /* Standard-Grün */
-    color: white;
+/* Button-Stile */
+.btn {
     padding: 10px 20px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 16px; /* Standard-Schriftgröße */
-    transition: background-color 0.3s ease; /* Sanfter Übergang für Hover-Effekt */
+    color: white;
+    font-size: 16px;
 }
 
-button:hover {
-    background-color: #45a049; /* Dunkleres Grün bei Hover */
+.btn-primary {
+    background-color: var(--primary-color);
 }
-#teilnehmerListe {
+
+.btn-primary:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.btn-danger {
+    background-color: var(--secondary-color);
+}
+
+.btn-danger:hover {
+    background-color: var(--secondary-color-hover);
+}
+
+/* Weitere Stile */
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Navigation */
+nav ul {
     list-style: none;
     padding: 0;
-    max-width: 400px;
+    margin: 0;
 }
 
-#teilnehmerListe li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #006400;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    margin-top: 5px;
-    font-size: 0.9rem;
+nav li {
+    display: inline;
+    margin-right: 20px;
 }
 
-.delete-btn {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-decoration: underline;
+nav a {
+    text-decoration: none;
+    color: var(--text-color);
 }
 
-.column {
-    flex: 1;
-    margin: 10px;
-    padding: 20px;
-    border: 1px solid #ddd;
+nav a.aktiv {
+    font-weight: bold;
 }
 
+/* Tabellen */
 table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
 }
 
-th, td {
-    border: 1px solid #ddd;
+table th,
+table td {
+    border: 1px solid var(--border-color);
     padding: 8px;
     text-align: left;
 }
 
-th {
-    background-color: #f2f2f2;
+table th {
+    background-color: #f0f0f0;
 }
 
-#teamListe {
-    list-style: none;
-    padding: 0;
-    max-width: 400px;
-}
-
-#teamListe li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #006400;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    margin-top: 5px;
-    font-size: 0.9rem;
-}
-
-.status {
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    font-weight: bold;
-}
-
-.status.erfolg {
-    background-color: #90ee90;
-    border: 1px solid #008000;
-}
-
-.status.fehler {
-    background-color: #ffcccb;
-    border: 1px solid #ff0000;
-    color: #8b0000;
-}
-
-/* Teilnehmer-Auswahl */
+/* Teilnehmerliste */
 .teilnehmer-liste li {
-    transition: background-color 0.3s ease;
-}
-
-.teilnehmer-liste li:hover {
-    background-color: #008500;
+    cursor: pointer;
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 5px;
+    border-radius: 4px;
+    color: var(--text-color);
 }
 
 .teilnehmer-liste li.ausgewaehlt {
-    background-color: #ff8c00;
-    /* Dunkles Orange */
-    border: 2px solid #ffffff;
+    background-color: #ffe6e6; /* Hellroter Hintergrund */
+    color: var(--secondary-color); /* Rote Schriftfarbe */
+    font-weight: bold;
 }
 
-/* Navigation verbessern */
-nav ul {
-    list-style: none;
-    padding: 0;
-}
-
-nav ul li {
-    margin-bottom: 10px;
-}
-
-nav ul li a {
-    display: block;
-    padding: 8px;
-    color: #006400;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-}
-
-nav ul li a:hover {
-    background-color: #90ee90;
-}
-
-nav ul li a.aktiv {
-    background-color: #008000;
-    color: white;
-}
-
-/* Lade-Animation */
-.lade-anzeige {
-    display: none;
-    text-align: center;
-    margin: 20px 0;
-}
-
-.lade-kreis {
-    width: 40px;
-    height: 40px;
-    border: 5px solid #d0ffd0;
-    border-top: 5px solid #008000;
-    border-radius: 50%;
-    animation: drehen 1s linear infinite;
-    margin: 0 auto 10px;
-}
-
-@keyframes drehen {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Aktionen-Buttons */
 .aktion-btn {
-    padding: 5px 10px;
-    background-color: #008000;
+    background-color: var(--secondary-color);
     color: white;
+    padding: 3px 6px;
     border: none;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
-    margin-right: 5px;
+    margin-left: 10px;
+    min-width: 60px;
+    text-align: center;
+    font-size: 16px;
 }
 
 .aktion-btn:hover {
-    background-color: #006400;
+    background-color: var(--secondary-color-hover);
 }
 
-/* Responsivität verbessern */
-@media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-    }
-
-    nav {
-        width: 100%;
-        height: auto;
-        margin-bottom: 20px;
-    }
-
-    main {
-        margin: 0;
-        padding: 10px;
-    }
+/* Delete Button */
+.delete-btn {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 3px 6px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    min-width: 60px;
+    text-align: center;
 }
 
-/* Button-Zustände */
-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
+.delete-btn:hover {
+    background-color: var(--secondary-color-hover);
 }
 
+/* Tabs */
 .tabs {
     display: flex;
     margin-bottom: 20px;
@@ -285,65 +180,66 @@ button:disabled {
 
 .tab {
     padding: 10px 20px;
-    background-color: #d0ffd0;
-    border: 1px solid #006400;
-    border-radius: 5px 5px 0 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px 4px 0 0;
     cursor: pointer;
+    background-color: #f0f0f0;
     margin-right: 5px;
 }
 
 .tab.active {
-    background-color: #008000;
-    color: white;
+    background-color: #fff;
+    border-bottom: none;
 }
 
 .tab-content {
-    display: none;
-    background-color: white;
+    border: 1px solid var(--border-color);
     padding: 20px;
-    border-radius: 0 5px 5px 5px;
-    border: 1px solid #006400;
+    display: none;
 }
 
 .tab-content.active {
     display: block;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-table,
-th,
-td {
-    border: 1px solid #006400;
-}
-
-th,
-td {
-    padding: 8px;
-    text-align: left;
-}
-
-th {
-    background-color: #d0ffd0;
-}
-
-#teamTotals {
-    margin-top: 20px;
-    background-color: #d0ffd0;
+/* Status */
+.status {
     padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #006400;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    display: none;
 }
 
-#teamTotals h3 {
-    margin-bottom: 10px;
+.status.erfolg {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }
 
-.total-row {
-    font-weight: bold;
-    background-color: #b0ffb0;
+.status.fehler {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Ladeanzeige */
+.lade-anzeige {
+    display: none;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.lade-kreis {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 2s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
