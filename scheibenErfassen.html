@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scheiben erfassen</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        #scheibenAnzahlForm {
+            margin-bottom: 20px;
+        }
+        #scheibenAnzahlForm label {
+            margin-right: 10px;
+        }
+        #scheibenAnzahlForm input {
+            width: 50px;
+        }
+        #scheibenAnzahlForm button {
+            padding: 5px 10px;
+        }
+        #scheibenErfassung {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -20,12 +37,47 @@
                 <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
                 <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
                 <li><a href="statistik.html">Statistik</a></li>
+                <li><a href="scheibenErfassen.html">Scheiben erfassen</a></li>
             </ul>
         </nav>
         <main>
             <h2>Scheiben erfassen</h2>
-            <p>Hier können Sie die Scheiben erfassen.</p>
+
+            <form id="scheibenAnzahlForm">
+                <label for="anzahlScheiben">Anzahl Scheiben:</label>
+                <input type="number" id="anzahlScheiben" min="1" value="1" required>
+                <button type="submit">Bestätigen</button>
+            </form>
+
+            <div id="scheibenErfassung">
+                <h3>Scheiben-Daten</h3>
+                <div id="scheibenContainer">
+                    <!-- Hier werden die Eingabefelder für die Scheiben dynamisch erstellt -->
+                </div>
+            </div>
         </main>
     </div>
+    <script>
+        document.getElementById('scheibenAnzahlForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const anzahlScheiben = parseInt(document.getElementById('anzahlScheiben').value);
+            if (isNaN(anzahlScheiben) || anzahlScheiben < 1) {
+                alert('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).');
+                return;
+            }
+            document.getElementById('scheibenErfassung').style.display = 'block';
+            const scheibenContainer = document.getElementById('scheibenContainer');
+            scheibenContainer.innerHTML = '';
+            for (let i = 1; i <= anzahlScheiben; i++) {
+                const scheibenDiv = document.createElement('div');
+                scheibenDiv.innerHTML = `
+                    <h4>Scheibe ${i}</h4>
+                    <label for="scheibe${i}Wert">Wert:</label>
+                    <input type="number" id="scheibe${i}Wert" min="0" required><br>
+                `;
+                scheibenContainer.appendChild(scheibenDiv);
+            }
+        });
+    </script>
 </body>
 </html>
