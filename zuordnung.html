@@ -24,15 +24,17 @@
         </nav>
         <main>
             <h2>Teamzuordnung</h2>
-            <div id="statusMeldung" class="status" style="display: none;"></div>
-            
-            <label for="teamAuswahl">Wähle ein Team:</label>
-            <select id="teamAuswahl"></select>
-            
-            <h3>Wähle 3 Teilnehmer:</h3>
-            <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
-            
-            <button id="speichern" class="btn btn-primary">Team speichern</button>
+            <form id="zuordnungForm">
+                <div id="statusMeldung" class="status" style="display: none;"></div>
+                
+                <label for="teamAuswahl">Wähle ein Team:</label>
+                <select id="teamAuswahl"></select>
+                
+                <h3>Wähle 3 Teilnehmer:</h3>
+                <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
+                
+                <button id="speichern" class="btn btn-primary" type="button">Team speichern</button>
+            </form>
             
             <h3>Alle Teams:</h3>
             <div id="ladeAnzeige" class="lade-anzeige">
@@ -49,8 +51,7 @@
                 </thead>
                 <tbody id="teamsListe"></tbody>
             </table>
-        </main>
-    </div>
+        </main>    </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
         import { getFirestore, collection, updateDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
