@@ -299,3 +299,41 @@ table th {
 #teamListe li span{
     flex-grow: 1;
 }
+
+form#teilnehmerForm {
+    max-width: 400px; /* Begrenzung der Breite des Formulars */
+    margin: 0 auto; /* Zentrierung des Formulars */
+}
+
+form#teilnehmerForm label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+form#teilnehmerForm input {
+    width: 100%; /* Eingabefelder auf die Breite des Formulars begrenzen */
+    padding: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+#teilnehmerListe li {
+    display: flex;
+    justify-content: space-between; /* Name und Button enger zusammenrücken */
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #ccc; /* Optional: Trennlinie zwischen Einträgen */
+}
+
+#teilnehmerListe button.delete-btn {
+    padding: 5px 10px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#teilnehmerListe button.delete-btn:hover {
+    background-color: #ff1a1a;
+}
