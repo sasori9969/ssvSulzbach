@@ -347,3 +347,21 @@ form#teilnehmerForm input {
     margin-bottom: 10px;
     box-sizing: border-box;
 }
+
+/* Formular für Teams */
+form#teamForm {
+    max-width: 400px; /* Begrenzung der Breite des Formulars */
+    margin: 0 auto; /* Zentrierung des Formulars */
+}
+
+form#teamForm label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+form#teamForm input {
+    width: 100%; /* Eingabefelder auf die Breite des Formulars begrenzen */
+    padding: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
