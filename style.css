@@ -279,25 +279,56 @@ table th {
 
 /* Teilnehmerliste */
 #teilnehmerListe li {
+    display: flex;
+    justify-content: space-between; /* Name und Button enger zusammenrücken */
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #ccc; /* Optional: Trennlinie zwischen Einträgen */
     margin-bottom: 5px;
-    display: flex; /* Flexbox für horizontale Anordnung */
-    align-items: center; /* Zentrieren der Elemente vertikal */
-    gap: 10px;
 }
-#teilnehmerListe li span{
-    flex-grow: 10;
+
+#teilnehmerListe li span {
+    flex-grow: 1; /* Gleiche Breite für den Namen */
+}
+
+#teilnehmerListe button.delete-btn {
+    padding: 5px 10px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#teilnehmerListe button.delete-btn:hover {
+    background-color: #ff1a1a;
 }
 
 /* Teamliste */
 #teamListe li {
+    display: flex;
+    justify-content: space-between; /* Teamname und Button enger zusammenrücken */
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #ccc; /* Optional: Trennlinie zwischen Einträgen */
     margin-bottom: 5px;
-    display: flex; /* Flexbox für horizontale Anordnung */
-    align-items: center; /* Zentrieren der Elemente vertikal */
-    gap: 10px;
 }
 
-#teamListe li span{
-    flex-grow: 1;
+#teamListe li span {
+    flex-grow: 1; /* Gleiche Breite für den Teamnamen */
+}
+
+#teamListe button.delete-btn {
+    padding: 5px 10px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#teamListe button.delete-btn:hover {
+    background-color: #ff1a1a;
 }
 
 form#teilnehmerForm {
@@ -315,25 +346,4 @@ form#teilnehmerForm input {
     padding: 8px;
     margin-bottom: 10px;
     box-sizing: border-box;
-}
-
-#teilnehmerListe li {
-    display: flex;
-    justify-content: space-between; /* Name und Button enger zusammenrücken */
-    align-items: center;
-    padding: 5px 0;
-    border-bottom: 1px solid #ccc; /* Optional: Trennlinie zwischen Einträgen */
-}
-
-#teilnehmerListe button.delete-btn {
-    padding: 5px 10px;
-    background-color: #ff4d4d;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#teilnehmerListe button.delete-btn:hover {
-    background-color: #ff1a1a;
 }
