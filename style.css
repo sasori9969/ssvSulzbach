@@ -414,3 +414,22 @@ form#teamForm input {
     color: #155724;
     font-weight: bold;
 }
+
+.scroll-container table {
+    width: 100%; /* Tabelle auf die Breite des Containers begrenzen */
+    border-collapse: collapse;
+}
+
+.scroll-container th,
+.scroll-container td {
+    border: 1px solid #ddd; /* Rahmen für Tabellenzellen */
+    padding: 8px;
+    text-align: left;
+}
+
+.scroll-container th {
+    background-color: #f0f0f0; /* Hintergrundfarbe für Tabellenkopf */
+    position: sticky; /* Tabellenkopf bleibt beim Scrollen sichtbar */
+    top: 0;
+    z-index: 1;
+}
