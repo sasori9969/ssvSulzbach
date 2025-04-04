@@ -25,18 +25,27 @@
             margin-top: 20px;
         }
         #scheibenTabelle {
-            width: 100%;
-            border-collapse: collapse; /* Rahmen zusammenfallen lassen */
-            margin-top: 20px;
-            border-spacing: 0; /* Zusätzliche Abstände entfernen */
-        }
-        #scheibenTabelle th, #scheibenTabelle td {
-            border: 1px solid #ddd;
-            padding: 4px; /* Padding reduzieren */
-            text-align: left;
-        }
-        #scheibenTabelle th {
-            background-color: #f0f0f0;
+    width: auto; /* Nicht mehr 100% breit */
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px; /* Kleinere Schrift */
+}
+#scheibenTabelle th, #scheibenTabelle td {
+    border: 1px solid #ddd;
+    padding: 2px 8px; /* Oben/unten 2px, links/rechts 8px */
+    text-align: left;
+}
+#scheibenTabelle th {
+    background-color: #f0f0f0;
+    padding: 3px 8px; /* Etwas mehr Padding für Überschriften */
+}
+#scheibenTabelle td:first-child {
+    width: 60px; /* Feste Breite für die Scheiben-Nummer */
+    text-align: center; /* Zentrierte Nummerierung */
+}
+#scheibenTabelle td:last-child {
+    width: 80px; /* Feste Breite für den Wert */
+    text-align: right; /* Rechtsbündige Zahlen */
         }
     </style></head>
 <body>
