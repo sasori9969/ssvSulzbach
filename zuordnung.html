@@ -31,7 +31,9 @@
                 <select id="teamAuswahl"></select>
                 
                 <h3>Wähle 3 Teilnehmer:</h3>
-                <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
+                <div class="scroll-container">
+                    <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
+                </div>
                 
                 <button id="speichern" class="btn btn-primary" type="button">Team speichern</button>
             </form>
@@ -51,12 +53,13 @@
                 </thead>
                 <tbody id="teamsListe"></tbody>
             </table>
-        </main>    </div>
+        </main>
+    </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
         import { getFirestore, collection, updateDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-        // Firebase-Konfiguration sollte idealerweise in einer separaten Datei erfolgen
+        // Firebase-Konfiguration
         const firebaseConfig = {
             apiKey: "AIzaSyBZSA1sTF9PNVEPLC5_Kxk8MML_QtgNfjE",
             authDomain: "schuetzenverein-519a6.firebaseapp.com",
@@ -75,35 +78,28 @@
         const speichernButton = document.getElementById("speichern");
         const ladeAnzeige = document.getElementById("ladeAnzeige");
 
-        // Ausgewählte Teilnehmer speichern
         const ausgewaehlteTeilnehmer = new Set();
         const maxTeilnehmer = 3;
 
-        // Lade-Animation zeigen/verstecken
         function zeigeLoader(anzeigen) {
             ladeAnzeige.style.display = anzeigen ? "block" : "none";
         }
 
-        // Status-Anzeige für Feedback
         function zeigeStatus(nachricht, istFehler = false) {
             const statusElement = document.getElementById("statusMeldung");
             statusElement.textContent = nachricht;
             statusElement.className = istFehler ? "status fehler" : "status erfolg";
             statusElement.style.display = "block";
-            
-            // Nach 3 Sekunden ausblenden
             setTimeout(() => {
                 statusElement.style.display = "none";
             }, 3000);
         }
 
-        // Teams laden und in Dropdown anzeigen
         async function ladeTeams() {
             try {
                 zeigeLoader(true);
                 const teamsSnapshot = await getDocs(collection(db, "teams"));
                 teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
-                
                 for (const docSnap of teamsSnapshot.docs) {
                     const team = docSnap.data();
                     const option = document.createElement("option");
@@ -119,24 +115,19 @@
             }
         }
 
-        // Teilnehmer laden und anzeigen
         async function ladeTeilnehmer() {
             try {
                 zeigeLoader(true);
                 const teilnehmerSnapshot = await getDocs(collection(db, "teilnehmer"));
                 teilnehmerListe.innerHTML = "";
-                
                 for (const docSnap of teilnehmerSnapshot.docs) {
                     const teilnehmer = docSnap.data();
                     const li = document.createElement("li");
                     li.dataset.id = docSnap.id;
                     li.textContent = `${teilnehmer.vorname} ${teilnehmer.name}`;
-                    
-                    // Eventlistener für Auswahl
                     li.addEventListener("click", function() {
                         toggleTeilnehmerAuswahl(this);
                     });
-                    
                     teilnehmerListe.appendChild(li);
                 }
             } catch (error) {
@@ -147,16 +138,12 @@
             }
         }
 
-        // Teilnehmer auswählen oder Auswahl aufheben
         function toggleTeilnehmerAuswahl(element) {
             const teilnehmerId = element.dataset.id;
-            
             if (element.classList.contains("ausgewaehlt")) {
-                // Auswahl aufheben
                 element.classList.remove("ausgewaehlt");
                 ausgewaehlteTeilnehmer.delete(teilnehmerId);
             } else {
-                // Nur auswählen, wenn noch nicht 3 Teilnehmer ausgewählt sind
                 if (ausgewaehlteTeilnehmer.size < maxTeilnehmer) {
                     element.classList.add("ausgewaehlt");
                     ausgewaehlteTeilnehmer.add(teilnehmerId);
@@ -164,52 +151,36 @@
                     zeigeStatus(`Es können maximal ${maxTeilnehmer} Teilnehmer ausgewählt werden.`, true);
                 }
             }
-            
-            // Button aktivieren/deaktivieren je nach Auswahl
             aktualisiereSpeichernButton();
         }
 
-        // Speichern-Button aktualisieren
         function aktualisiereSpeichernButton() {
             const teamSelected = teamAuswahl.value !== "";
             speichernButton.disabled = !(teamSelected && ausgewaehlteTeilnehmer.size > 0);
         }
 
-        // Team-Zuordnung speichern
         async function speichereTeam() {
             const teamId = teamAuswahl.value;
-            
             if (!teamId) {
                 zeigeStatus("Bitte wählen Sie ein Team aus.", true);
                 return;
             }
-            
             if (ausgewaehlteTeilnehmer.size === 0) {
                 zeigeStatus("Bitte wählen Sie mindestens einen Teilnehmer aus.", true);
                 return;
             }
-            
             try {
                 zeigeLoader(true);
-                // Team-Dokument aktualisieren
                 await updateDoc(doc(db, "teams", teamId), {
                     mitglieder: Array.from(ausgewaehlteTeilnehmer)
                 });
-                
-                // Erfolg anzeigen
                 zeigeStatus("Team erfolgreich gespeichert!");
-                
-                // Liste aktualisieren
                 await ladeTeamsListe();
-                
-                // Auswahl zurücksetzen
                 ausgewaehlteTeilnehmer.clear();
                 document.querySelectorAll(".teilnehmer-liste li.ausgewaehlt").forEach(li => {
                     li.classList.remove("ausgewaehlt");
                 });
-                
                 aktualisiereSpeichernButton();
-                
             } catch (error) {
                 console.error("Fehler beim Speichern des Teams:", error);
                 zeigeStatus("Fehler beim Speichern. Bitte versuchen Sie es später erneut.", true);
@@ -218,23 +189,18 @@
             }
         }
 
-        // Teamliste aktualisieren
         async function ladeTeamsListe() {
             try {
                 zeigeLoader(true);
                 const teamsSnapshot = await getDocs(collection(db, "teams"));
                 teamsListe.innerHTML = "";
-
                 for (const docSnap of teamsSnapshot.docs) {
                     const team = docSnap.data();
                     const tr = document.createElement("tr");
                     const tdName = document.createElement("td");
                     const tdMitglieder = document.createElement("td");
                     const tdAktionen = document.createElement("td");
-
                     tdName.textContent = team.teamname;
-                    
-                    // Mitglieder laden und anzeigen
                     if (team.mitglieder && team.mitglieder.length > 0) {
                         const teilnehmerNamen = [];
                         for (const teilnehmerId of team.mitglieder) {
@@ -252,14 +218,11 @@
                     } else {
                         tdMitglieder.textContent = "Keine Mitglieder";
                     }
-                    
-                    // Bearbeiten-Button hinzufügen
                     const bearbeitenButton = document.createElement("button");
                     bearbeitenButton.textContent = "Bearbeiten";
                     bearbeitenButton.className = "aktion-btn";
                     bearbeitenButton.addEventListener("click", () => bearbeiteTeam(docSnap.id, team));
                     tdAktionen.appendChild(bearbeitenButton);
-                    
                     tr.appendChild(tdName);
                     tr.appendChild(tdMitglieder);
                     tr.appendChild(tdAktionen);
@@ -273,34 +236,23 @@
             }
         }
 
-        // Team zur Bearbeitung laden
         function bearbeiteTeam(teamId, teamDaten) {
-            // Team auswählen
             teamAuswahl.value = teamId;
-            
-            // Teilnehmer auswählen
             ausgewaehlteTeilnehmer.clear();
             document.querySelectorAll(".teilnehmer-liste li").forEach(li => {
                 li.classList.remove("ausgewaehlt");
-                
-                // Wenn Teilnehmer im Team ist, auswählen
                 if (teamDaten.mitglieder && teamDaten.mitglieder.includes(li.dataset.id)) {
                     li.classList.add("ausgewaehlt");
                     ausgewaehlteTeilnehmer.add(li.dataset.id);
                 }
             });
-            
             aktualisiereSpeichernButton();
-            
-            // Zur Bearbeitungsansicht scrollen
             teamAuswahl.scrollIntoView({ behavior: "smooth" });
         }
 
-        // Event-Listener
         teamAuswahl.addEventListener("change", aktualisiereSpeichernButton);
         speichernButton.addEventListener("click", speichereTeam);
 
-        // Initialisierung
         window.addEventListener("DOMContentLoaded", async () => {
             try {
                 await ladeTeams();
