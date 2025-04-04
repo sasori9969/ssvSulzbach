@@ -382,3 +382,35 @@ form#teamForm input {
     margin-bottom: 10px;
     box-sizing: border-box;
 }
+
+/* Scrollbarer Bereich für Teilnehmerliste */
+.scroll-container {
+    max-height: 300px; /* Maximale Höhe des scrollbaren Bereichs */
+    overflow-y: auto; /* Vertikales Scrollen aktivieren */
+    border: 1px solid #ccc; /* Optional: Rahmen für bessere Sichtbarkeit */
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9; /* Optional: Hintergrundfarbe */
+}
+
+.scroll-container ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.scroll-container ul li {
+    padding: 5px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd; /* Optional: Trennlinie zwischen Einträgen */
+}
+
+.scroll-container ul li:hover {
+    background-color: #f0f0f0; /* Optional: Hover-Effekt */
+}
+
+.scroll-container ul li.ausgewaehlt {
+    background-color: #d4edda; /* Farbe für ausgewählte Teilnehmer */
+    color: #155724;
+    font-weight: bold;
+}
