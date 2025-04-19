@@ -14,7 +14,7 @@
         <nav>
             <ul>
                 <li><a href="index.html">Home</a></li>
-                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teilnehmer.html" class="aktiv">Teilnehmer anlegen</a></li> <!-- Klasse 'aktiv' hinzugefügt -->
                 <li><a href="teams.html">Teams anlegen</a></li>
                 <li><a href="zuordnung.html">Teamzuordnung</a></li>
                 <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
@@ -32,23 +32,24 @@
                 <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </form>
             <h3>Gespeicherte Teilnehmer:</h3>
-            <ul id="teilnehmerListe"></ul>
+            <ul id="teilnehmerListe"></ul> <!-- ID ist wichtig für den Event Listener -->
         </main>
     </div>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { db } from './firebase-config.js'; // Pfad prüfen!
+        import { collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-        import { db } from './firebase-config.js'; // Stelle sicher, dass der Pfad stimmt!
+        const teilnehmerForm = document.getElementById("teilnehmerForm");
+        const teilnehmerListe = document.getElementById("teilnehmerListe"); // Referenz zur Liste holen
 
-
-        document.getElementById("teilnehmerForm").addEventListener("submit", async function (e) {
+        // Teilnehmer hinzufügen (unverändert)
+        teilnehmerForm.addEventListener("submit", async function (e) {
             e.preventDefault();
             let vorname = document.getElementById("vorname").value.trim();
             let name = document.getElementById("name").value.trim();
 
             if (vorname === "" || name === "") {
-                alert("Bitte alle Felder ausfüllen!");
+                alert("Bitte alle Felder ausfüllen!"); // Später verbessern (UX)
                 return;
             }
 
@@ -58,35 +59,60 @@
                     name: name,
                     timestamp: serverTimestamp()
                 });
-                alert("Teilnehmer gespeichert!");
-                document.getElementById("teilnehmerForm").reset();
+                alert("Teilnehmer gespeichert!"); // Später verbessern (UX)
+                teilnehmerForm.reset();
             } catch (error) {
                 console.error("Fehler beim Speichern:", error);
-                alert("Fehler beim Speichern: " + error.message);
+                alert("Fehler beim Speichern: " + error.message); // Später verbessern (UX)
             }
         });
 
+        // --- NEUER Event Listener für die Liste (Event Delegation) ---
+        // Dieser Listener wird nur EINMAL hinzugefügt und fängt alle Klicks
+        // innerhalb der Liste ab.
+        teilnehmerListe.addEventListener('click', async (e) => {
+            // Prüfen, ob das geklickte Element (oder ein Elternelement innerhalb des Listeneintrags)
+            // der Button mit der Klasse 'delete-btn' ist.
+            const deleteButton = e.target.closest('.delete-btn');
+
+            if (deleteButton) {
+                // Verhindere, dass andere Klick-Handler (falls vorhanden) ausgelöst werden
+                e.stopPropagation();
+
+                const id = deleteButton.getAttribute('data-id');
+                // Besser: Nicht-blockierendes Bestätigungs-Modal verwenden statt confirm()
+                if (confirm("Möchtest du diesen Teilnehmer wirklich löschen?")) {
+                    try {
+                        await deleteDoc(doc(db, "teilnehmer", id));
+                        // Optional: Kurze Erfolgsmeldung anzeigen (siehe UX-Verbesserung)
+                        // z.B. mit einer Funktion wie zeigeStatus("Teilnehmer gelöscht");
+                    } catch (error) {
+                        console.error("Fehler beim Löschen:", error);
+                        alert("Fehler beim Löschen: " + error.message); // Später verbessern (UX)
+                    }
+                }
+            }
+        });
+        // --- ENDE Neuer Event Listener ---
+
+
+        // Daten laden und Liste anzeigen (onSnapshot)
         const q = query(collection(db, "teilnehmer"), orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
-            let list = document.getElementById("teilnehmerListe");
-            list.innerHTML = "";
+            // Wichtig: Die Liste wird hier immer noch neu aufgebaut
+            teilnehmerListe.innerHTML = ""; // Leert die Liste vor dem Neuaufbau
             snapshot.forEach(docSnap => {
                 let data = docSnap.data();
                 let li = document.createElement("li");
+                // Das HTML für den Listeneintrag bleibt gleich
                 li.innerHTML = `
                     <span>${data.vorname}, ${data.name}</span>
                     <button class="delete-btn" data-id="${docSnap.id}">Löschen</button>
                 `;
-                list.appendChild(li);
+                teilnehmerListe.appendChild(li);
             });
-            document.querySelectorAll(".delete-btn").forEach(button => {
-                button.addEventListener("click", async (e) => {
-                    let id = e.target.getAttribute("data-id");
-                    if (confirm("Möchtest du diesen Teilnehmer wirklich löschen?")) {
-                        await deleteDoc(doc(db, "teilnehmer", id));
-                    }
-                });
-            });
+
+            // Die alte Schleife zum Hinzufügen der Listener ist hier entfernt!
         });
     </script>
 </body>
