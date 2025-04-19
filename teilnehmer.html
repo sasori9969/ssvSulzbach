@@ -34,6 +34,16 @@
             <!-- Innerhalb von <main> in teilnehmer.html, teams.html, ergebnisErfassen.html, zuordnung.html etc. -->
 <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
 
+        <!-- Am Ende des <body>, vor dem schließenden </body>-Tag -->
+        <div id="confirmModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+                <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+                <button id="confirmModalCancel" class="btn">Abbrechen</button>
+            </div>
+        </div>
+        
+
             <h3>Gespeicherte Teilnehmer:</h3>
             <ul id="teilnehmerListe"></ul> <!-- ID ist wichtig für den Event Listener -->
         </main>
@@ -126,14 +136,6 @@
              teilnehmerListe.innerHTML = "<li>Fehler beim Laden der Liste.</li>";
         });
     </script>
-        <!-- Am Ende des <body>, vor dem schließenden </body>-Tag -->
-<div id="confirmModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <p id="confirmModalText">Möchtest du das wirklich tun?</p>
-        <button id="confirmModalOk" class="btn btn-danger">Ja</button>
-        <button id="confirmModalCancel" class="btn">Abbrechen</button>
-    </div>
-</div>
 
 </body>
 </html>
