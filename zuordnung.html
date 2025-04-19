@@ -26,10 +26,10 @@
             <h2>Teamzuordnung</h2>
             <form id="zuordnungForm">
                 <div id="statusMeldung" class="status" style="display: none;"></div>
-                
+
                 <label for="teamAuswahl">Wähle ein Team:</label>
                 <select id="teamAuswahl"></select>
-                
+
                 <h3>Wähle 3 Teilnehmer:</h3>
                 <div class="scroll-container">
                     <table>
@@ -41,10 +41,10 @@
                         <tbody id="teilnehmerListe" class="teilnehmer-liste"></tbody>
                     </table>
                 </div>
-                
+
                 <button id="speichern" class="btn btn-primary" type="button">Team speichern</button>
             </form>
-            
+
             <h3>Alle Teams:</h3>
             <div id="ladeAnzeige" class="lade-anzeige">
                 <div class="lade-kreis"></div>
@@ -88,6 +88,10 @@
         const ausgewaehlteTeilnehmer = new Set();
         const maxTeilnehmer = 3;
 
+        // Caches für Daten
+        let teilnehmerMap = new Map(); // Teilnehmer-Cache als Map
+        let teamsCache = []; // Team-Cache als Array
+
         function zeigeLoader(anzeigen) {
             ladeAnzeige.style.display = anzeigen ? "block" : "none";
         }
@@ -102,36 +106,49 @@
             }, 3000);
         }
 
+        // Lädt Teams, füllt den Cache und das Dropdown
         async function ladeTeams() {
             try {
                 zeigeLoader(true);
                 const teamsSnapshot = await getDocs(collection(db, "teams"));
                 teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
+                teamsCache = []; // Cache leeren
                 for (const docSnap of teamsSnapshot.docs) {
+                    const teamId = docSnap.id;
                     const team = docSnap.data();
+                    teamsCache.push({ id: teamId, ...team }); // Team zum Cache hinzufügen
+
                     const option = document.createElement("option");
-                    option.value = docSnap.id;
+                    option.value = teamId;
                     option.textContent = team.teamname;
                     teamAuswahl.appendChild(option);
                 }
             } catch (error) {
                 console.error("Fehler beim Laden der Teams:", error);
                 zeigeStatus("Fehler beim Laden der Teams. Bitte versuchen Sie es später erneut.", true);
+                throw error; // Fehler weitergeben, um Initialisierung abzubrechen
             } finally {
                 zeigeLoader(false);
             }
         }
 
+        // Lädt Teilnehmer und füllt den teilnehmerMap Cache
         async function ladeTeilnehmer() {
             try {
                 zeigeLoader(true);
                 const teilnehmerSnapshot = await getDocs(collection(db, "teilnehmer"));
-                teilnehmerListe.innerHTML = "";
+                teilnehmerListe.innerHTML = ""; // Liste für Auswahl leeren
+                teilnehmerMap.clear(); // Map leeren vor dem Befüllen
+
                 for (const docSnap of teilnehmerSnapshot.docs) {
+                    const teilnehmerId = docSnap.id;
                     const teilnehmer = docSnap.data();
+                    teilnehmerMap.set(teilnehmerId, teilnehmer); // Teilnehmer in die Map speichern
+
+                    // Teilnehmer zur Auswahl-Liste hinzufügen
                     const li = document.createElement("li");
-                    li.dataset.id = docSnap.id;
-                    li.textContent = `${teilnehmer.vorname} ${teilnehmer.name}`;
+                    li.dataset.id = teilnehmerId;
+                    li.textContent = `${teilnehmer.vorname || ''} ${teilnehmer.name || ''}`.trim();
                     li.addEventListener("click", function() {
                         toggleTeilnehmerAuswahl(this);
                     });
@@ -140,6 +157,7 @@
             } catch (error) {
                 console.error("Fehler beim Laden der Teilnehmer:", error);
                 zeigeStatus("Fehler beim Laden der Teilnehmer. Bitte versuchen Sie es später erneut.", true);
+                throw error; // Fehler weitergeben
             } finally {
                 zeigeLoader(false);
             }
@@ -176,99 +194,133 @@
                 zeigeStatus("Bitte wählen Sie mindestens einen Teilnehmer aus.", true);
                 return;
             }
+
+            speichernButton.disabled = true; // Button deaktivieren während Speichern
+            zeigeLoader(true);
+
             try {
-                zeigeLoader(true);
+                const mitgliederArray = Array.from(ausgewaehlteTeilnehmer);
                 await updateDoc(doc(db, "teams", teamId), {
-                    mitglieder: Array.from(ausgewaehlteTeilnehmer)
+                    mitglieder: mitgliederArray
                 });
+
+                // Lokalen Cache aktualisieren
+                const teamIndex = teamsCache.findIndex(t => t.id === teamId);
+                if (teamIndex > -1) {
+                    teamsCache[teamIndex].mitglieder = mitgliederArray;
+                }
+
+                displayTeamsListe(); // Anzeige mit Daten aus dem Cache neu aufbauen
                 zeigeStatus("Team erfolgreich gespeichert!");
-                await ladeTeamsListe();
+
+                // Auswahl zurücksetzen
                 ausgewaehlteTeilnehmer.clear();
                 document.querySelectorAll(".teilnehmer-liste li.ausgewaehlt").forEach(li => {
                     li.classList.remove("ausgewaehlt");
                 });
+                teamAuswahl.value = ""; // Optional: Team-Auswahl zurücksetzen
                 aktualisiereSpeichernButton();
+
             } catch (error) {
                 console.error("Fehler beim Speichern des Teams:", error);
                 zeigeStatus("Fehler beim Speichern. Bitte versuchen Sie es später erneut.", true);
             } finally {
                 zeigeLoader(false);
+                aktualisiereSpeichernButton(); // Button-Status sicherstellen
             }
         }
 
-        async function ladeTeamsListe() {
+        // Zeigt die Teamliste basierend auf den Caches an
+        function displayTeamsListe() {
             try {
-                zeigeLoader(true);
-                const teamsSnapshot = await getDocs(collection(db, "teams"));
-                teamsListe.innerHTML = "";
-                for (const docSnap of teamsSnapshot.docs) {
-                    const team = docSnap.data();
+                teamsListe.innerHTML = ""; // Liste leeren
+                if (teamsCache.length === 0) {
+                    teamsListe.innerHTML = '<tr><td colspan="3">Keine Teams gefunden oder geladen.</td></tr>';
+                    return;
+                }
+
+                // Optional: Teams nach Namen sortieren für konsistente Anzeige
+                teamsCache.sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+
+                for (const team of teamsCache) { // Iteriere über den Cache
                     const tr = document.createElement("tr");
                     const tdName = document.createElement("td");
                     const tdMitglieder = document.createElement("td");
                     const tdAktionen = document.createElement("td");
-                    tdName.textContent = team.teamname;
+
+                    tdName.textContent = team.teamname || 'Unbenanntes Team';
+
                     if (team.mitglieder && team.mitglieder.length > 0) {
-                        const teilnehmerNamen = [];
-                        for (const teilnehmerId of team.mitglieder) {
-                            try {
-                                const teilnehmerDoc = await getDoc(doc(db, "teilnehmer", teilnehmerId));
-                                if (teilnehmerDoc.exists()) {
-                                    const teilnehmer = teilnehmerDoc.data();
-                                    teilnehmerNamen.push(`${teilnehmer.vorname} ${teilnehmer.name}`);
-                                }
-                            } catch (error) {
-                                console.error("Fehler beim Laden eines Teilnehmers:", error);
+                        const teilnehmerNamen = team.mitglieder.map(teilnehmerId => {
+                            const teilnehmer = teilnehmerMap.get(teilnehmerId); // Zugriff auf die Map! Kein DB-Aufruf!
+                            if (teilnehmer) {
+                                return `${teilnehmer.vorname || ''} ${teilnehmer.name || ''}`.trim();
                             }
-                        }
-                        tdMitglieder.textContent = teilnehmerNamen.join(", ");
+                            return 'Unbekannt'; // Fallback
+                        }).join(", ");
+                        tdMitglieder.textContent = teilnehmerNamen;
                     } else {
                         tdMitglieder.textContent = "Keine Mitglieder";
                     }
+
                     const bearbeitenButton = document.createElement("button");
                     bearbeitenButton.textContent = "Bearbeiten";
                     bearbeitenButton.className = "aktion-btn";
-                    bearbeitenButton.addEventListener("click", () => bearbeiteTeam(docSnap.id, team));
+                    // Wichtig: Übergib die Team-ID und die Daten aus dem Cache
+                    bearbeitenButton.addEventListener("click", () => bearbeiteTeam(team.id, team));
                     tdAktionen.appendChild(bearbeitenButton);
+
                     tr.appendChild(tdName);
                     tr.appendChild(tdMitglieder);
                     tr.appendChild(tdAktionen);
                     teamsListe.appendChild(tr);
                 }
             } catch (error) {
-                console.error("Fehler beim Laden der Teams:", error);
-                zeigeStatus("Fehler beim Laden der Teams. Bitte versuchen Sie es später erneut.", true);
-            } finally {
-                zeigeLoader(false);
+                console.error("Fehler beim Anzeigen der Teamliste:", error);
+                zeigeStatus("Fehler beim Anzeigen der Teamliste.", true);
+                teamsListe.innerHTML = '<tr><td colspan="3">Fehler beim Anzeigen der Teams.</td></tr>';
             }
         }
 
         function bearbeiteTeam(teamId, teamDaten) {
-            teamAuswahl.value = teamId;
-            ausgewaehlteTeilnehmer.clear();
+            teamAuswahl.value = teamId; // Team im Dropdown auswählen
+            ausgewaehlteTeilnehmer.clear(); // Aktuelle Auswahl löschen
+
+            // Teilnehmerliste durchgehen und die auswählen, die zum Team gehören
             document.querySelectorAll(".teilnehmer-liste li").forEach(li => {
-                li.classList.remove("ausgewaehlt");
-                if (teamDaten.mitglieder && teamDaten.mitglieder.includes(li.dataset.id)) {
+                const currentId = li.dataset.id;
+                if (teamDaten.mitglieder && teamDaten.mitglieder.includes(currentId)) {
                     li.classList.add("ausgewaehlt");
-                    ausgewaehlteTeilnehmer.add(li.dataset.id);
+                    ausgewaehlteTeilnehmer.add(currentId);
+                } else {
+                    li.classList.remove("ausgewaehlt");
                 }
             });
-            aktualisiereSpeichernButton();
-            teamAuswahl.scrollIntoView({ behavior: "smooth" });
+
+            aktualisiereSpeichernButton(); // Button-Status aktualisieren
+            teamAuswahl.scrollIntoView({ behavior: "smooth" }); // Zum Formular scrollen
         }
 
+        // Event Listener
         teamAuswahl.addEventListener("change", aktualisiereSpeichernButton);
         speichernButton.addEventListener("click", speichereTeam);
 
+        // Initialisierung beim Laden der Seite
         window.addEventListener("DOMContentLoaded", async () => {
             try {
-                await ladeTeams();
+                zeigeLoader(true); // Zeige Loader am Anfang
+                // Lade zuerst Teilnehmer, dann Teams (da Teams die Teilnehmer-Map braucht)
                 await ladeTeilnehmer();
-                await ladeTeamsListe();
-                aktualisiereSpeichernButton();
+                await ladeTeams();
+                displayTeamsListe(); // Zeigt die Liste basierend auf den Caches an
+                aktualisiereSpeichernButton(); // Initialer Button-Status
             } catch (error) {
+                // Fehler wurden bereits in den Ladefunktionen behandelt und angezeigt
                 console.error("Fehler bei der Initialisierung:", error);
-                zeigeStatus("Es gab ein Problem beim Laden der Daten. Bitte aktualisieren Sie die Seite.", true);
+                // Optional: Zusätzliche allgemeine Fehlermeldung anzeigen
+                zeigeStatus("Es gab ein Problem beim Laden der initialen Daten. Bitte versuchen Sie, die Seite neu zu laden.", true);
+            } finally {
+                zeigeLoader(false); // Verstecke Loader am Ende, auch bei Fehlern
             }
         });
     </script>
