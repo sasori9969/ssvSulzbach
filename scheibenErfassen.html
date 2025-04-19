@@ -100,49 +100,98 @@
         </main>
     </div>
     <script>
-        document.getElementById('scheibenAnzahlForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const anzahlScheiben = parseInt(document.getElementById('anzahlScheiben').value);
-            if (isNaN(anzahlScheiben) || anzahlScheiben < 1) {
-                alert('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).');
-                return;
-            }
-
-            const scheibenWerte = [];
-            for (let i = 1; i <= anzahlScheiben; i++) {
-                let wert = null;
-                while (wert === null) {
-                    const input = prompt(`Ringe Scheibe ${i}:`);
-                    if (input === null) {
-                        return;
-                    }
-                    wert = parseInt(input);
-                    if (isNaN(wert) || wert < 0) {
-                        alert('Bitte einen gültigen Wert eingeben (mindestens 0).');
-                        wert = null;
-                    }
+        // Optional: Wenn du die Statusmeldungen auch hier nutzen willst,
+        // müsstest du das Skript zu einem type="module" machen und importieren.
+        // import { zeigeStatus } from './ui-utils.js';
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const anzahlForm = document.getElementById('scheibenAnzahlForm');
+            const anzahlInput = document.getElementById('anzahlScheiben');
+            const erfassungsDiv = document.getElementById('scheibenErfassung');
+            const tabelleBody = document.querySelector('#scheibenTabelle tbody');
+            const gesamtSummeTd = document.getElementById('gesamtSumme');
+            const durchschnittSummeTd = document.getElementById('durchschnittSumme');
+    
+            anzahlForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const anzahl = parseInt(anzahlInput.value);
+    
+                if (isNaN(anzahl) || anzahl < 1) {
+                    // Hier die Standard-alert Funktion, da kein Modul-Import standardmäßig
+                    alert('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).');
+                    // Wenn ui-utils importiert wäre: zeigeStatus('Bitte eine gültige Anzahl...', 'fehler');
+                    return;
                 }
-                scheibenWerte.push(wert);
+    
+                // Alten Tabelleninhalt leeren und Eingabefelder generieren
+                tabelleBody.innerHTML = '';
+                for (let i = 1; i <= anzahl; i++) {
+                    const row = document.createElement('tr');
+                    // Füge ein Input-Feld für jeden Wert hinzu
+                    row.innerHTML = `
+                        <td>${i}</td>
+                        <td><input type="number" class="scheiben-wert-input" min="0" step="1" placeholder="Wert" required style="width: 60px; text-align: right; padding: 2px 4px;"></td>
+                    `;
+                    tabelleBody.appendChild(row);
+                }
+    
+                // Fußzeile initial leeren und den Erfassungsbereich anzeigen
+                gesamtSummeTd.textContent = '0'; // Startwert 0
+                durchschnittSummeTd.textContent = '-'; // Startwert -
+                erfassungsDiv.style.display = 'block'; // Tabelle anzeigen
+    
+                // Event Listener für alle neuen Input-Felder hinzufügen
+                tabelleBody.querySelectorAll('.scheiben-wert-input').forEach(input => {
+                    // Neuberechnung bei jeder Eingabe oder wenn das Feld verlassen wird
+                    input.addEventListener('input', berechneUndZeigeSummen);
+                    input.addEventListener('change', berechneUndZeigeSummen);
+                });
+    
+                 // Initial einmal berechnen (falls Felder schon Werte haben, z.B. durch Browser-Autofill)
+                 berechneUndZeigeSummen();
+    
+                 // Optional: Fokus auf das erste Eingabefeld setzen
+                 const firstInput = tabelleBody.querySelector('.scheiben-wert-input');
+                 if (firstInput) {
+                     firstInput.focus();
+                 }
+            });
+    
+            function berechneUndZeigeSummen() {
+                const inputs = tabelleBody.querySelectorAll('.scheiben-wert-input');
+                let gesamt = 0;
+                let anzahlGueltigerWerte = 0;
+    
+                inputs.forEach(input => {
+                    // Lese den Wert und konvertiere ihn zu einer Ganzzahl
+                    // Leere Eingaben werden als 0 behandelt, wenn sie nicht required sind,
+                    // aber hier sind sie required, also sollte das nicht passieren.
+                    // Wir prüfen trotzdem auf Gültigkeit.
+                    const wert = parseInt(input.value);
+                    if (!isNaN(wert) && wert >= 0) {
+                        gesamt += wert;
+                        anzahlGueltigerWerte++;
+                    } else if (input.value.trim() !== '') {
+                        // Optional: Markiere ungültige Eingaben visuell
+                        input.style.borderColor = 'red';
+                    } else {
+                        input.style.borderColor = ''; // Zurücksetzen, falls leer
+                    }
+                });
+    
+                // Aktualisiere die Summenanzeige
+                gesamtSummeTd.textContent = gesamt;
+    
+                if (anzahlGueltigerWerte > 0) {
+                    // Berechne Durchschnitt nur, wenn gültige Werte vorhanden sind
+                    const durchschnitt = gesamt / anzahlGueltigerWerte;
+                    durchschnittSummeTd.textContent = durchschnitt.toFixed(2); // Auf 2 Nachkommastellen runden
+                } else {
+                    // Zeige '-' wenn keine gültigen Werte eingegeben wurden
+                    durchschnittSummeTd.textContent = '-';
+                }
             }
-
-            document.getElementById('scheibenErfassung').style.display = 'block';
-            const scheibenTabelleBody = document.querySelector('#scheibenTabelle tbody');
-            scheibenTabelleBody.innerHTML = '';
-            let gesamtSumme = 0;
-            for (let i = 0; i < scheibenWerte.length; i++) {
-                const scheibenWert = scheibenWerte[i];
-                gesamtSumme += scheibenWert;
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${i + 1}</td>
-                    <td>${scheibenWert}</td>
-                `;
-                scheibenTabelleBody.appendChild(row);
-            }
-            const durchschnitt = scheibenWerte.length > 0 ? gesamtSumme / scheibenWerte.length : 0;
-            document.getElementById('gesamtSumme').textContent = gesamtSumme;
-            document.getElementById('durchschnittSumme').textContent = durchschnitt.toFixed(2);
         });
     </script>
-</body>
+    </body>
 </html>

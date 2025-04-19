@@ -31,6 +31,9 @@
                 <input type="text" id="name" required>
                 <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </form>
+            <!-- Innerhalb von <main> in teilnehmer.html, teams.html, ergebnisErfassen.html, zuordnung.html etc. -->
+<div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+
             <h3>Gespeicherte Teilnehmer:</h3>
             <ul id="teilnehmerListe"></ul> <!-- ID ist wichtig für den Event Listener -->
         </main>
@@ -38,82 +41,99 @@
     <script type="module">
         import { db } from './firebase-config.js'; // Pfad prüfen!
         import { collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
+        // NEU: Importiere die Utility-Funktionen
+        import { zeigeStatus, zeigeConfirm } from './ui-utils.js'; // Pfad zur neuen Datei prüfen!
+    
         const teilnehmerForm = document.getElementById("teilnehmerForm");
         const teilnehmerListe = document.getElementById("teilnehmerListe"); // Referenz zur Liste holen
-
-        // Teilnehmer hinzufügen (unverändert)
+    
+        // Teilnehmer hinzufügen
         teilnehmerForm.addEventListener("submit", async function (e) {
             e.preventDefault();
             let vorname = document.getElementById("vorname").value.trim();
             let name = document.getElementById("name").value.trim();
-
+    
             if (vorname === "" || name === "") {
-                alert("Bitte alle Felder ausfüllen!"); // Später verbessern (UX)
+                // alert("Bitte alle Felder ausfüllen!"); // Alt
+                zeigeStatus("Bitte alle Felder ausfüllen!", 'fehler'); // Neu
                 return;
             }
-
+    
             try {
                 await addDoc(collection(db, "teilnehmer"), {
                     vorname: vorname,
                     name: name,
                     timestamp: serverTimestamp()
                 });
-                alert("Teilnehmer gespeichert!"); // Später verbessern (UX)
+                // alert("Teilnehmer gespeichert!"); // Alt
+                zeigeStatus("Teilnehmer gespeichert!", 'erfolg'); // Neu
                 teilnehmerForm.reset();
             } catch (error) {
                 console.error("Fehler beim Speichern:", error);
-                alert("Fehler beim Speichern: " + error.message); // Später verbessern (UX)
+                // alert("Fehler beim Speichern: " + error.message); // Alt
+                zeigeStatus("Fehler beim Speichern: " + error.message, 'fehler'); // Neu
             }
         });
-
-        // --- NEUER Event Listener für die Liste (Event Delegation) ---
-        // Dieser Listener wird nur EINMAL hinzugefügt und fängt alle Klicks
-        // innerhalb der Liste ab.
+    
+        // Event Listener für die Liste (Event Delegation)
         teilnehmerListe.addEventListener('click', async (e) => {
-            // Prüfen, ob das geklickte Element (oder ein Elternelement innerhalb des Listeneintrags)
-            // der Button mit der Klasse 'delete-btn' ist.
             const deleteButton = e.target.closest('.delete-btn');
-
+    
             if (deleteButton) {
-                // Verhindere, dass andere Klick-Handler (falls vorhanden) ausgelöst werden
-                e.stopPropagation();
-
+                e.stopPropagation(); // Verhindert ggf. andere Klick-Events
                 const id = deleteButton.getAttribute('data-id');
-                // Besser: Nicht-blockierendes Bestätigungs-Modal verwenden statt confirm()
-                if (confirm("Möchtest du diesen Teilnehmer wirklich löschen?")) {
+    
+                // if (confirm("Möchtest du diesen Teilnehmer wirklich löschen?")) { // Alt
+                zeigeConfirm("Möchtest du diesen Teilnehmer wirklich löschen?", async () => { // Neu
+                    // Dieser Code wird nur ausgeführt, wenn der Benutzer im Modal "Ja" klickt
                     try {
                         await deleteDoc(doc(db, "teilnehmer", id));
-                        // Optional: Kurze Erfolgsmeldung anzeigen (siehe UX-Verbesserung)
-                        // z.B. mit einer Funktion wie zeigeStatus("Teilnehmer gelöscht");
+                        zeigeStatus("Teilnehmer gelöscht.", 'erfolg'); // Erfolgsmeldung nach dem Löschen
                     } catch (error) {
                         console.error("Fehler beim Löschen:", error);
-                        alert("Fehler beim Löschen: " + error.message); // Später verbessern (UX)
+                        // alert("Fehler beim Löschen: " + error.message); // Alt
+                        zeigeStatus("Fehler beim Löschen: " + error.message, 'fehler'); // Neu
                     }
-                }
+                }); // Ende von zeigeConfirm
             }
         });
-        // --- ENDE Neuer Event Listener ---
-
-
+    
         // Daten laden und Liste anzeigen (onSnapshot)
         const q = query(collection(db, "teilnehmer"), orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
-            // Wichtig: Die Liste wird hier immer noch neu aufgebaut
             teilnehmerListe.innerHTML = ""; // Leert die Liste vor dem Neuaufbau
+            if (snapshot.empty) {
+                 teilnehmerListe.innerHTML = "<li>Noch keine Teilnehmer angelegt.</li>"; // Hinweis für leere Liste
+                 return;
+            }
             snapshot.forEach(docSnap => {
                 let data = docSnap.data();
                 let li = document.createElement("li");
-                // Das HTML für den Listeneintrag bleibt gleich
+                // Stelle sicher, dass Vorname und Name existieren, bevor du darauf zugreifst
+                const vorname = data.vorname || '';
+                const name = data.name || '';
                 li.innerHTML = `
-                    <span>${data.vorname}, ${data.name}</span>
+                    <span>${vorname}${vorname && name ? ', ' : ''}${name}</span>
                     <button class="delete-btn" data-id="${docSnap.id}">Löschen</button>
                 `;
                 teilnehmerListe.appendChild(li);
             });
-
-            // Die alte Schleife zum Hinzufügen der Listener ist hier entfernt!
+            // Keine Listener mehr hier hinzufügen, das macht der Event Delegator!
+        }, error => {
+             // Fehlerbehandlung für den Snapshot Listener
+             console.error("Fehler beim Abrufen der Teilnehmer:", error);
+             zeigeStatus("Fehler beim Laden der Teilnehmerliste.", 'fehler');
+             teilnehmerListe.innerHTML = "<li>Fehler beim Laden der Liste.</li>";
         });
     </script>
+        <!-- Am Ende des <body>, vor dem schließenden </body>-Tag -->
+<div id="confirmModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+        <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+        <button id="confirmModalCancel" class="btn">Abbrechen</button>
+    </div>
+</div>
+
 </body>
 </html>
