@@ -3,8 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teilnehmer anlegen</title>
+    <title>Teilnehmer anlegen (Offline-First)</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Optional: Stil für nicht synchronisierte Elemente */
+        .sync-status {
+            font-size: 0.8em;
+            color: orange;
+            margin-left: 10px;
+            font-style: italic;
+        }
+        li.deleted {
+            text-decoration: line-through;
+            color: grey;
+        }
+        li.deleted .delete-btn {
+            display: none; /* Löschen-Button bei schon gelöschten ausblenden */
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -14,7 +30,7 @@
         <nav>
             <ul>
                 <li><a href="index.html">Home</a></li>
-                <li><a href="teilnehmer.html" class="aktiv">Teilnehmer anlegen</a></li> <!-- Klasse 'aktiv' hinzugefügt -->
+                <li><a href="teilnehmer.html" class="aktiv">Teilnehmer anlegen</a></li>
                 <li><a href="teams.html">Teams anlegen</a></li>
                 <li><a href="zuordnung.html">Teamzuordnung</a></li>
                 <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
@@ -31,110 +47,306 @@
                 <input type="text" id="name" required>
                 <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </form>
-            <!-- Innerhalb von <main> in teilnehmer.html, teams.html, ergebnisErfassen.html, zuordnung.html etc. -->
-<div id="statusMeldung" class="status-meldung" style="display: none;"></div>
 
-        <!-- Am Ende des <body>, vor dem schließenden </body>-Tag -->
-        <div id="confirmModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <p id="confirmModalText">Möchtest du das wirklich tun?</p>
-                <button id="confirmModalOk" class="btn btn-danger">Ja</button>
-                <button id="confirmModalCancel" class="btn">Abbrechen</button>
+            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+
+            <div id="confirmModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+                    <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+                    <button id="confirmModalCancel" class="btn">Abbrechen</button>
+                </div>
             </div>
-        </div>
-        
 
             <h3>Gespeicherte Teilnehmer:</h3>
-            <ul id="teilnehmerListe"></ul> <!-- ID ist wichtig für den Event Listener -->
+            <ul id="teilnehmerListe"></ul>
         </main>
     </div>
+
     <script type="module">
-        import { db } from './firebase-config.js'; // Pfad prüfen!
-        import { collection, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-        // NEU: Importiere die Utility-Funktionen
-        import { zeigeStatus, zeigeConfirm } from './ui-utils.js'; // Pfad zur neuen Datei prüfen!
-    
+        // Firebase Imports (nur noch für Sync benötigt)
+        import { db } from './firebase-config.js';
+        import { collection, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        // UI Utils Imports
+        import { zeigeStatus, zeigeConfirm } from './ui-utils.js';
+
+        // NEU: Local Storage Utils Imports
+        import {
+            getLocalData,
+            setLocalData,
+            generateLocalId,
+            finalizeLocalItems,
+            TEILNEHMER_KEY // Importiere den Key
+        } from './local-storage-utils.js';
+
         const teilnehmerForm = document.getElementById("teilnehmerForm");
-        const teilnehmerListe = document.getElementById("teilnehmerListe"); // Referenz zur Liste holen
-    
-        // Teilnehmer hinzufügen
-        teilnehmerForm.addEventListener("submit", async function (e) {
+        const teilnehmerListe = document.getElementById("teilnehmerListe");
+
+        // --- Lokale Daten anzeigen ---
+        function displayTeilnehmerFromLocal() {
+            const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+
+            // Sortieren (z.B. nach Name)
+            lokaleTeilnehmer.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            teilnehmerListe.innerHTML = ""; // Liste leeren
+
+            if (lokaleTeilnehmer.length === 0) {
+                teilnehmerListe.innerHTML = "<li>Noch keine Teilnehmer lokal gespeichert.</li>";
+                return;
+            }
+
+            lokaleTeilnehmer.forEach(teilnehmer => {
+                let li = document.createElement("li");
+                const vorname = teilnehmer.vorname || '';
+                const name = teilnehmer.name || '';
+                let syncStatusText = '';
+
+                // Status für Anzeige bestimmen
+                if (teilnehmer._syncStatus === 'new') {
+                    syncStatusText = '<span class="sync-status">(Neu, nicht synchronisiert)</span>';
+                } else if (teilnehmer._syncStatus === 'modified') {
+                    syncStatusText = '<span class="sync-status">(Geändert, nicht synchronisiert)</span>';
+                } else if (teilnehmer._syncStatus === 'deleted') {
+                    syncStatusText = '<span class="sync-status">(Wird beim nächsten Sync gelöscht)</span>';
+                    li.classList.add('deleted'); // Visuell als gelöscht markieren
+                }
+
+                li.innerHTML = `
+                    <span>${vorname}${vorname && name ? ', ' : ''}${name}</span>
+                    ${syncStatusText}
+                    <button class="delete-btn" data-local-id="${teilnehmer.localId}">Löschen</button>
+                `;
+                // Füge data-Attribute hinzu, um später darauf zugreifen zu können
+                li.dataset.localId = teilnehmer.localId;
+                li.dataset.syncStatus = teilnehmer._syncStatus;
+
+                teilnehmerListe.appendChild(li);
+            });
+        }
+
+        // --- Teilnehmer hinzufügen (LOKAL) ---
+        teilnehmerForm.addEventListener("submit", function (e) {
             e.preventDefault();
             let vorname = document.getElementById("vorname").value.trim();
             let name = document.getElementById("name").value.trim();
-    
+
             if (vorname === "" || name === "") {
-                // alert("Bitte alle Felder ausfüllen!"); // Alt
-                zeigeStatus("Bitte alle Felder ausfüllen!", 'fehler'); // Neu
+                zeigeStatus("Bitte alle Felder ausfüllen!", 'fehler');
                 return;
             }
-    
-            try {
-                await addDoc(collection(db, "teilnehmer"), {
-                    vorname: vorname,
-                    name: name,
-                    timestamp: serverTimestamp()
-                });
-                // alert("Teilnehmer gespeichert!"); // Alt
-                zeigeStatus("Teilnehmer gespeichert!", 'erfolg'); // Neu
+
+            // Neues Teilnehmer-Objekt für lokalen Speicher
+            const neuerTeilnehmer = {
+                localId: generateLocalId(), // Eigene lokale ID
+                firestoreId: null,          // Firestore ID kommt erst nach Sync
+                vorname: vorname,
+                name: name,
+                createdAt: new Date().toISOString(), // Lokaler Zeitstempel
+                _syncStatus: 'new'          // Status für Sync
+            };
+
+            // Aktuelle Liste aus localStorage holen, neuen Teilnehmer hinzufügen, zurückspeichern
+            const aktuelleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+            aktuelleTeilnehmer.push(neuerTeilnehmer);
+            const success = setLocalData(TEILNEHMER_KEY, aktuelleTeilnehmer);
+
+            if (success) {
+                zeigeStatus("Teilnehmer lokal hinzugefügt!", 'erfolg');
                 teilnehmerForm.reset();
-            } catch (error) {
-                console.error("Fehler beim Speichern:", error);
-                // alert("Fehler beim Speichern: " + error.message); // Alt
-                zeigeStatus("Fehler beim Speichern: " + error.message, 'fehler'); // Neu
+                displayTeilnehmerFromLocal(); // Liste sofort aktualisieren
+            } else {
+                 zeigeStatus("Fehler beim lokalen Speichern des Teilnehmers!", 'fehler');
             }
         });
-    
-        // Event Listener für die Liste (Event Delegation)
-        teilnehmerListe.addEventListener('click', async (e) => {
+
+        // --- Teilnehmer löschen (LOKAL markieren) ---
+        teilnehmerListe.addEventListener('click', (e) => {
             const deleteButton = e.target.closest('.delete-btn');
-    
             if (deleteButton) {
-                e.stopPropagation(); // Verhindert ggf. andere Klick-Events
-                const id = deleteButton.getAttribute('data-id');
-    
-                // if (confirm("Möchtest du diesen Teilnehmer wirklich löschen?")) { // Alt
-                zeigeConfirm("Möchtest du diesen Teilnehmer wirklich löschen?", async () => { // Neu
-                    // Dieser Code wird nur ausgeführt, wenn der Benutzer im Modal "Ja" klickt
-                    try {
-                        await deleteDoc(doc(db, "teilnehmer", id));
-                        zeigeStatus("Teilnehmer gelöscht.", 'erfolg'); // Erfolgsmeldung nach dem Löschen
-                    } catch (error) {
-                        console.error("Fehler beim Löschen:", error);
-                        // alert("Fehler beim Löschen: " + error.message); // Alt
-                        zeigeStatus("Fehler beim Löschen: " + error.message, 'fehler'); // Neu
+                e.stopPropagation();
+                const localId = deleteButton.getAttribute('data-local-id');
+                const listItem = deleteButton.closest('li'); // Das übergeordnete Listenelement
+                const currentSyncStatus = listItem.dataset.syncStatus;
+
+                // Verhindern, dass bereits als gelöscht markierte erneut "gelöscht" werden
+                if (currentSyncStatus === 'deleted') {
+                    return;
+                }
+
+                zeigeConfirm("Möchtest du diesen Teilnehmer wirklich löschen?", () => {
+                    const aktuelleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+                    const index = aktuelleTeilnehmer.findIndex(t => t.localId === localId);
+
+                    if (index > -1) {
+                        // Wenn der Teilnehmer noch nie synchronisiert wurde ('new'),
+                        // kann er direkt lokal entfernt werden.
+                        if (aktuelleTeilnehmer[index]._syncStatus === 'new') {
+                            aktuelleTeilnehmer.splice(index, 1);
+                            zeigeStatus("Teilnehmer lokal entfernt (war noch nicht synchronisiert).", 'erfolg');
+                        } else {
+                            // Ansonsten zum Löschen für den nächsten Sync markieren
+                            aktuelleTeilnehmer[index]._syncStatus = 'deleted';
+                            zeigeStatus("Teilnehmer zum Löschen markiert (wird beim nächsten Sync entfernt).", 'erfolg');
+                        }
+
+                        // Aktualisierte Liste speichern
+                        const success = setLocalData(TEILNEHMER_KEY, aktuelleTeilnehmer);
+                        if (success) {
+                            displayTeilnehmerFromLocal(); // Liste neu anzeigen
+                        } else {
+                             zeigeStatus("Fehler beim lokalen Speichern der Löschmarkierung!", 'fehler');
+                        }
+
+                    } else {
+                         zeigeStatus("Teilnehmer nicht gefunden.", 'fehler');
                     }
-                }); // Ende von zeigeConfirm
+                });
             }
+            // HIER KÖNNTE MAN SPÄTER EINEN EDIT-BUTTON HINZUFÜGEN
+            // else if (e.target.closest('.edit-btn')) { ... }
         });
-    
-        // Daten laden und Liste anzeigen (onSnapshot)
-        const q = query(collection(db, "teilnehmer"), orderBy("timestamp", "desc"));
-        onSnapshot(q, (snapshot) => {
-            teilnehmerListe.innerHTML = ""; // Leert die Liste vor dem Neuaufbau
-            if (snapshot.empty) {
-                 teilnehmerListe.innerHTML = "<li>Noch keine Teilnehmer angelegt.</li>"; // Hinweis für leere Liste
-                 return;
+
+        // --- Periodische Synchronisation mit Firestore ---
+        async function syncMitFirestore() {
+            console.log("Prüfe auf lokale Änderungen für Synchronisation (Teilnehmer)...");
+
+            const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+
+            // Prüfen, ob überhaupt Änderungen vorliegen
+            const hatAenderungen = lokaleTeilnehmer.some(item => item._syncStatus && item._syncStatus !== 'synced');
+
+            if (!hatAenderungen) {
+                console.log("Keine lokalen Teilnehmer-Änderungen zum Synchronisieren.");
+                // Optional: zeigeStatus("Teilnehmerdaten sind aktuell.", "info");
+                return; // Nichts zu tun
             }
-            snapshot.forEach(docSnap => {
-                let data = docSnap.data();
-                let li = document.createElement("li");
-                // Stelle sicher, dass Vorname und Name existieren, bevor du darauf zugreifst
-                const vorname = data.vorname || '';
-                const name = data.name || '';
-                li.innerHTML = `
-                    <span>${vorname}${vorname && name ? ', ' : ''}${name}</span>
-                    <button class="delete-btn" data-id="${docSnap.id}">Löschen</button>
-                `;
-                teilnehmerListe.appendChild(li);
-            });
-            // Keine Listener mehr hier hinzufügen, das macht der Event Delegator!
-        }, error => {
-             // Fehlerbehandlung für den Snapshot Listener
-             console.error("Fehler beim Abrufen der Teilnehmer:", error);
-             zeigeStatus("Fehler beim Laden der Teilnehmerliste.", 'fehler');
-             teilnehmerListe.innerHTML = "<li>Fehler beim Laden der Liste.</li>";
+
+            console.log("Änderungen bei Teilnehmern gefunden. Starte Sync mit Firestore...");
+            zeigeStatus("Synchronisiere Teilnehmer mit Server...", "info");
+
+            const batch = writeBatch(db);
+            let changesInBatch = false;
+            // Tiefe Kopie erstellen, um das Original nicht direkt zu verändern, bevor der Commit erfolgreich war
+            let zuAktualisierendeLokaleTeilnehmer = structuredClone(lokaleTeilnehmer);
+
+            try {
+                zuAktualisierendeLokaleTeilnehmer.forEach((teilnehmer, index) => {
+                    // Überspringe bereits synchronisierte oder fehlerhafte Einträge ohne Status
+                    if (!teilnehmer._syncStatus || teilnehmer._syncStatus === 'synced') {
+                        return;
+                    }
+
+                    if (teilnehmer._syncStatus === 'new') {
+                        // Firestore generiert die ID automatisch, wenn wir doc() ohne ID aufrufen
+                        const docRef = doc(collection(db, "teilnehmer"));
+                        batch.set(docRef, {
+                            vorname: teilnehmer.vorname,
+                            name: teilnehmer.name,
+                            timestamp: serverTimestamp() // Wichtig für neue Dokumente
+                        });
+                        // Firestore ID für lokales Update vormerken
+                        zuAktualisierendeLokaleTeilnehmer[index].firestoreId = docRef.id;
+                        zuAktualisierendeLokaleTeilnehmer[index]._pendingSync = true; // Markieren für Status-Update nach Commit
+                        changesInBatch = true;
+                        console.log(`Sync: Neuer Teilnehmer "${teilnehmer.name}" wird hinzugefügt.`);
+
+                    } else if (teilnehmer._syncStatus === 'modified' && teilnehmer.firestoreId) {
+                        // Teilnehmer hat bereits eine Firestore ID -> Update
+                        const docRef = doc(db, "teilnehmer", teilnehmer.firestoreId);
+                        batch.update(docRef, {
+                            vorname: teilnehmer.vorname,
+                            name: teilnehmer.name
+                            // Kein Timestamp-Update hier, es sei denn, du willst 'lastModified'
+                        });
+                        zuAktualisierendeLokaleTeilnehmer[index]._pendingSync = true;
+                        changesInBatch = true;
+                         console.log(`Sync: Teilnehmer "${teilnehmer.name}" (${teilnehmer.firestoreId}) wird aktualisiert.`);
+
+                    } else if (teilnehmer._syncStatus === 'deleted' && teilnehmer.firestoreId) {
+                        // Teilnehmer hat eine Firestore ID und soll gelöscht werden
+                        const docRef = doc(db, "teilnehmer", teilnehmer.firestoreId);
+                        batch.delete(docRef);
+                        // Markieren für lokales Entfernen nach Commit
+                        zuAktualisierendeLokaleTeilnehmer[index]._toBeRemoved = true;
+                        changesInBatch = true;
+                         console.log(`Sync: Teilnehmer "${teilnehmer.name}" (${teilnehmer.firestoreId}) wird gelöscht.`);
+
+                    } else if (teilnehmer._syncStatus === 'deleted' && !teilnehmer.firestoreId) {
+                         // Sollte nicht vorkommen, da 'new' direkt lokal gelöscht wird, aber sicherheitshalber
+                         console.warn(`Sync: Teilnehmer "${teilnehmer.name}" war zum Löschen markiert, hatte aber keine Firestore ID. Wird lokal entfernt.`);
+                         zuAktualisierendeLokaleTeilnehmer[index]._toBeRemoved = true;
+                         // Kein Batch-Vorgang nötig
+
+                    } else if (teilnehmer._syncStatus === 'modified' && !teilnehmer.firestoreId) {
+                         // Sollte nicht vorkommen (wie kann etwas geändert sein ohne ID?), aber sicherheitshalber
+                         console.error(`Sync: Inkonsistenter Status für "${teilnehmer.name}". Status 'modified' aber keine Firestore ID.`);
+                         // Hier den Status nicht ändern, damit es untersucht werden kann
+                    }
+                });
+
+                // Batch nur ausführen, wenn tatsächlich Operationen hinzugefügt wurden
+                if (changesInBatch) {
+                    await batch.commit();
+                    console.log("Firestore Batch-Commit für Teilnehmer erfolgreich.");
+
+                    // Lokale Daten finalisieren (Status aktualisieren, Gelöschte entfernen)
+                    const finaleLokaleTeilnehmer = finalizeLocalItems(zuAktualisierendeLokaleTeilnehmer);
+
+                    // Aktualisierte, bereinigte Liste speichern
+                    const success = setLocalData(TEILNEHMER_KEY, finaleLokaleTeilnehmer);
+                    if (success) {
+                        displayTeilnehmerFromLocal(); // UI mit finalem Status neu rendern
+                        zeigeStatus("Teilnehmer erfolgreich synchronisiert!", 'erfolg');
+                    } else {
+                         zeigeStatus("Fehler beim Speichern der finalen lokalen Teilnehmerdaten nach Sync!", 'fehler');
+                    }
+
+                } else {
+                    // Es gab Änderungen ('deleted' ohne firestoreId), aber keine Batch-Operationen
+                    // Nur lokale Bereinigung durchführen
+                    const finaleLokaleTeilnehmer = finalizeLocalItems(zuAktualisierendeLokaleTeilnehmer);
+                     if (finaleLokaleTeilnehmer.length !== lokaleTeilnehmer.length) {
+                         const success = setLocalData(TEILNEHMER_KEY, finaleLokaleTeilnehmer);
+                         if (success) {
+                             displayTeilnehmerFromLocal();
+                             zeigeStatus("Lokale Bereinigung abgeschlossen (z.B. nie synchronisierte gelöscht).", 'info');
+                         } else {
+                              zeigeStatus("Fehler beim Speichern der bereinigten lokalen Teilnehmerdaten!", 'fehler');
+                         }
+                     } else {
+                         console.log("Keine Firestore-Operationen und keine lokale Bereinigung nötig.");
+                     }
+                }
+
+            } catch (error) {
+                console.error("Fehler während der Teilnehmer-Synchronisation oder beim Batch-Commit:", error);
+                zeigeStatus("Synchronisation der Teilnehmer fehlgeschlagen. Änderungen bleiben lokal.", 'fehler');
+                // WICHTIG: Lokale Daten NICHT ändern, damit der Sync-Status ('new', 'modified', 'deleted')
+                // erhalten bleibt und beim nächsten Intervall erneut versucht wird.
+            }
+        }
+
+        // --- Initialisierung und Intervall ---
+        document.addEventListener('DOMContentLoaded', () => {
+            displayTeilnehmerFromLocal(); // Beim Laden aus LocalStorage anzeigen
+
+            // Sync alle 1 Stunde starten (3600000 ms)
+            // Zum Testen kürzer, z.B. alle 60 Sekunden (60000 ms)
+            const syncInterval = 60000; // 60 Sekunden zum Testen
+            // const syncInterval = 1000 * 60 * 60; // 1 Stunde für Produktion
+
+            setInterval(syncMitFirestore, syncInterval);
+
+            // Optional: Sofort einmal synchronisieren beim Start (nach kurzer Verzögerung, damit die App bereit ist)
+            setTimeout(syncMitFirestore, 5000); // 5 Sekunden nach dem Laden
         });
+
+        // --- KEIN onSnapshot mehr für die Hauptliste ---
+        // Der alte onSnapshot-Code wurde entfernt. Die Liste wird nun durch
+        // displayTeilnehmerFromLocal() gefüllt und aktualisiert.
+
     </script>
 
 </body>
