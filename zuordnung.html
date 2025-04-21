@@ -8,63 +8,6 @@
     <!-- Zentrales Auto-Sync Skript einbinden -->
 <script type="module" src="auto-sync.js" defer></script>
 
-    <style>
-        /* Optional: Zusätzliche Stile für diese Seite */
-        .scroll-container {
-            max-height: 200px; /* Höhe begrenzen */
-            overflow-y: auto; /* Scrollbar hinzufügen */
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
-            padding: 5px;
-        }
-        .teilnehmer-liste li {
-            padding: 5px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        .teilnehmer-liste li:last-child {
-            border-bottom: none;
-        }
-        .teilnehmer-liste li.ausgewaehlt {
-            background-color: #e0f2f7;
-            font-weight: bold;
-        }
-        .lade-anzeige { /* Style für Ladeanzeige */
-            display: none; /* Standardmäßig ausblenden */
-            text-align: center;
-            padding: 20px;
-        }
-        .lade-kreis {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Statusmeldungen (wie in ui-utils.js definiert) */
-        .status {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            display: none; /* Standardmäßig ausblenden */
-        }
-        .status.erfolg {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .status.fehler {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -85,7 +28,7 @@
         <main>
             <h2>Teamzuordnung</h2>
             <form id="zuordnungForm">
-                <div id="statusMeldung" class="status" style="display: none;"></div>
+                <div id="statusMeldung" class="status"></div>
                 <div id="ladeAnzeige" class="lade-anzeige">
                      <div class="lade-kreis"></div>
                      <p>Daten werden geladen...</p>
@@ -346,9 +289,10 @@
                 // Sync-Status anzeigen?
                 if (team._syncStatus && team._syncStatus !== 'synced') {
                     const statusSpan = document.createElement('span');
-                    statusSpan.style.fontSize = '0.8em';
-                    statusSpan.style.marginLeft = '5px';
-                    statusSpan.style.color = 'orange';
+
+                    statusSpan.className = 'sync-status-indicator'; // Klasse statt Inline-Styles
+                    // --- Ende Änderung ---
+
                     statusSpan.textContent = `(${team._syncStatus})`;
                     tdName.appendChild(statusSpan);
                 }

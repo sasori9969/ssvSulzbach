@@ -6,80 +6,9 @@
     <title>Teams anlegen (Offline-First)</title>
     <link rel="stylesheet" href="style.css">
     <!-- Zentrales Auto-Sync Skript einbinden -->
+    <script type="module" src="auto-sync.js" defer></script>
 <script type="module" src="auto-sync.js" defer></script>
 
-    <style>
-        /* Stile für Teams.html (angepasst für Offline-Status) */
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        button[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button[type="submit"]:hover {
-            background-color: #45a049;
-        }
-
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            padding: 3px 6px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-left: 10px;
-            min-width: 60px; /* Minimale Breite */
-            text-align: center;
-        }
-
-        .delete-btn:hover {
-            background-color: #da190b;
-        }
-
-        #teamListe li {
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        #teamListe li span {
-            flex-grow: 1;
-        }
-
-        /* Stile für Sync-Status (wie in teilnehmer.html) */
-        .sync-status {
-            font-size: 0.8em;
-            color: orange;
-            margin-left: 10px;
-            font-style: italic;
-        }
-        li.deleted {
-            text-decoration: line-through;
-            color: grey;
-        }
-        li.deleted .delete-btn {
-            display: none;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -106,8 +35,8 @@
             </form>
 
             <!-- Status und Confirm Modal (optional, aber empfohlen) -->
-            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
-            <div id="confirmModal" class="modal" style="display: none;">
+            <div id="statusMeldung" class="status-meldung"></div>
+            <div id="confirmModal" class="modal" >
                 <div class="modal-content">
                     <p id="confirmModalText">Möchtest du das wirklich tun?</p>
                     <button id="confirmModalOk" class="btn btn-danger">Ja</button>

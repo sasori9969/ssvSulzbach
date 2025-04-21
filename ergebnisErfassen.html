@@ -8,48 +8,6 @@
     <!-- Zentrales Auto-Sync Skript einbinden -->
 <script type="module" src="auto-sync.js" defer></script>
 
-    <style>
-        /* Zusätzliche Stile für Edit/Delete Buttons und Status */
-        .action-btn {
-            padding: 2px 5px;
-            font-size: 0.8em;
-            margin-left: 5px;
-            cursor: pointer;
-        }
-        .edit-btn { background-color: #ffc107; border: none; border-radius: 3px; }
-        .delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 3px; }
-        .sync-status { font-size: 0.8em; color: orange; margin-left: 10px; font-style: italic; }
-        tr.deleted { text-decoration: line-through; color: grey; }
-        tr.deleted .action-btn { display: none; }
-        tr.editing { background-color: #fff3cd; } /* Hervorhebung für Bearbeitung */
-
-        /* Statusmeldungen (wie in ui-utils.js definiert) */
-        .status-meldung {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            display: none; /* Standardmäßig ausblenden */
-        }
-        .status-meldung.erfolg {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .status-meldung.fehler {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .status-meldung.info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-         /* Ladeanzeige */
-        .lade-anzeige { display: none; text-align: center; padding: 15px; }
-        .lade-kreis { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 5px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
 </head>
 <body>
     <header>
@@ -69,7 +27,7 @@
         </nav>
         <main>
             <h2>Ergebnisse erfassen</h2>
-            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+            <div id="statusMeldung" class="status-meldung"></div>
              <div id="ladeAnzeige" class="lade-anzeige">
                  <div class="lade-kreis"></div>
                  <p>Lade Daten...</p>
@@ -89,7 +47,7 @@
                 </select>
                 <input type="number" id="ergebnisEinzel" placeholder="Ergebnis eingeben" min="0">
                 <button id="ergebnisEinzelSpeichern" class="btn btn-primary">Ergebnis speichern</button>
-                <button id="ergebnisEinzelAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+                <button id="ergebnisEinzelAbbrechen" class="btn">Abbrechen</button>
 
                 <h3>Letzte Ergebnisse (Lokal)</h3>
                  <div id="ladeAnzeigeEinzel" class="lade-anzeige">
@@ -121,7 +79,7 @@
                 </select>
                 <input type="number" id="ergebnisTeam" placeholder="Ergebnis eingeben" min="0">
                 <button id="ergebnisTeamSpeichern" class="btn btn-primary">Ergebnis speichern</button>
-                 <button id="ergebnisTeamAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+                 <button id="ergebnisTeamAbbrechen" class="btn">Abbrechen</button>
 
                 <h3>Team-Ergebnisse (Lokal)</h3>
                  <div id="ladeAnzeigeTeam" class="lade-anzeige">
@@ -157,7 +115,7 @@
                 </div>
             </div>
              <!-- Confirm Modal (aus ui-utils.js) -->
-            <div id="confirmModal" class="modal" style="display: none;">
+            <div id="confirmModal" class="modal">
                 <div class="modal-content">
                     <p id="confirmModalText">Möchtest du das wirklich tun?</p>
                     <button id="confirmModalOk" class="btn btn-danger">Ja</button>

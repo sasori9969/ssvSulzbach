@@ -506,3 +506,289 @@ form#teamForm input {
     margin: 10px 5px 0; /* Abstand zwischen Buttons */
     min-width: 80px; /* Mindestbreite für Buttons */
 }
+
+/* =========================================
+   Globale / Wiederverwendbare Stile
+   ========================================= */
+
+/* Ladeanzeige (verwendet in mehreren Dateien) */
+.lade-anzeige {
+    display: none; /* Standardmäßig ausblenden, JS steuert Anzeige */
+    text-align: center;
+    padding: 15px;
+    margin-left: 10px; /* Für adminOnly.html */
+    font-style: italic; /* Für adminOnly.html */
+}
+
+.lade-kreis {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 20px; /* Standardgröße */
+    height: 20px; /* Standardgröße */
+    animation: spin 1s linear infinite;
+    margin: 0 auto 5px auto; /* Standard-Margin */
+    display: inline-block; /* Für adminOnly.html */
+    vertical-align: middle; /* Für adminOnly.html */
+    margin-right: 5px; /* Für adminOnly.html */
+}
+
+/* Kleinere Version für adminOnly.html */
+#syncSpinner .lade-kreis {
+    border-width: 2px;
+    width: 16px;
+    height: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Statusmeldungen (verwendet in mehreren Dateien) */
+.status-meldung { /* Ersetzt auch .status aus zuordnung.html */
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    display: none; /* Standardmäßig ausblenden, JS steuert Anzeige */
+}
+
+.status-meldung.erfolg {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-meldung.fehler {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-meldung.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Sync-Status Anzeige (verwendet in mehreren Dateien) */
+.sync-status {
+    font-size: 0.8em;
+    color: orange;
+    margin-left: 10px;
+    font-style: italic;
+}
+
+/* Buttons (Basis-Stile sollten schon in style.css sein, hier Ergänzungen) */
+.delete-btn { /* Aus teams.html & ergebnisErfassen.html */
+    background-color: #f44336;
+    color: white;
+    padding: 3px 6px; /* Kleinere Buttons */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 10px;
+    min-width: 60px; /* Minimale Breite */
+    text-align: center;
+    font-size: 0.8em; /* Angepasst von ergebnisErfassen.html */
+}
+
+.delete-btn:hover {
+    background-color: #da190b;
+}
+
+.edit-btn { /* Aus ergebnisErfassen.html */
+    background-color: #ffc107;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 5px;
+    font-size: 0.8em;
+    margin-left: 5px;
+    cursor: pointer;
+}
+
+.action-btn { /* Basis für Edit/Delete in ergebnisErfassen.html */
+    padding: 2px 5px;
+    font-size: 0.8em;
+    margin-left: 5px;
+    cursor: pointer;
+}
+
+
+/* Markierungen für gelöschte/bearbeitete Elemente */
+li.deleted, tr.deleted { /* Aus teilnehmer.html, teams.html, ergebnisErfassen.html */
+    text-decoration: line-through;
+    color: grey;
+}
+
+li.deleted .delete-btn, tr.deleted .action-btn { /* Aus teilnehmer.html, teams.html, ergebnisErfassen.html */
+    display: none;
+}
+
+tr.editing { /* Aus ergebnisErfassen.html */
+    background-color: #fff3cd;
+}
+
+/* Initial versteckte Elemente (gesteuert durch JS) */
+#statusMeldung,
+#ladeAnzeige,
+#ladeAnzeigeTeams, /* zuordnung.html */
+#ladeAnzeigeEinzel, /* ergebnisErfassen.html */
+#ladeAnzeigeTeam, /* ergebnisErfassen.html */
+#confirmModal,
+#syncSpinner, /* adminOnly.html */
+#ergebnisEinzelAbbrechen, /* ergebnisErfassen.html */
+#ergebnisTeamAbbrechen, /* ergebnisErfassen.html */
+#scheibenErfassung /* scheibenErfassen.html */
+{
+    display: none;
+}
+
+
+/* =========================================
+   Seiten-spezifische Stile
+   ========================================= */
+
+/* --- zuordnung.html --- */
+.scroll-container {
+    max-height: 200px; /* Höhe begrenzen */
+    overflow-y: auto; /* Scrollbar hinzufügen */
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    padding: 5px;
+}
+
+.teilnehmer-liste li {
+    padding: 5px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.teilnehmer-liste li:last-child {
+    border-bottom: none;
+}
+
+.teilnehmer-liste li.ausgewaehlt {
+    background-color: #e0f2f7;
+    font-weight: bold;
+}
+
+/* Indikator für Sync-Status in der Teamliste (ersetzt Inline-Style) */
+.sync-status-indicator {
+    font-size: 0.8em;
+    margin-left: 5px;
+    color: orange;
+}
+
+
+/* --- teams.html --- */
+#teams main label { /* Spezifischer, falls 'label' global anders ist */
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#teams main input[type="text"] { /* Spezifischer */
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#teams main button[type="submit"] { /* Spezifischer */
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#teams main button[type="submit"]:hover { /* Spezifischer */
+    background-color: #45a049;
+}
+
+#teamListe li {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#teamListe li span {
+    flex-grow: 1;
+}
+
+
+/* --- scheibenErfassen.html --- */
+#scheibenAnzahlForm {
+    margin-bottom: 20px;
+}
+
+#scheibenAnzahlForm label {
+    margin-right: 10px;
+}
+
+#scheibenAnzahlForm input {
+    width: 50px;
+}
+
+#scheibenAnzahlForm button {
+    padding: 5px 10px;
+}
+
+#scheibenContainer { /* Falls dieser Container verwendet wird */
+    margin-top: 20px;
+}
+
+#scheibenTabelle {
+    width: auto; /* Nicht mehr 100% breit */
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px; /* Kleinere Schrift */
+}
+
+#scheibenTabelle th, #scheibenTabelle td {
+    border: 1px solid #ddd;
+    padding: 2px 8px; /* Oben/unten 2px, links/rechts 8px */
+    text-align: left;
+}
+
+#scheibenTabelle th {
+    background-color: #f0f0f0;
+    padding: 3px 8px; /* Etwas mehr Padding für Überschriften */
+}
+
+#scheibenTabelle td:first-child {
+    width: 60px; /* Feste Breite für die Scheiben-Nummer */
+    text-align: center; /* Zentrierte Nummerierung */
+}
+
+#scheibenTabelle td:last-child {
+    width: 80px; /* Feste Breite für den Wert */
+    text-align: right; /* Rechtsbündige Zahlen */
+}
+
+/* Stil für die Input-Felder in der Scheibentabelle (ersetzt Inline-Style) */
+.scheiben-wert-input {
+    width: 60px;
+    text-align: right;
+    padding: 2px 4px;
+    box-sizing: border-box; /* Verhindert, dass Padding die Breite erhöht */
+}
+
+
+/* --- adminOnly.html --- */
+#lastSyncInfo {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+#manualSyncBtn {
+    margin-right: 10px;
+}
