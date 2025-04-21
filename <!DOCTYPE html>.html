@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ergebnisse erfassen (Offline-First)</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Zusätzliche Stile für Edit/Delete Buttons und Status */
+        .action-btn {
+            padding: 2px 5px;
+            font-size: 0.8em;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .edit-btn { background-color: #ffc107; border: none; border-radius: 3px; }
+        .delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 3px; }
+        .sync-status { font-size: 0.8em; color: orange; margin-left: 10px; font-style: italic; }
+        tr.deleted { text-decoration: line-through; color: grey; }
+        tr.deleted .action-btn { display: none; }
+        tr.editing { background-color: #fff3cd; } /* Hervorhebung für Bearbeitung */
+
+        /* Statusmeldungen (wie in ui-utils.js definiert) */
+        .status-meldung {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none; /* Standardmäßig ausblenden */
+        }
+        .status-meldung.erfolg {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-meldung.fehler {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-meldung.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+         /* Ladeanzeige */
+        .lade-anzeige { display: none; text-align: center; padding: 15px; }
+        .lade-kreis { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 5px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Ergebnisse erfassen</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="ergebnisErfassen.html" class="aktiv">Ergebnisse erfassen</a></li>
+                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
+                <li><a href="statistik.html">Statistik</a></li>
+            </ul>
+        </nav>
+        <main>
+            <h2>Ergebnisse erfassen</h2>
+            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+             <div id="ladeAnzeige" class="lade-anzeige">
+                 <div class="lade-kreis"></div>
+                 <p>Lade Daten...</p>
+             </div>
+             <!-- Verstecktes Feld zum Speichern der ID des zu bearbeitenden Eintrags -->
+             <input type="hidden" id="editingErgebnisLocalId" value="">
+
+            <div class="tabs">
+                <div class="tab active" data-tab="alleSchuetzen">Alle Teilnehmer</div>
+                <div class="tab" data-tab="teamSchuetzen">Nach Team</div>
+            </div>
+
+            <div id="alleSchuetzen" class="tab-content active">
+                <h3>Ergebnis für einzelnen Teilnehmer erfassen/bearbeiten</h3>
+                <select id="teilnehmerSelect">
+                    <option value="">-- Teilnehmer auswählen --</option>
+                </select>
+                <input type="number" id="ergebnisEinzel" placeholder="Ergebnis eingeben" min="0">
+                <button id="ergebnisEinzelSpeichern" class="btn btn-primary">Ergebnis speichern</button>
+                <button id="ergebnisEinzelAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+
+                <h3>Letzte Ergebnisse (Lokal)</h3>
+                 <div id="ladeAnzeigeEinzel" class="lade-anzeige">
+                     <div class="lade-kreis"></div>
+                     <p>Lade Ergebnisse...</p>
+                 </div>
+                <table id="ergebnisseTabelle">
+                    <thead>
+                        <tr>
+                            <th>Vorname</th>
+                            <th>Name</th>
+                            <th>Ergebnis</th>
+                            <th>Datum</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="teamSchuetzen" class="tab-content">
+                <h3>Ergebnis für Teammitglied erfassen/bearbeiten</h3>
+                <select id="teamSelect">
+                    <option value="">-- Team auswählen --</option>
+                </select>
+                <select id="teamMitgliedSelect" disabled>
+                    <option value="">-- Erst Team auswählen --</option>
+                </select>
+                <input type="number" id="ergebnisTeam" placeholder="Ergebnis eingeben" min="0">
+                <button id="ergebnisTeamSpeichern" class="btn btn-primary">Ergebnis speichern</button>
+                 <button id="ergebnisTeamAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+
+                <h3>Team-Ergebnisse (Lokal)</h3>
+                 <div id="ladeAnzeigeTeam" class="lade-anzeige">
+                     <div class="lade-kreis"></div>
+                     <p>Lade Team-Ergebnisse...</p>
+                 </div>
+                <table id="teamErgebnisseTabelle">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Vorname</th>
+                            <th>Name</th>
+                            <th>Ergebnis</th>
+                            <th>Datum</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+                <div id="teamTotals">
+                    <h3>Team-Gesamtergebnisse (Lokal)</h3>
+                    <table id="teamTotalsTabelle">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Gesamtergebnis</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+             <!-- Confirm Modal (aus ui-utils.js) -->
+            <div id="confirmModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+                    <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+                    <button id="confirmModalCancel" class="btn">Abbrechen</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        // Firebase Imports (nur noch für Sync benötigt, hier auskommentiert)
+        // import { db } from './firebase-config.js';
+        // import { collection, doc, serverTimestamp, writeBatch, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        // UI Utils Imports
+        import { zeigeStatus, zeigeConfirm } from './ui-utils.js';
+
+        // Local Storage Utils Imports
+        import {
+            getLocalData,
+            setLocalData,
+            generateLocalId,
+            finalizeLocalItems, // Wird für Sync gebraucht, hier noch nicht direkt
+            TEILNEHMER_KEY,
+            TEAMS_KEY,
+            ERGEBNISSE_KEY // NEU: Key für Ergebnisse
+        } from './local-storage-utils.js';
+
+        // Globale Variablen / Cache
+        let lokaleTeilnehmer = [];
+        let lokaleTeams = [];
+        let lokaleErgebnisse = [];
+        let teilnehmerMapLocal = new Map(); // Für schnellen Namens-Lookup
+        let teamMapLocal = new Map();       // Für schnellen Teamnamen-Lookup
+
+        // DOM Elemente
+        const teilnehmerSelect = document.getElementById('teilnehmerSelect');
+        const ergebnisEinzelInput = document.getElementById('ergebnisEinzel');
+        const ergebnisEinzelSpeichernBtn = document.getElementById('ergebnisEinzelSpeichern');
+        const ergebnisEinzelAbbrechenBtn = document.getElementById('ergebnisEinzelAbbrechen');
+        const ergebnisseTabelleBody = document.querySelector('#ergebnisseTabelle tbody');
+
+        const teamSelect = document.getElementById('teamSelect');
+        const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
+        const ergebnisTeamInput = document.getElementById('ergebnisTeam');
+        const ergebnisTeamSpeichernBtn = document.getElementById('ergebnisTeamSpeichern');
+        const ergebnisTeamAbbrechenBtn = document.getElementById('ergebnisTeamAbbrechen');
+        const teamErgebnisseTabelleBody = document.querySelector('#teamErgebnisseTabelle tbody');
+        const teamTotalsTabelleBody = document.querySelector('#teamTotalsTabelle tbody');
+
+        const editingErgebnisLocalIdInput = document.getElementById('editingErgebnisLocalId');
+        const statusMeldung = document.getElementById('statusMeldung');
+
+        // --- Ladefunktionen (Lokal) ---
+
+        function zeigeLoader(anzeigen, elementId) {
+            const loader = document.getElementById(elementId);
+            if (loader) loader.style.display = anzeigen ? "block" : "none";
+        }
+
+        function ladeTeilnehmerLokal() {
+            lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+            teilnehmerMapLocal = new Map(lokaleTeilnehmer.map(t => [t.localId, t]));
+            const anzeigbareTeilnehmer = lokaleTeilnehmer
+                .filter(t => t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer auswählen --</option>';
+            anzeigbareTeilnehmer.forEach(teilnehmer => {
+                const option = document.createElement('option');
+                option.value = teilnehmer.localId; // Wichtig: localId verwenden
+                option.textContent = `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim();
+                teilnehmerSelect.appendChild(option);
+            });
+        }
+
+        function ladeTeamsLokal() {
+            lokaleTeams = getLocalData(TEAMS_KEY);
+            teamMapLocal = new Map(lokaleTeams.map(t => [t.localId, t]));
+            const anzeigbareTeams = lokaleTeams
+                .filter(t => t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+
+            teamSelect.innerHTML = '<option value="">-- Team auswählen --</option>';
+            anzeigbareTeams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.localId; // Wichtig: localId verwenden
+                option.textContent = team.teamname || "";
+                teamSelect.appendChild(option);
+            });
+        }
+
+        function ladeErgebnisseLokal() {
+             zeigeLoader(true, 'ladeAnzeigeEinzel');
+             zeigeLoader(true, 'ladeAnzeigeTeam');
+            lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+            // Optional: Nach Datum sortieren (absteigend)
+            lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+            displayErgebnisseLokal();
+            displayTeamErgebnisseLokal();
+            calculateTeamTotalsLokal();
+             zeigeLoader(false, 'ladeAnzeigeEinzel');
+             zeigeLoader(false, 'ladeAnzeigeTeam');
+        }
+
+        // --- Anzeige-Funktionen (Lokal) ---
+
+        function displayErgebnisseLokal() {
+            ergebnisseTabelleBody.innerHTML = '';
+            const einzelErgebnisse = lokaleErgebnisse.filter(e => !e.teamLocalId); // Nur Einzelergebnisse
+
+            if(einzelErgebnisse.length === 0) {
+                ergebnisseTabelleBody.innerHTML = '<tr><td colspan="6">Keine Einzelergebnisse lokal vorhanden.</td></tr>';
+                return;
+            }
+
+            einzelErgebnisse.forEach(ergebnis => {
+                const teilnehmer = teilnehmerMapLocal.get(ergebnis.teilnehmerLocalId);
+                if (!teilnehmer && ergebnis._syncStatus !== 'deleted') {
+                    console.warn(`Teilnehmer für Ergebnis ${ergebnis.localId} (localId: ${ergebnis.teilnehmerLocalId}) nicht gefunden.`);
+                    // Optional: Zeile trotzdem anzeigen, aber mit Hinweis
+                }
+
+                const row = document.createElement('tr');
+                row.dataset.localId = ergebnis.localId; // ID an die Zeile hängen
+
+                let syncStatusText = '';
+                if (ergebnis._syncStatus === 'new') syncStatusText = '<span class="sync-status">(Neu)</span>';
+                else if (ergebnis._syncStatus === 'modified') syncStatusText = '<span class="sync-status">(Geändert)</span>';
+                else if (ergebnis._syncStatus === 'deleted') {
+                    syncStatusText = '<span class="sync-status">(Gelöscht)</span>';
+                    row.classList.add('deleted');
+                }
+
+                const timestamp = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString('de-DE') : 'Unbekannt';
+                const vorname = teilnehmer?.vorname || 'Unbekannt';
+                const name = teilnehmer?.name || '';
+
+                row.innerHTML = `
+                    <td>${vorname}</td>
+                    <td>${name}</td>
+                    <td>${ergebnis.ergebnis}</td>
+                    <td>${timestamp}</td>
+                    <td>${syncStatusText}</td>
+                    <td>
+                        <button class="action-btn edit-btn" data-local-id="${ergebnis.localId}">✎</button>
+                        <button class="action-btn delete-btn" data-local-id="${ergebnis.localId}">🗑</button>
+                    </td>
+                `;
+                ergebnisseTabelleBody.appendChild(row);
+            });
+        }
+
+        function displayTeamErgebnisseLokal() {
+            teamErgebnisseTabelleBody.innerHTML = '';
+            const teamErgebnisseGefiltert = lokaleErgebnisse.filter(e => e.teamLocalId); // Nur Teamergebnisse
+
+             if(teamErgebnisseGefiltert.length === 0) {
+                teamErgebnisseTabelleBody.innerHTML = '<tr><td colspan="7">Keine Teamergebnisse lokal vorhanden.</td></tr>';
+                return;
+            }
+
+            teamErgebnisseGefiltert.forEach(ergebnis => {
+                const team = teamMapLocal.get(ergebnis.teamLocalId);
+                const teilnehmer = teilnehmerMapLocal.get(ergebnis.teilnehmerLocalId);
+
+                if ((!team || !teilnehmer) && ergebnis._syncStatus !== 'deleted') {
+                     console.warn(`Team (${ergebnis.teamLocalId}) oder Teilnehmer (${ergebnis.teilnehmerLocalId}) für Ergebnis ${ergebnis.localId} nicht gefunden.`);
+                }
+
+                const row = document.createElement('tr');
+                 row.dataset.localId = ergebnis.localId; // ID an die Zeile hängen
+
+                let syncStatusText = '';
+                if (ergebnis._syncStatus === 'new') syncStatusText = '<span class="sync-status">(Neu)</span>';
+                else if (ergebnis._syncStatus === 'modified') syncStatusText = '<span class="sync-status">(Geändert)</span>';
+                else if (ergebnis._syncStatus === 'deleted') {
+                    syncStatusText = '<span class="sync-status">(Gelöscht)</span>';
+                    row.classList.add('deleted');
+                }
+
+                const timestamp = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString('de-DE') : 'Unbekannt';
+                const teamname = team?.teamname || 'Unbekanntes Team';
+                const vorname = teilnehmer?.vorname || 'Unbekannt';
+                const name = teilnehmer?.name || '';
+
+                row.innerHTML = `
+                    <td>${teamname}</td>
+                    <td>${vorname}</td>
+                    <td>${name}</td>
+                    <td>${ergebnis.ergebnis}</td>
+                    <td>${timestamp}</td>
+                    <td>${syncStatusText}</td>
+                    <td>
+                        <button class="action-btn edit-btn" data-local-id="${ergebnis.localId}">✎</button>
+                        <button class="action-btn delete-btn" data-local-id="${ergebnis.localId}">🗑</button>
+                    </td>
+                `;
+                teamErgebnisseTabelleBody.appendChild(row);
+            });
+        }
+
+        function calculateTeamTotalsLokal() {
+            const teamGesamt = {};
+
+            // Nur nicht gelöschte Ergebnisse berücksichtigen
+            lokaleErgebnisse.filter(e => e.teamLocalId && e._syncStatus !== 'deleted').forEach(ergebnis => {
+                const teamId = ergebnis.teamLocalId;
+                const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
+
+                if (!teamGesamt[teamId]) {
+                    teamGesamt[teamId] = { summe: 0, anzahl: 0 };
+                }
+                teamGesamt[teamId].summe += ergebnisWert;
+                teamGesamt[teamId].anzahl++;
+            });
+
+            teamTotalsTabelleBody.innerHTML = '';
+            const anzeigbareTeams = lokaleTeams.filter(t => t._syncStatus !== 'deleted');
+
+            if (anzeigbareTeams.length === 0 && Object.keys(teamGesamt).length === 0) {
+                 teamTotalsTabelleBody.innerHTML = '<tr><td colspan="2">Keine Teams oder Ergebnisse vorhanden.</td></tr>';
+                 return;
+            }
+
+            anzeigbareTeams
+                .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""))
+                .forEach(team => {
+                    const total = teamGesamt[team.localId] || { summe: 0, anzahl: 0 };
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${team.teamname || 'Unbenanntes Team'}</td>
+                        <td>${total.summe} (${total.anzahl} Ergebnisse)</td>
+                    `;
+                    teamTotalsTabelleBody.appendChild(row);
+                });
+        }
+
+        // --- CRUD-Operationen (Lokal) ---
+
+        function resetFormular(typ) {
+            editingErgebnisLocalIdInput.value = ''; // Bearbeitungsmodus beenden
+            if (typ === 'einzel' || typ === 'alle') {
+                teilnehmerSelect.value = '';
+                ergebnisEinzelInput.value = '';
+                ergebnisEinzelSpeichernBtn.textContent = 'Ergebnis speichern'; // Text zurücksetzen
+                ergebnisEinzelAbbrechenBtn.style.display = 'none'; // Abbrechen verstecken
+                // Markierung entfernen
+                document.querySelectorAll('#ergebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            }
+            if (typ === 'team' || typ === 'alle') {
+                teamSelect.value = '';
+                teamMitgliedSelect.innerHTML = '<option value="">-- Erst Team auswählen --</option>';
+                teamMitgliedSelect.disabled = true;
+                ergebnisTeamInput.value = '';
+                ergebnisTeamSpeichernBtn.textContent = 'Ergebnis speichern'; // Text zurücksetzen
+                ergebnisTeamAbbrechenBtn.style.display = 'none'; // Abbrechen verstecken
+                 // Markierung entfernen
+                document.querySelectorAll('#teamErgebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            }
+        }
+
+        function saveOrUpdateErgebnisLokal(isTeamContext) {
+            const editingId = editingErgebnisLocalIdInput.value;
+            const isEditing = !!editingId; // True, wenn eine ID im versteckten Feld steht
+            // --- DEBUGGING START ---
+            console.log(`[saveOrUpdate] Start: isEditing=${isEditing}, editingId=${editingId}, isTeamContext=${isTeamContext}`);
+            // --- DEBUGGING END ---
+
+            const teilnehmerLocalId = isTeamContext ? teamMitgliedSelect.value : teilnehmerSelect.value;
+            // Hole teamLocalId nur, wenn wir im Team-Kontext sind, sonst sicherstellen, dass es null ist
+            const teamLocalId = isTeamContext ? teamSelect.value : null;
+            const ergebnisInput = isTeamContext ? ergebnisTeamInput : ergebnisEinzelInput;
+            const ergebnisWert = parseInt(ergebnisInput.value);
+
+            // --- Validierung (unverändert) ---
+            if (!teilnehmerLocalId) {
+                zeigeStatus("Bitte einen Teilnehmer auswählen!", 'fehler', statusMeldung); return;
+            }
+            if (isTeamContext && !teamLocalId) {
+                 zeigeStatus("Bitte ein Team auswählen!", 'fehler', statusMeldung); return;
+            }
+            if (isNaN(ergebnisWert) || ergebnisWert < 0) {
+                zeigeStatus("Bitte ein gültiges, nicht-negatives Ergebnis eingeben!", 'fehler', statusMeldung); return;
+            }
+            // --- DEBUGGING START ---
+            console.log(`[saveOrUpdate] Validated Data: teilnehmerLocalId=${teilnehmerLocalId}, teamLocalId=${teamLocalId}, ergebnisWert=${ergebnisWert}`);
+            // --- DEBUGGING END ---
+
+            // Aktuelle Ergebnisse holen
+            let aktuelleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+            let success = false;
+            let hatSichGeaendert = false; // Variable, um zu prüfen, ob Änderungen vorgenommen wurden
+
+            if (isEditing) {
+                // --- BEARBEITEN ---
+                // --- DEBUGGING START ---
+                console.log(`[saveOrUpdate] Entering EDIT block for ID: ${editingId}`);
+                // --- DEBUGGING END ---
+                const index = aktuelleErgebnisse.findIndex(e => e.localId === editingId);
+                // --- DEBUGGING START ---
+                console.log(`[saveOrUpdate] Found index for editing: ${index}`);
+                // --- DEBUGGING END ---
+
+                if (index > -1) {
+                    // Eintrag gefunden, hole eine Referenz darauf *im Array*
+                    const zuBearbeiten = aktuelleErgebnisse[index];
+                    // --- DEBUGGING START ---
+                    console.log('[saveOrUpdate] Object BEFORE edit:', JSON.stringify(zuBearbeiten));
+                    // --- DEBUGGING END ---
+
+                    // Prüfen, ob sich relevante Daten geändert haben
+                    hatSichGeaendert = ( // Zuweisung zur Variable
+                        zuBearbeiten.ergebnis !== ergebnisWert ||
+                        zuBearbeiten.teilnehmerLocalId !== teilnehmerLocalId ||
+                        // Vergleiche teamLocalId sorgfältig (null vs. ID)
+                        (zuBearbeiten.teamLocalId || null) !== (teamLocalId || null) // Behandle undefined/null konsistent
+                    );
+                    // --- DEBUGGING START ---
+                    console.log(`[saveOrUpdate] Has data changed? ${hatSichGeaendert}`);
+                    // --- DEBUGGING END ---
+
+                    if (hatSichGeaendert) {
+                        // Daten direkt im Objekt im Array aktualisieren
+                        zuBearbeiten.ergebnis = ergebnisWert;
+                        zuBearbeiten.teilnehmerLocalId = teilnehmerLocalId;
+                        // Setze teamLocalId basierend auf dem *aktuellen* Kontext des Speichern-Klicks
+                        zuBearbeiten.teamLocalId = teamLocalId; // Ist null, wenn !isTeamContext
+
+                        // Sync-Status nur ändern, wenn es nicht bereits 'new' ist
+                        if (zuBearbeiten._syncStatus !== 'new') {
+                            zuBearbeiten._syncStatus = 'modified';
+                        }
+                        zuBearbeiten.lastModifiedLocal = new Date().toISOString(); // Optional: Zeitstempel der lokalen Änderung
+                        // --- DEBUGGING START ---
+                        console.log('[saveOrUpdate] Object AFTER edit:', JSON.stringify(zuBearbeiten));
+                        // --- DEBUGGING END ---
+
+                        // Speichere das *gesamte* Array zurück, das jetzt das geänderte Objekt enthält
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                        if(success) {
+                            // --- DEBUGGING START ---
+                            console.log('[saveOrUpdate] Edit successfully saved to localStorage.');
+                            // --- DEBUGGING END ---
+                            zeigeStatus("Änderung lokal gespeichert.", 'erfolg', statusMeldung);
+                        } else {
+                             // --- DEBUGGING START ---
+                             console.error('[saveOrUpdate] ERROR saving edited data to localStorage!');
+                             // --- DEBUGGING END ---
+                        }
+                    } else {
+                        // Keine Änderungen, aber wir betrachten es als "Erfolg", da nichts zu tun war
+                        zeigeStatus("Keine Änderungen festgestellt.", 'info', statusMeldung);
+                        success = true;
+                    }
+                } else {
+                    // Sollte nicht passieren, wenn editingId gesetzt ist, aber sicherheitshalber loggen
+                    // --- DEBUGGING START ---
+                    console.error(`[saveOrUpdate] EDIT FAILED: localId ${editingId} not found in array!`);
+                    // --- DEBUGGING END ---
+                    zeigeStatus("Fehler: Zu bearbeitendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
+                }
+            } else {
+                // --- NEU HINZUFÜGEN --- (Dieser Block sollte nur ausgeführt werden, wenn isEditing false ist)
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] Entering NEW entry block.');
+                // --- DEBUGGING END ---
+                const neuesErgebnis = {
+                    localId: generateLocalId(),
+                    firestoreId: null,
+                    teilnehmerLocalId: teilnehmerLocalId,
+                    teamLocalId: teamLocalId, // Korrekt: Ist null, wenn nicht im Team-Kontext
+                    ergebnis: ergebnisWert,
+                    createdAt: new Date().toISOString(),
+                    _syncStatus: 'new'
+                };
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] Creating new entry object:', JSON.stringify(neuesErgebnis));
+                // --- DEBUGGING END ---
+                aktuelleErgebnisse.push(neuesErgebnis);
+                success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                if(success) {
+                     // --- DEBUGGING START ---
+                     console.log('[saveOrUpdate] New entry successfully saved to localStorage.');
+                     // --- DEBUGGING END ---
+                    zeigeStatus("Neues Ergebnis lokal gespeichert.", 'erfolg', statusMeldung);
+                } else {
+                     // --- DEBUGGING START ---
+                     console.error('[saveOrUpdate] ERROR saving new data to localStorage!');
+                     // --- DEBUGGING END ---
+                }
+            }
+
+            // --- UI Aktualisieren und Formular zurücksetzen (nur bei Erfolg) ---
+            if (success) {
+                // Lokalen Cache und Anzeige aktualisieren
+                lokaleErgebnisse = aktuelleErgebnisse; // Wichtig: Cache mit dem *gespeicherten* Array aktualisieren
+                lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")); // Neu sortieren
+                displayErgebnisseLokal();
+                displayTeamErgebnisseLokal();
+                calculateTeamTotalsLokal();
+                // Formular erst zurücksetzen, *nachdem* alles erfolgreich war
+                resetFormular(isTeamContext ? 'team' : 'einzel');
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] UI updated and form reset.');
+                // --- DEBUGGING END ---
+            } else if (!isEditing) { // Fehler nur anzeigen, wenn Hinzufügen fehlschlug
+                 zeigeStatus("Fehler beim lokalen Speichern des neuen Ergebnisses!", 'fehler', statusMeldung);
+            } else if (isEditing && !success && hatSichGeaendert) { // Fehler nur anzeigen, wenn Bearbeiten fehlschlug UND es Änderungen gab
+                 zeigeStatus("Fehler beim lokalen Speichern der Änderung!", 'fehler', statusMeldung);
+            }
+        }
+
+
+        function deleteErgebnisLokal(localId) {
+            zeigeConfirm("Möchtest du dieses Ergebnis wirklich löschen?", () => {
+                let aktuelleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+                const index = aktuelleErgebnisse.findIndex(e => e.localId === localId);
+
+                if (index > -1) {
+                    let success = false;
+                    if (aktuelleErgebnisse[index]._syncStatus === 'new') {
+                        // Direkt entfernen, wenn noch nie synchronisiert
+                        aktuelleErgebnisse.splice(index, 1);
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                        if(success) zeigeStatus("Ergebnis lokal entfernt (war neu).", 'erfolg', statusMeldung);
+                    } else {
+                        // Zum Löschen markieren für nächsten Sync
+                        aktuelleErgebnisse[index]._syncStatus = 'deleted';
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                         if(success) zeigeStatus("Ergebnis zum Löschen markiert.", 'erfolg', statusMeldung);
+                    }
+
+                    if (success) {
+                        lokaleErgebnisse = aktuelleErgebnisse; // Cache updaten
+                        lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")); // Neu sortieren
+                        displayErgebnisseLokal();
+                        displayTeamErgebnisseLokal();
+                        calculateTeamTotalsLokal();
+                        // Falls das gelöschte Element gerade bearbeitet wurde, Formular zurücksetzen
+                        if (editingErgebnisLocalIdInput.value === localId) {
+                            resetFormular('alle');
+                        }
+                    } else {
+                         zeigeStatus("Fehler beim lokalen Löschen/Markieren des Ergebnisses!", 'fehler', statusMeldung);
+                    }
+                } else {
+                    zeigeStatus("Fehler: Zu löschendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
+                }
+            });
+        }
+
+        function startEditErgebnis(localId) {
+            const ergebnis = lokaleErgebnisse.find(e => e.localId === localId);
+            if (!ergebnis || ergebnis._syncStatus === 'deleted') {
+                zeigeStatus("Ergebnis nicht gefunden oder bereits gelöscht.", 'fehler', statusMeldung);
+                return;
+            }
+
+            resetFormular('alle'); // Erstmal alles zurücksetzen
+            editingErgebnisLocalIdInput.value = localId; // ID speichern
+
+             // Markiere die Zeile visuell
+            document.querySelectorAll('tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            const row = document.querySelector(`tbody tr[data-local-id="${localId}"]`);
+            if(row) row.classList.add('editing');
+
+
+            if (ergebnis.teamLocalId) {
+                // --- Team-Kontext ---
+                // Tab aktivieren
+                document.querySelector('.tab[data-tab="teamSchuetzen"]').click();
+                // Werte setzen
+                teamSelect.value = ergebnis.teamLocalId;
+                // Wichtig: Teammitglieder für das ausgewählte Team laden *bevor* das Mitglied ausgewählt wird
+                updateTeamMitgliederDropdown(ergebnis.teilnehmerLocalId); // Übergib die ID zum Auswählen
+                ergebnisTeamInput.value = ergebnis.ergebnis;
+                ergebnisTeamSpeichernBtn.textContent = 'Änderung speichern'; // <-- Button Text ändern
+                ergebnisTeamAbbrechenBtn.style.display = 'inline-block'; // <-- Abbrechen anzeigen
+                 // Zum Formular scrollen
+                teamSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            } else {
+                // --- Einzel-Kontext ---
+                 // Tab aktivieren
+                document.querySelector('.tab[data-tab="alleSchuetzen"]').click();
+                // Werte setzen
+                teilnehmerSelect.value = ergebnis.teilnehmerLocalId;
+                ergebnisEinzelInput.value = ergebnis.ergebnis;
+                ergebnisEinzelSpeichernBtn.textContent = 'Änderung speichern'; // <-- Button Text ändern
+                ergebnisEinzelAbbrechenBtn.style.display = 'inline-block'; // <-- Abbrechen anzeigen
+                 // Zum Formular scrollen
+                teilnehmerSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }
+
+        // --- Event Listener ---
+
+        // Team-Auswahl ändert -> Mitglieder laden
+        function updateTeamMitgliederDropdown(selectedMitgliedId = null) {
+            const teamId = teamSelect.value;
+            teamMitgliedSelect.innerHTML = '<option value="">-- Laden --</option>';
+            teamMitgliedSelect.disabled = true;
+
+            if (!teamId) {
+                 teamMitgliedSelect.innerHTML = '<option value="">-- Erst Team auswählen --</option>';
+                 return;
+            }
+
+            const team = teamMapLocal.get(teamId);
+            if (!team) {
+                teamMitgliedSelect.innerHTML = '<option value="">Team nicht gefunden</option>';
+                return;
+            }
+
+            const mitgliederLocalIds = team.mitglieder || [];
+            const anzeigbareMitglieder = lokaleTeilnehmer
+                .filter(t => mitgliederLocalIds.includes(t.localId) && t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            if (anzeigbareMitglieder.length === 0) {
+                teamMitgliedSelect.innerHTML = '<option value="">Keine (aktiven) Mitglieder im Team</option>';
+                return;
+            }
+
+             teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+            anzeigbareMitglieder.forEach(mitglied => {
+                const option = document.createElement('option');
+                option.value = mitglied.localId;
+                option.textContent = `${mitglied.vorname || ''} ${mitglied.name || ''}`.trim();
+                if (selectedMitgliedId && mitglied.localId === selectedMitgliedId) {
+                    option.selected = true; // Mitglied vorauswählen (für Edit)
+                }
+                teamMitgliedSelect.appendChild(option);
+            });
+            teamMitgliedSelect.disabled = false;
+        }
+        teamSelect.addEventListener('change', () => updateTeamMitgliederDropdown());
+
+        // Speichern-Buttons
+        ergebnisEinzelSpeichernBtn.addEventListener('click', () => saveOrUpdateErgebnisLokal(false));
+        ergebnisTeamSpeichernBtn.addEventListener('click', () => saveOrUpdateErgebnisLokal(true));
+
+        // Abbrechen-Buttons
+        ergebnisEinzelAbbrechenBtn.addEventListener('click', () => resetFormular('einzel'));
+        ergebnisTeamAbbrechenBtn.addEventListener('click', () => resetFormular('team'));
+
+
+        // Event Delegation für Edit/Delete in Tabellen
+        function handleTableClick(event) {
+             const target = event.target;
+             const editButton = target.closest('.edit-btn');
+             const deleteButton = target.closest('.delete-btn');
+
+             if (editButton) {
+                 const localId = editButton.dataset.localId;
+                 if(localId) startEditErgebnis(localId);
+             } else if (deleteButton) {
+                 const localId = deleteButton.dataset.localId;
+                 if(localId) deleteErgebnisLokal(localId);
+             }
+        }
+        ergebnisseTabelleBody.addEventListener('click', handleTableClick);
+        teamErgebnisseTabelleBody.addEventListener('click', handleTableClick);
+
+
+        // Tab-Umschaltung
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Nur umschalten, wenn nicht im Bearbeitungsmodus oder wenn der User es explizit will
+                if (editingErgebnisLocalIdInput.value !== '') {
+                     // Optional: Nachfrage, ob Bearbeitung abgebrochen werden soll
+                     // zeigeConfirm("Bearbeitung abbrechen?", () => { /* ... umschalten ... */});
+                     // Vorerst: Einfach abbrechen
+                     resetFormular('alle');
+                }
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // --- Initialisierung ---
+        document.addEventListener('DOMContentLoaded', () => {
+             zeigeLoader(true, 'ladeAnzeige');
+            try {
+                ladeTeilnehmerLokal();
+                ladeTeamsLokal();
+                ladeErgebnisseLokal(); // Lädt Ergebnisse und ruft Display-Funktionen auf
+            } catch(error) {
+                console.error("Fehler bei Initialisierung:", error);
+                zeigeStatus("Fehler beim Laden der lokalen Daten.", 'fehler', statusMeldung);
+            } finally {
+                 zeigeLoader(false, 'ladeAnzeige');
+            }
+
+            // Kein Sync-Start hier, das sollte zentral erfolgen.
+            // Optional: Man könnte hier einen Listener für localStorage-Änderungen hinzufügen,
+            // um die Listen zu aktualisieren, wenn Daten in anderen Tabs geändert werden.
+            // window.addEventListener('storage', (event) => { ... });
+        });
+    </script>
+</body>
+</html>
