@@ -11,114 +11,155 @@
         /* Zusätzliche Stile für die Abrechnungsseite */
         #abrechnung main h2 {
             margin-bottom: 20px;
+            color: #333; /* Etwas dunklere Überschrift */
         }
         #summenAnzeige {
-            font-size: 1.2em;
+            font-size: 1.3em; /* Etwas größer */
             font-weight: bold;
-            margin-bottom: 25px;
-            padding: 15px;
-            background-color: #e9ecef;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            display: inline-block; /* Passt sich der Breite des Inhalts an */
+            margin-bottom: 30px; /* Mehr Abstand nach unten */
+            padding: 18px 25px; /* Mehr Innenabstand */
+            background-color: #f8f9fa; /* Hellerer Hintergrund */
+            border: 1px solid #dee2e6; /* Subtilerer Rand */
+            border-radius: 8px; /* Rundere Ecken */
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Leichter Schatten */
         }
         #summenAnzeige span {
-            color: #28a745; /* Grüne Farbe für die Summe */
+            color: #28a745;
+            font-size: 1.1em; /* Summe etwas größer */
         }
         #teamAbrechnungListe {
             list-style: none;
             padding: 0;
             margin: 0;
+            border: 1px solid #dee2e6; /* Rahmen um die ganze Liste */
+            border-radius: 8px; /* Abgerundete Ecken für den Rahmen */
+            overflow: hidden; /* Verhindert, dass Innenränder über den Radius hinausragen */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08); /* Leichter Schatten für die Liste */
         }
         #teamAbrechnungListe li {
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            margin-bottom: -1px; /* Verhindert doppelte Ränder */
+            padding: 15px 20px; /* Mehr Padding */
+            border-bottom: 1px solid #eee; /* Subtilere Trennlinie */
             display: flex;
             justify-content: space-between;
             align-items: center;
             background-color: #fff;
-            flex-wrap: wrap; /* Erlaubt Umbruch bei schmalen Bildschirmen */
-        }
-        #teamAbrechnungListe li:first-child {
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
+            flex-wrap: wrap;
+            transition: background-color 0.2s ease-in-out; /* Hover-Effekt */
         }
         #teamAbrechnungListe li:last-child {
-            border-bottom-left-radius: 5px;
-            border-bottom-right-radius: 5px;
-            margin-bottom: 0;
+            border-bottom: none; /* Keine Linie beim letzten Element */
+        }
+        #teamAbrechnungListe li:hover {
+             background-color: #f8f9fa; /* Leichter Hover-Effekt */
         }
 
         .team-info {
             display: flex;
             align-items: center;
-            flex-grow: 1; /* Nimmt verfügbaren Platz ein */
-            margin-right: 15px; /* Abstand zu den Controls */
+            flex-grow: 1;
+            margin-right: 20px; /* Mehr Abstand */
+            font-size: 1.1em; /* Teamname etwas größer */
+            color: #495057;
+        }
+        .team-info span:first-child { /* Nur der Teamname */
+            font-weight: 500; /* Etwas fetter */
         }
 
         .team-controls {
             display: flex;
             align-items: center;
-            gap: 15px; /* Abstand zwischen den Controls */
+            gap: 25px; /* Größerer Abstand zwischen Controls */
+            flex-shrink: 0; /* Verhindert Schrumpfen der Controls */
         }
 
         .team-controls label {
              display: flex;
              align-items: center;
              cursor: pointer;
-             white-space: nowrap; /* Verhindert Umbruch im Label */
+             white-space: nowrap;
+             font-size: 0.95em; /* Etwas kleinere Schrift für Labels */
+             color: #6c757d; /* Grauton für Labels */
+        }
+        .team-controls label:hover {
+             color: #333; /* Dunkler bei Hover */
         }
 
         .team-controls input[type="checkbox"] {
-            margin-right: 5px; /* Kleinerer Abstand zur Beschriftung */
+            margin-right: 8px; /* Mehr Abstand zur Beschriftung */
             width: 18px;
             height: 18px;
             cursor: pointer;
+            accent-color: #007bff; /* Farbe für Checkbox (moderne Browser) */
         }
 
         .team-controls select {
-            padding: 4px 8px;
+            padding: 6px 10px; /* Mehr Padding im Select */
             cursor: pointer;
-            min-width: 50px; /* Mindestbreite für das Dropdown */
+            min-width: 60px; /* Etwas breiter */
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #fff;
+            margin-left: 5px; /* Kleiner Abstand zum Label */
         }
 
         .team-summe {
             font-weight: bold;
-            margin-left: 15px; /* Abstand zu den Controls */
+            margin-left: 25px; /* Mehr Abstand */
             white-space: nowrap;
-            min-width: 60px; /* Mindestbreite für die Summe */
+            min-width: 75px; /* Etwas breiter für die Summe */
             text-align: right;
+            font-size: 1.1em; /* Summe etwas größer */
+            color: #343a40; /* Dunklerer Farbton */
         }
 
         /* Hervorhebung, wenn Startgeld bezahlt wurde */
-        #teamAbrechnungListe li.startgeld-bezahlt .team-info span {
-             /* Optional: Leichte Hervorhebung, z.B. fetter oder andere Farbe */
-             /* font-weight: bold; */
+        #teamAbrechnungListe li.startgeld-bezahlt .team-info span:first-child {
+             color: #198754; /* Grün, wenn bezahlt */
+             /* font-weight: bold; */ /* Optional: Fett */
+        }
+        #teamAbrechnungListe li.startgeld-bezahlt {
+             /* background-color: #e9f7ef; */ /* Optional: Leichter grüner Hintergrund */
         }
 
-        .sync-status-indicator { /* Wiederverwendet von style.css */
+
+        .sync-status-indicator {
              font-size: 0.8em;
-             margin-left: 8px;
-             color: orange;
+             margin-left: 10px; /* Mehr Abstand */
+             color: #fd7e14; /* Helleres Orange */
              font-style: italic;
+             background-color: #fff3e0; /* Sehr heller Oranger Hintergrund */
+             padding: 2px 5px;
+             border-radius: 3px;
         }
 
-         /* Responsive Anpassung */
+         /* Responsive Anpassung (leicht angepasst) */
          @media (max-width: 768px) {
             #teamAbrechnungListe li {
-                flex-direction: column; /* Untereinander auf kleinen Screens */
-                align-items: flex-start; /* Links ausrichten */
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 15px; /* Etwas weniger Padding auf Mobil */
+            }
+            .team-info {
+                margin-right: 0; /* Kein rechter Rand mehr */
+                margin-bottom: 15px; /* Abstand nach unten */
+                width: 100%; /* Volle Breite */
             }
             .team-controls {
-                margin-top: 10px; /* Abstand nach oben */
-                width: 100%; /* Volle Breite nutzen */
-                justify-content: space-between; /* Controls verteilen */
+                margin-top: 0; /* Kein Abstand nach oben mehr nötig */
+                width: 100%;
+                justify-content: space-between;
+                gap: 15px; /* Etwas weniger Gap */
+                margin-bottom: 10px; /* Abstand zur Summe */
             }
+             .team-controls label {
+                 font-size: 0.9em; /* Noch etwas kleiner auf Mobil */
+             }
             .team-summe {
-                 margin-left: 0; /* Kein linker Rand mehr */
-                 margin-top: 5px; /* Abstand nach oben */
-                 align-self: flex-end; /* Summe rechts ausrichten */
+                 margin-left: 0;
+                 margin-top: 5px;
+                 align-self: flex-end;
+                 font-size: 1.2em; /* Summe auf Mobil größer */
             }
          }
 
