@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <!-- Zentrales Auto-Sync Skript einbinden -->
 <script type="module" src="auto-sync.js" defer></script>
+ <!-- NEU: Skript zum Laden der Navigation einbinden -->
+ <script src="load-nav.js" defer></script>
 
 </head>
 <body>
@@ -14,18 +16,10 @@
         <h1>Schützenverein - Teamzuordnung</h1>
     </header>
     <div class="container">
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
-                <li><a href="teams.html">Teams anlegen</a></li>
-                <li><a href="zuordnung.html" class="aktiv">Teamzuordnung</a></li>
-                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
-                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
-                <li><a href="statistik.html">Statistik</a></li>
-            </ul>
-        </nav>
-        <main>
+ <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+    <div id="navigation-placeholder">
+        <!-- Die Navigation wird hier von load-nav.js eingefügt -->
+    </div>        <main>
             <h2>Teamzuordnung</h2>
             <form id="zuordnungForm">
                 <div id="statusMeldung" class="status"></div>
