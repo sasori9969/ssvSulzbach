@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
+    <script src="load-nav.js" defer></script>
+
     <style>
         /* Zusätzliche Stile für die Abrechnungsseite */
         #abrechnung main h2 {
@@ -170,20 +172,12 @@
         <h1>Schützenverein - Abrechnung</h1>
     </header>
     <div class="container">
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
-                <li><a href="teams.html">Teams anlegen</a></li>
-                <li><a href="zuordnung.html">Teamzuordnung</a></li>
-                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
-                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
-                <li><a href="statistik.html">Statistik</a></li>
-                <li><a href="scheibenErfassen.html">Scheiben erfassen</a></li>
-                <li><a href="abrechnung.html" class="aktiv">Abrechnung</a></li> {/* Aktiv markiert */}
-                <li><a href="adminOnly.html">Admin</a></li>
-            </ul>
-        </nav>
+
+<!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+    <div id="navigation-placeholder">
+        <!-- Die Navigation wird hier von load-nav.js eingefügt -->
+    </div>
+
         <main>
             <h2>Abrechnung Startgeld & Nachlösungen</h2>
 
