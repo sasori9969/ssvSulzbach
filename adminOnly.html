@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Bereich (Offline-First)</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Zusätzliche Stile für Admin-Seite */
+        #lastSyncInfo {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        #manualSyncBtn {
+            margin-right: 10px;
+        }
+        .lade-anzeige { /* Style für Ladeanzeige */
+            display: none; /* Standardmäßig ausblenden */
+            margin-left: 10px;
+            font-style: italic;
+        }
+        .lade-kreis {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block; /* Damit es neben Text steht */
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+         /* Statusmeldungen (wie in ui-utils.js definiert) */
+        .status-meldung {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none; /* Standardmäßig ausblenden */
+        }
+        .status-meldung.erfolg { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-meldung.fehler { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-meldung.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Schützenverein - Admin Bereich</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
+                <li><a href="teams.html">Teams anlegen</a></li>
+                <li><a href="zuordnung.html">Teamzuordnung</a></li>
+                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
+                <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
+                <li><a href="statistik.html">Statistik</a></li>
+                <li><a href="adminOnly.html" class="aktiv">Admin</a></li> <!-- NEU -->
+            </ul>
+        </nav>
+        <main>
+            <h2>Admin Aktionen</h2>
+            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+
+            <div id="lastSyncInfo">
+                Letzte erfolgreiche Synchronisation: <span id="lastSyncTime">Wird geladen...</span>
+            </div>
+
+            <button id="manualSyncBtn" class="btn btn-warning">Manuelle Synchronisation starten</button>
+            <span id="syncSpinner" class="lade-anzeige">
+                <span class="lade-kreis"></span> Synchronisiere...
+            </span>
+
+        </main>
+    </div>
+
+    <script type="module">
+        // UI Utils Imports
+        import { zeigeStatus } from './ui-utils.js';
+
+        // Local Storage Utils Imports
+        import { getLocalData, setLocalData, LAST_SYNC_KEY } from './local-storage-utils.js';
+
+        // WICHTIG: Importiere hier deine ZENTRALE Sync-Funktion!
+        // Beispiel: import { synchronizeAllData } from './sync-manager.js';
+        // Da wir diese noch nicht haben, simulieren wir sie unten.
+        async function synchronizeAllData() {
+            console.log("Simuliere zentrale Synchronisation...");
+            zeigeStatus("Starte manuelle Synchronisation...", 'info', statusMeldung);
+            document.getElementById('syncSpinner').style.display = 'inline-block';
+            document.getElementById('manualSyncBtn').disabled = true;
+
+            // Hier würde der Code stehen, der Teilnehmer, Teams, Ergebnisse etc. prüft
+            // und in einem Batch an Firestore sendet.
+            // z.B. await syncTeilnehmer(); await syncTeams(); await syncErgebnisse();
+
+            // Simuliere eine Verzögerung
+            await new Promise(resolve => setTimeout(resolve, 3000)); // 3 Sekunden warten
+
+            // Simuliere Erfolg oder Fehler (zufällig)
+            const success = Math.random() > 0.3; // 70% Erfolgschance
+
+            if (success) {
+                console.log("Simulierte Synchronisation erfolgreich.");
+                // WICHTIG: Dieser Teil gehört EIGENTLICH in die *echte* synchronizeAllData Funktion!
+                // Nur nach erfolgreichem Commit setzen:
+                const now = new Date().toISOString();
+                setLocalData(LAST_SYNC_KEY, now);
+                displayLastSyncTime(now); // UI direkt aktualisieren
+                // --- Ende des Teils, der in die Sync-Funktion gehört ---
+
+                zeigeStatus("Manuelle Synchronisation erfolgreich abgeschlossen!", 'erfolg', statusMeldung);
+                return true; // Signalisiert Erfolg
+            } else {
+                console.error("Simulierte Synchronisation fehlgeschlagen.");
+                zeigeStatus("Manuelle Synchronisation fehlgeschlagen. Änderungen bleiben lokal.", 'fehler', statusMeldung);
+                return false; // Signalisiert Fehler
+            }
+        }
+        // --- Ende der simulierten Sync-Funktion ---
+
+
+        const lastSyncTimeSpan = document.getElementById('lastSyncTime');
+        const manualSyncBtn = document.getElementById('manualSyncBtn');
+        const syncSpinner = document.getElementById('syncSpinner');
+        const statusMeldung = document.getElementById('statusMeldung');
+
+        // Zeigt den letzten Sync-Zeitstempel an
+        function displayLastSyncTime(timestampString) {
+            if (timestampString) {
+                try {
+                    const date = new Date(timestampString);
+                    lastSyncTimeSpan.textContent = date.toLocaleString('de-DE');
+                } catch (e) {
+                    lastSyncTimeSpan.textContent = "Ungültiges Datum";
+                    console.error("Ungültiges Datum im localStorage für LAST_SYNC_KEY:", timestampString);
+                }
+            } else {
+                lastSyncTimeSpan.textContent = "Noch nie synchronisiert";
+            }
+        }
+
+        // Event Listener für den manuellen Sync Button
+        manualSyncBtn.addEventListener('click', async () => {
+            manualSyncBtn.disabled = true;
+            syncSpinner.style.display = 'inline-block';
+            zeigeStatus("Starte manuelle Synchronisation...", 'info', statusMeldung);
+
+            try {
+                // Rufe die (simulierte) zentrale Sync-Funktion auf
+                const syncSuccess = await synchronizeAllData();
+
+                // Die Aktualisierung des Zeitstempels und der Erfolgsmeldung
+                // passiert jetzt IN der (simulierten) synchronizeAllData Funktion.
+                // Hier behandeln wir nur noch den Abschluss.
+
+                if (!syncSuccess) {
+                    // Fehlermeldung wurde schon in synchronizeAllData angezeigt
+                }
+
+            } catch (error) {
+                console.error("Unerwarteter Fehler während der manuellen Synchronisation:", error);
+                zeigeStatus("Ein unerwarteter Fehler ist aufgetreten.", 'fehler', statusMeldung);
+            } finally {
+                // Spinner ausblenden und Button wieder aktivieren, egal ob Erfolg oder Fehler
+                syncSpinner.style.display = 'none';
+                manualSyncBtn.disabled = false;
+            }
+        });
+
+        // Initialisierung beim Laden der Seite
+        document.addEventListener('DOMContentLoaded', () => {
+            const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+            displayLastSyncTime(lastSyncTimestamp);
+        });
+
+    </script>
+</body>
+</html>

@@ -4,22 +4,43 @@
 export const TEILNEHMER_KEY = 'ssv_teilnehmer';
 export const TEAMS_KEY = 'ssv_teams';
 export const ERGEBNISSE_KEY = 'ssv_ergebnisse';
-// Füge hier bei Bedarf weitere Schlüssel hinzu (z.B. für Zuordnungen)
+export const LAST_SYNC_KEY = 'ssv_last_sync_timestamp'; // Zeitstempel des letzten erfolgreichen Syncs
 
 /**
  * Liest Daten aus dem localStorage.
  * @param {string} key Der Schlüssel, unter dem die Daten gespeichert sind.
- * @returns {Array} Ein Array mit den Daten oder ein leeres Array bei Fehlern oder wenn nichts gefunden wurde.
+ * @returns {any} Die Daten oder null bei Fehlern oder wenn nichts gefunden wurde.
+ *         Gibt für Array-Keys (Teilnehmer, Teams, Ergebnisse) ein leeres Array zurück, wenn der Wert ungültig ist.
  */
 export function getLocalData(key) {
     try {
         const data = localStorage.getItem(key);
-        // Gib leeres Array zurück, wenn nichts da ist oder der Wert ungültig ist
-        return data ? JSON.parse(data) : [];
+        if (data === null) {
+            // Wenn der Schlüssel explizit nicht existiert, null zurückgeben
+            // Außer für unsere Array-Daten, da wollen wir immer ein Array
+            if ([TEILNEHMER_KEY, TEAMS_KEY, ERGEBNISSE_KEY].includes(key)) {
+                return [];
+            }
+            return null;
+        }
+        // Wenn Daten vorhanden sind, versuchen zu parsen
+        const parsedData = JSON.parse(data);
+
+        // Für Array-Keys sicherstellen, dass es ein Array ist
+        if ([TEILNEHMER_KEY, TEAMS_KEY, ERGEBNISSE_KEY].includes(key)) {
+            return Array.isArray(parsedData) ? parsedData : [];
+        }
+
+        // Für andere Schlüssel (wie den Timestamp) den geparsten Wert zurückgeben
+        return parsedData;
+
     } catch (error) {
         console.error(`Fehler beim Lesen von ${key} aus localStorage:`, error);
-        // Im Fehlerfall auch leeres Array zurückgeben, um Folgefehler zu vermeiden
-        return [];
+        // Im Fehlerfall für Arrays leeres Array, sonst null zurückgeben
+        if ([TEILNEHMER_KEY, TEAMS_KEY, ERGEBNISSE_KEY].includes(key)) {
+            return [];
+        }
+        return null;
     }
 }
 
@@ -31,6 +52,11 @@ export function getLocalData(key) {
  */
 export function setLocalData(key, data) {
     try {
+        // Stelle sicher, dass 'undefined' nicht gespeichert wird (führt zu Problemen beim Parsen)
+        if (data === undefined) {
+            console.warn(`Versuch, 'undefined' für Schlüssel ${key} zu speichern. Speichere stattdessen 'null'.`);
+            data = null;
+        }
         localStorage.setItem(key, JSON.stringify(data));
         return true;
     } catch (error) {
@@ -59,15 +85,21 @@ export function generateLocalId() {
  * @returns {Array<Object>} Das bereinigte Array.
  */
 export function finalizeLocalItems(items) {
+    if (!Array.isArray(items)) {
+        console.error("finalizeLocalItems erwartet ein Array, erhielt:", items);
+        return []; // Leeres Array im Fehlerfall zurückgeben
+    }
     return items
-        .filter(item => !item._toBeRemoved) // Entferne als gelöscht markierte Items
+        .filter(item => item && !item._toBeRemoved) // Entferne als gelöscht markierte Items und null/undefined
         .map(item => {
-            if (item._pendingSync) {
-                item._syncStatus = 'synced'; // Setze Status auf 'synced'
-                delete item._pendingSync;   // Entferne Hilfsflag
+            // Erstelle eine Kopie, um das Original nicht direkt zu mutieren (falls es noch woanders verwendet wird)
+            const newItem = { ...item };
+            if (newItem._pendingSync) {
+                newItem._syncStatus = 'synced'; // Setze Status auf 'synced'
+                delete newItem._pendingSync;   // Entferne Hilfsflag
             }
             // Entferne sicherheitshalber auch _toBeRemoved, falls es noch existiert
-            delete item._toBeRemoved;
-            return item;
+            delete newItem._toBeRemoved;
+            return newItem;
         });
 }
