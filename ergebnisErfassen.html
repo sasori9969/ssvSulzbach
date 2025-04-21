@@ -3,9 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ergebnisse erfassen</title>
+    <title>Ergebnisse erfassen (Offline-First)</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Zusätzliche Stile für Edit/Delete Buttons und Status */
+        .action-btn {
+            padding: 2px 5px;
+            font-size: 0.8em;
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .edit-btn { background-color: #ffc107; border: none; border-radius: 3px; }
+        .delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 3px; }
+        .sync-status { font-size: 0.8em; color: orange; margin-left: 10px; font-style: italic; }
+        tr.deleted { text-decoration: line-through; color: grey; }
+        tr.deleted .action-btn { display: none; }
+        tr.editing { background-color: #fff3cd; } /* Hervorhebung für Bearbeitung */
 
+        /* Statusmeldungen (wie in ui-utils.js definiert) */
+        .status-meldung {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none; /* Standardmäßig ausblenden */
+        }
+        .status-meldung.erfolg {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-meldung.fehler {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-meldung.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+         /* Ladeanzeige */
+        .lade-anzeige { display: none; text-align: center; padding: 15px; }
+        .lade-kreis { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto 5px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
     <header>
@@ -18,28 +59,40 @@
                 <li><a href="teilnehmer.html">Teilnehmer anlegen</a></li>
                 <li><a href="teams.html">Teams anlegen</a></li>
                 <li><a href="zuordnung.html">Teamzuordnung</a></li>
-                <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
+                <li><a href="ergebnisErfassen.html" class="aktiv">Ergebnisse erfassen</a></li>
                 <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
                 <li><a href="statistik.html">Statistik</a></li>
             </ul>
         </nav>
         <main>
             <h2>Ergebnisse erfassen</h2>
-            
+            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+             <div id="ladeAnzeige" class="lade-anzeige">
+                 <div class="lade-kreis"></div>
+                 <p>Lade Daten...</p>
+             </div>
+             <!-- Verstecktes Feld zum Speichern der ID des zu bearbeitenden Eintrags -->
+             <input type="hidden" id="editingErgebnisLocalId" value="">
+
             <div class="tabs">
                 <div class="tab active" data-tab="alleSchuetzen">Alle Teilnehmer</div>
                 <div class="tab" data-tab="teamSchuetzen">Nach Team</div>
             </div>
-            
+
             <div id="alleSchuetzen" class="tab-content active">
-                <h3>Ergebnis für einzelnen Teilnehmer erfassen</h3>
+                <h3>Ergebnis für einzelnen Teilnehmer erfassen/bearbeiten</h3>
                 <select id="teilnehmerSelect">
                     <option value="">-- Teilnehmer auswählen --</option>
                 </select>
                 <input type="number" id="ergebnisEinzel" placeholder="Ergebnis eingeben" min="0">
-                <button id="ergebnisEinzelSpeichern">Ergebnis speichern</button>
-                
-                <h3>Letzte Ergebnisse</h3>
+                <button id="ergebnisEinzelSpeichern" class="btn btn-primary">Ergebnis speichern</button>
+                <button id="ergebnisEinzelAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+
+                <h3>Letzte Ergebnisse (Lokal)</h3>
+                 <div id="ladeAnzeigeEinzel" class="lade-anzeige">
+                     <div class="lade-kreis"></div>
+                     <p>Lade Ergebnisse...</p>
+                 </div>
                 <table id="ergebnisseTabelle">
                     <thead>
                         <tr>
@@ -47,14 +100,16 @@
                             <th>Name</th>
                             <th>Ergebnis</th>
                             <th>Datum</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
-            
+
             <div id="teamSchuetzen" class="tab-content">
-                <h3>Ergebnis für Teammitglied erfassen</h3>
+                <h3>Ergebnis für Teammitglied erfassen/bearbeiten</h3>
                 <select id="teamSelect">
                     <option value="">-- Team auswählen --</option>
                 </select>
@@ -62,9 +117,14 @@
                     <option value="">-- Erst Team auswählen --</option>
                 </select>
                 <input type="number" id="ergebnisTeam" placeholder="Ergebnis eingeben" min="0">
-                <button id="ergebnisTeamSpeichern">Ergebnis speichern</button>
-                
-                <h3>Team-Ergebnisse</h3>
+                <button id="ergebnisTeamSpeichern" class="btn btn-primary">Ergebnis speichern</button>
+                 <button id="ergebnisTeamAbbrechen" class="btn" style="display: none;">Abbrechen</button>
+
+                <h3>Team-Ergebnisse (Lokal)</h3>
+                 <div id="ladeAnzeigeTeam" class="lade-anzeige">
+                     <div class="lade-kreis"></div>
+                     <p>Lade Team-Ergebnisse...</p>
+                 </div>
                 <table id="teamErgebnisseTabelle">
                     <thead>
                         <tr>
@@ -73,13 +133,15 @@
                             <th>Name</th>
                             <th>Ergebnis</th>
                             <th>Datum</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
-                
+
                 <div id="teamTotals">
-                    <h3>Team-Gesamtergebnisse</h3>
+                    <h3>Team-Gesamtergebnisse (Lokal)</h3>
                     <table id="teamTotalsTabelle">
                         <thead>
                             <tr>
@@ -91,302 +153,510 @@
                     </table>
                 </div>
             </div>
+             <!-- Confirm Modal (aus ui-utils.js) -->
+            <div id="confirmModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+                    <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+                    <button id="confirmModalCancel" class="btn">Abbrechen</button>
+                </div>
+            </div>
         </main>
     </div>
-    
+
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { 
-            getFirestore, 
-            collection, 
-            addDoc, 
-            doc, 
-            getDoc, 
-            getDocs, 
-            serverTimestamp, 
-            onSnapshot, 
-            query, 
-            orderBy 
-        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-    
-        import { db } from './firebase-config.js'; // Stelle sicher, dass der Pfad stimmt!
-    
-        let teilnehmerCache = [];
-        let teamsCache = [];
-        let ergebnisseCache = [];
-    
-        async function loadTeilnehmer() {
-            if (teilnehmerCache.length === 0) {
-                const q = query(collection(db, "teilnehmer"), orderBy("name"));
-                const snapshot = await getDocs(q);
-                teilnehmerCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            }
-            const teilnehmerSelect = document.getElementById('teilnehmerSelect');
+        // Firebase Imports (nur noch für Sync benötigt, hier auskommentiert)
+        // import { db } from './firebase-config.js';
+        // import { collection, doc, serverTimestamp, writeBatch, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        // UI Utils Imports
+        import { zeigeStatus, zeigeConfirm } from './ui-utils.js';
+
+        // Local Storage Utils Imports
+        import {
+            getLocalData,
+            setLocalData,
+            generateLocalId,
+            finalizeLocalItems, // Wird für Sync gebraucht, hier noch nicht direkt
+            TEILNEHMER_KEY,
+            TEAMS_KEY,
+            ERGEBNISSE_KEY // NEU: Key für Ergebnisse
+        } from './local-storage-utils.js';
+
+        // Globale Variablen / Cache
+        let lokaleTeilnehmer = [];
+        let lokaleTeams = [];
+        let lokaleErgebnisse = [];
+        let teilnehmerMapLocal = new Map(); // Für schnellen Namens-Lookup
+        let teamMapLocal = new Map();       // Für schnellen Teamnamen-Lookup
+
+        // DOM Elemente
+        const teilnehmerSelect = document.getElementById('teilnehmerSelect');
+        const ergebnisEinzelInput = document.getElementById('ergebnisEinzel');
+        const ergebnisEinzelSpeichernBtn = document.getElementById('ergebnisEinzelSpeichern');
+        const ergebnisEinzelAbbrechenBtn = document.getElementById('ergebnisEinzelAbbrechen');
+        const ergebnisseTabelleBody = document.querySelector('#ergebnisseTabelle tbody');
+
+        const teamSelect = document.getElementById('teamSelect');
+        const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
+        const ergebnisTeamInput = document.getElementById('ergebnisTeam');
+        const ergebnisTeamSpeichernBtn = document.getElementById('ergebnisTeamSpeichern');
+        const ergebnisTeamAbbrechenBtn = document.getElementById('ergebnisTeamAbbrechen');
+        const teamErgebnisseTabelleBody = document.querySelector('#teamErgebnisseTabelle tbody');
+        const teamTotalsTabelleBody = document.querySelector('#teamTotalsTabelle tbody');
+
+        const editingErgebnisLocalIdInput = document.getElementById('editingErgebnisLocalId');
+        const statusMeldung = document.getElementById('statusMeldung');
+
+        // --- Ladefunktionen (Lokal) ---
+
+        function zeigeLoader(anzeigen, elementId) {
+            const loader = document.getElementById(elementId);
+            if (loader) loader.style.display = anzeigen ? "block" : "none";
+        }
+
+        function ladeTeilnehmerLokal() {
+            lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+            teilnehmerMapLocal = new Map(lokaleTeilnehmer.map(t => [t.localId, t]));
+            const anzeigbareTeilnehmer = lokaleTeilnehmer
+                .filter(t => t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
             teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer auswählen --</option>';
-            teilnehmerCache.forEach(teilnehmer => {
+            anzeigbareTeilnehmer.forEach(teilnehmer => {
                 const option = document.createElement('option');
-                option.value = teilnehmer.id;
+                option.value = teilnehmer.localId; // Wichtig: localId verwenden
                 option.textContent = `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim();
                 teilnehmerSelect.appendChild(option);
             });
         }
-    
-        async function loadTeams() {
-            if (teamsCache.length === 0) {
-                const q = query(collection(db, "teams"), orderBy("teamname"));
-                const snapshot = await getDocs(q);
-                teamsCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            }
-            const teamSelect = document.getElementById('teamSelect');
+
+        function ladeTeamsLokal() {
+            lokaleTeams = getLocalData(TEAMS_KEY);
+            teamMapLocal = new Map(lokaleTeams.map(t => [t.localId, t]));
+            const anzeigbareTeams = lokaleTeams
+                .filter(t => t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+
             teamSelect.innerHTML = '<option value="">-- Team auswählen --</option>';
-            teamsCache.forEach(team => {
+            anzeigbareTeams.forEach(team => {
                 const option = document.createElement('option');
-                option.value = team.id;
+                option.value = team.localId; // Wichtig: localId verwenden
                 option.textContent = team.teamname || "";
                 teamSelect.appendChild(option);
             });
         }
-    
-        document.getElementById('teamSelect').addEventListener('change', async function() {
-            const teamId = this.value;
-            const teamMitgliedSelect = document.getElementById('teamMitgliedSelect');
-    
-            teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+
+        function ladeErgebnisseLokal() {
+             zeigeLoader(true, 'ladeAnzeigeEinzel');
+             zeigeLoader(true, 'ladeAnzeigeTeam');
+            lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+            // Optional: Nach Datum sortieren (absteigend)
+            lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+            displayErgebnisseLokal();
+            displayTeamErgebnisseLokal();
+            calculateTeamTotalsLokal();
+             zeigeLoader(false, 'ladeAnzeigeEinzel');
+             zeigeLoader(false, 'ladeAnzeigeTeam');
+        }
+
+        // --- Anzeige-Funktionen (Lokal) ---
+
+        function displayErgebnisseLokal() {
+            ergebnisseTabelleBody.innerHTML = '';
+            const einzelErgebnisse = lokaleErgebnisse.filter(e => !e.teamLocalId); // Nur Einzelergebnisse
+
+            if(einzelErgebnisse.length === 0) {
+                ergebnisseTabelleBody.innerHTML = '<tr><td colspan="6">Keine Einzelergebnisse lokal vorhanden.</td></tr>';
+                return;
+            }
+
+            einzelErgebnisse.forEach(ergebnis => {
+                const teilnehmer = teilnehmerMapLocal.get(ergebnis.teilnehmerLocalId);
+                if (!teilnehmer && ergebnis._syncStatus !== 'deleted') {
+                    console.warn(`Teilnehmer für Ergebnis ${ergebnis.localId} (localId: ${ergebnis.teilnehmerLocalId}) nicht gefunden.`);
+                    // Optional: Zeile trotzdem anzeigen, aber mit Hinweis
+                }
+
+                const row = document.createElement('tr');
+                row.dataset.localId = ergebnis.localId; // ID an die Zeile hängen
+
+                let syncStatusText = '';
+                if (ergebnis._syncStatus === 'new') syncStatusText = '<span class="sync-status">(Neu)</span>';
+                else if (ergebnis._syncStatus === 'modified') syncStatusText = '<span class="sync-status">(Geändert)</span>';
+                else if (ergebnis._syncStatus === 'deleted') {
+                    syncStatusText = '<span class="sync-status">(Gelöscht)</span>';
+                    row.classList.add('deleted');
+                }
+
+                const timestamp = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString('de-DE') : 'Unbekannt';
+                const vorname = teilnehmer?.vorname || 'Unbekannt';
+                const name = teilnehmer?.name || '';
+
+                row.innerHTML = `
+                    <td>${vorname}</td>
+                    <td>${name}</td>
+                    <td>${ergebnis.ergebnis}</td>
+                    <td>${timestamp}</td>
+                    <td>${syncStatusText}</td>
+                    <td>
+                        <button class="action-btn edit-btn" data-local-id="${ergebnis.localId}">✎</button>
+                        <button class="action-btn delete-btn" data-local-id="${ergebnis.localId}">🗑</button>
+                    </td>
+                `;
+                ergebnisseTabelleBody.appendChild(row);
+            });
+        }
+
+        function displayTeamErgebnisseLokal() {
+            teamErgebnisseTabelleBody.innerHTML = '';
+            const teamErgebnisseGefiltert = lokaleErgebnisse.filter(e => e.teamLocalId); // Nur Teamergebnisse
+
+             if(teamErgebnisseGefiltert.length === 0) {
+                teamErgebnisseTabelleBody.innerHTML = '<tr><td colspan="7">Keine Teamergebnisse lokal vorhanden.</td></tr>';
+                return;
+            }
+
+            teamErgebnisseGefiltert.forEach(ergebnis => {
+                const team = teamMapLocal.get(ergebnis.teamLocalId);
+                const teilnehmer = teilnehmerMapLocal.get(ergebnis.teilnehmerLocalId);
+
+                if ((!team || !teilnehmer) && ergebnis._syncStatus !== 'deleted') {
+                     console.warn(`Team (${ergebnis.teamLocalId}) oder Teilnehmer (${ergebnis.teilnehmerLocalId}) für Ergebnis ${ergebnis.localId} nicht gefunden.`);
+                }
+
+                const row = document.createElement('tr');
+                 row.dataset.localId = ergebnis.localId; // ID an die Zeile hängen
+
+                let syncStatusText = '';
+                if (ergebnis._syncStatus === 'new') syncStatusText = '<span class="sync-status">(Neu)</span>';
+                else if (ergebnis._syncStatus === 'modified') syncStatusText = '<span class="sync-status">(Geändert)</span>';
+                else if (ergebnis._syncStatus === 'deleted') {
+                    syncStatusText = '<span class="sync-status">(Gelöscht)</span>';
+                    row.classList.add('deleted');
+                }
+
+                const timestamp = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString('de-DE') : 'Unbekannt';
+                const teamname = team?.teamname || 'Unbekanntes Team';
+                const vorname = teilnehmer?.vorname || 'Unbekannt';
+                const name = teilnehmer?.name || '';
+
+                row.innerHTML = `
+                    <td>${teamname}</td>
+                    <td>${vorname}</td>
+                    <td>${name}</td>
+                    <td>${ergebnis.ergebnis}</td>
+                    <td>${timestamp}</td>
+                    <td>${syncStatusText}</td>
+                    <td>
+                        <button class="action-btn edit-btn" data-local-id="${ergebnis.localId}">✎</button>
+                        <button class="action-btn delete-btn" data-local-id="${ergebnis.localId}">🗑</button>
+                    </td>
+                `;
+                teamErgebnisseTabelleBody.appendChild(row);
+            });
+        }
+
+        function calculateTeamTotalsLokal() {
+            const teamGesamt = {};
+
+            // Nur nicht gelöschte Ergebnisse berücksichtigen
+            lokaleErgebnisse.filter(e => e.teamLocalId && e._syncStatus !== 'deleted').forEach(ergebnis => {
+                const teamId = ergebnis.teamLocalId;
+                const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
+
+                if (!teamGesamt[teamId]) {
+                    teamGesamt[teamId] = { summe: 0, anzahl: 0 };
+                }
+                teamGesamt[teamId].summe += ergebnisWert;
+                teamGesamt[teamId].anzahl++;
+            });
+
+            teamTotalsTabelleBody.innerHTML = '';
+            const anzeigbareTeams = lokaleTeams.filter(t => t._syncStatus !== 'deleted');
+
+            if (anzeigbareTeams.length === 0 && Object.keys(teamGesamt).length === 0) {
+                 teamTotalsTabelleBody.innerHTML = '<tr><td colspan="2">Keine Teams oder Ergebnisse vorhanden.</td></tr>';
+                 return;
+            }
+
+            anzeigbareTeams
+                .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""))
+                .forEach(team => {
+                    const total = teamGesamt[team.localId] || { summe: 0, anzahl: 0 };
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${team.teamname || 'Unbenanntes Team'}</td>
+                        <td>${total.summe} (${total.anzahl} Ergebnisse)</td>
+                    `;
+                    teamTotalsTabelleBody.appendChild(row);
+                });
+        }
+
+        // --- CRUD-Operationen (Lokal) ---
+
+        function resetFormular(typ) {
+            editingErgebnisLocalIdInput.value = ''; // Bearbeitungsmodus beenden
+            if (typ === 'einzel' || typ === 'alle') {
+                teilnehmerSelect.value = '';
+                ergebnisEinzelInput.value = '';
+                ergebnisEinzelSpeichernBtn.textContent = 'Ergebnis speichern';
+                ergebnisEinzelAbbrechenBtn.style.display = 'none';
+                // Markierung entfernen
+                document.querySelectorAll('#ergebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            }
+            if (typ === 'team' || typ === 'alle') {
+                teamSelect.value = '';
+                teamMitgliedSelect.innerHTML = '<option value="">-- Erst Team auswählen --</option>';
+                teamMitgliedSelect.disabled = true;
+                ergebnisTeamInput.value = '';
+                ergebnisTeamSpeichernBtn.textContent = 'Ergebnis speichern';
+                ergebnisTeamAbbrechenBtn.style.display = 'none';
+                 // Markierung entfernen
+                document.querySelectorAll('#teamErgebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            }
+        }
+
+        function saveOrUpdateErgebnisLokal(isTeamContext) {
+            const editingId = editingErgebnisLocalIdInput.value;
+            const isEditing = !!editingId;
+
+            const teilnehmerLocalId = isTeamContext ? teamMitgliedSelect.value : teilnehmerSelect.value;
+            const teamLocalId = isTeamContext ? teamSelect.value : null; // Nur bei Team relevant
+            const ergebnisInput = isTeamContext ? ergebnisTeamInput : ergebnisEinzelInput;
+            const ergebnisWert = parseInt(ergebnisInput.value);
+
+            // Validierung
+            if (!teilnehmerLocalId) {
+                zeigeStatus("Bitte einen Teilnehmer auswählen!", 'fehler', statusMeldung); return;
+            }
+            if (isTeamContext && !teamLocalId) {
+                 zeigeStatus("Bitte ein Team auswählen!", 'fehler', statusMeldung); return;
+            }
+            if (isNaN(ergebnisWert) || ergebnisWert < 0) {
+                zeigeStatus("Bitte ein gültiges, nicht-negatives Ergebnis eingeben!", 'fehler', statusMeldung); return;
+            }
+
+            // Aktuelle Ergebnisse holen
+            let aktuelleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+            let success = false;
+
+            if (isEditing) {
+                // --- Bearbeiten ---
+                const index = aktuelleErgebnisse.findIndex(e => e.localId === editingId);
+                if (index > -1) {
+                    const zuBearbeiten = aktuelleErgebnisse[index];
+                    // Prüfen, ob sich was geändert hat (optional, aber gut)
+                    if (zuBearbeiten.ergebnis !== ergebnisWert || zuBearbeiten.teilnehmerLocalId !== teilnehmerLocalId || zuBearbeiten.teamLocalId !== teamLocalId) {
+                         zuBearbeiten.ergebnis = ergebnisWert;
+                         zuBearbeiten.teilnehmerLocalId = teilnehmerLocalId;
+                         if(isTeamContext) zuBearbeiten.teamLocalId = teamLocalId;
+                         // Status nur ändern, wenn nicht schon 'new'
+                         if (zuBearbeiten._syncStatus !== 'new') {
+                             zuBearbeiten._syncStatus = 'modified';
+                         }
+                         zuBearbeiten.lastModifiedLocal = new Date().toISOString(); // Optional
+                         success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                         if(success) zeigeStatus("Änderung lokal gespeichert.", 'erfolg', statusMeldung);
+                    } else {
+                        zeigeStatus("Keine Änderungen festgestellt.", 'info', statusMeldung);
+                        success = true; // Keine Änderung, aber "erfolgreich" im Sinne von abgeschlossen
+                    }
+                } else {
+                     zeigeStatus("Fehler: Zu bearbeitendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
+                }
+            } else {
+                // --- Neu Hinzufügen ---
+                const neuesErgebnis = {
+                    localId: generateLocalId(),
+                    firestoreId: null,
+                    teilnehmerLocalId: teilnehmerLocalId,
+                    teamLocalId: teamLocalId, // Ist null, wenn nicht im Team-Kontext
+                    ergebnis: ergebnisWert,
+                    createdAt: new Date().toISOString(),
+                    _syncStatus: 'new'
+                };
+                aktuelleErgebnisse.push(neuesErgebnis);
+                success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                 if(success) zeigeStatus("Neues Ergebnis lokal gespeichert.", 'erfolg', statusMeldung);
+            }
+
+            if (success) {
+                lokaleErgebnisse = aktuelleErgebnisse; // Lokalen Cache updaten
+                lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")); // Neu sortieren
+                displayErgebnisseLokal();
+                displayTeamErgebnisseLokal();
+                calculateTeamTotalsLokal();
+                resetFormular(isTeamContext ? 'team' : 'einzel');
+            } else if (!isEditing) { // Nur bei Fehler beim Hinzufügen
+                 zeigeStatus("Fehler beim lokalen Speichern des neuen Ergebnisses!", 'fehler', statusMeldung);
+            } else if (isEditing && !success) { // Nur bei Fehler beim Bearbeiten
+                 zeigeStatus("Fehler beim lokalen Speichern der Änderung!", 'fehler', statusMeldung);
+            }
+        }
+
+        function deleteErgebnisLokal(localId) {
+            zeigeConfirm("Möchtest du dieses Ergebnis wirklich löschen?", () => {
+                let aktuelleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+                const index = aktuelleErgebnisse.findIndex(e => e.localId === localId);
+
+                if (index > -1) {
+                    let success = false;
+                    if (aktuelleErgebnisse[index]._syncStatus === 'new') {
+                        // Direkt entfernen, wenn noch nie synchronisiert
+                        aktuelleErgebnisse.splice(index, 1);
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                        if(success) zeigeStatus("Ergebnis lokal entfernt (war neu).", 'erfolg', statusMeldung);
+                    } else {
+                        // Zum Löschen markieren für nächsten Sync
+                        aktuelleErgebnisse[index]._syncStatus = 'deleted';
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                         if(success) zeigeStatus("Ergebnis zum Löschen markiert.", 'erfolg', statusMeldung);
+                    }
+
+                    if (success) {
+                        lokaleErgebnisse = aktuelleErgebnisse; // Cache updaten
+                        lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")); // Neu sortieren
+                        displayErgebnisseLokal();
+                        displayTeamErgebnisseLokal();
+                        calculateTeamTotalsLokal();
+                        // Falls das gelöschte Element gerade bearbeitet wurde, Formular zurücksetzen
+                        if (editingErgebnisLocalIdInput.value === localId) {
+                            resetFormular('alle');
+                        }
+                    } else {
+                         zeigeStatus("Fehler beim lokalen Löschen/Markieren des Ergebnisses!", 'fehler', statusMeldung);
+                    }
+                } else {
+                    zeigeStatus("Fehler: Zu löschendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
+                }
+            });
+        }
+
+        function startEditErgebnis(localId) {
+            const ergebnis = lokaleErgebnisse.find(e => e.localId === localId);
+            if (!ergebnis || ergebnis._syncStatus === 'deleted') {
+                zeigeStatus("Ergebnis nicht gefunden oder bereits gelöscht.", 'fehler', statusMeldung);
+                return;
+            }
+
+            resetFormular('alle'); // Erstmal alles zurücksetzen
+            editingErgebnisLocalIdInput.value = localId; // ID speichern
+
+             // Markiere die Zeile visuell
+            document.querySelectorAll('tbody tr.editing').forEach(r => r.classList.remove('editing'));
+            const row = document.querySelector(`tbody tr[data-local-id="${localId}"]`);
+            if(row) row.classList.add('editing');
+
+
+            if (ergebnis.teamLocalId) {
+                // --- Team-Kontext ---
+                // Tab aktivieren
+                document.querySelector('.tab[data-tab="teamSchuetzen"]').click();
+                // Werte setzen
+                teamSelect.value = ergebnis.teamLocalId;
+                // Wichtig: Teammitglieder für das ausgewählte Team laden *bevor* das Mitglied ausgewählt wird
+                updateTeamMitgliederDropdown(ergebnis.teilnehmerLocalId); // Übergib die ID zum Auswählen
+                ergebnisTeamInput.value = ergebnis.ergebnis;
+                ergebnisTeamSpeichernBtn.textContent = 'Änderung speichern';
+                ergebnisTeamAbbrechenBtn.style.display = 'inline-block';
+                 // Zum Formular scrollen
+                teamSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            } else {
+                // --- Einzel-Kontext ---
+                 // Tab aktivieren
+                document.querySelector('.tab[data-tab="alleSchuetzen"]').click();
+                // Werte setzen
+                teilnehmerSelect.value = ergebnis.teilnehmerLocalId;
+                ergebnisEinzelInput.value = ergebnis.ergebnis;
+                ergebnisEinzelSpeichernBtn.textContent = 'Änderung speichern';
+                ergebnisEinzelAbbrechenBtn.style.display = 'inline-block';
+                 // Zum Formular scrollen
+                teilnehmerSelect.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }
+
+        // --- Event Listener ---
+
+        // Team-Auswahl ändert -> Mitglieder laden
+        function updateTeamMitgliederDropdown(selectedMitgliedId = null) {
+            const teamId = teamSelect.value;
+            teamMitgliedSelect.innerHTML = '<option value="">-- Laden --</option>';
             teamMitgliedSelect.disabled = true;
-    
-            if (!teamId) return;
-    
-            const team = teamsCache.find(t => t.id === teamId);
+
+            if (!teamId) {
+                 teamMitgliedSelect.innerHTML = '<option value="">-- Erst Team auswählen --</option>';
+                 return;
+            }
+
+            const team = teamMapLocal.get(teamId);
             if (!team) {
                 teamMitgliedSelect.innerHTML = '<option value="">Team nicht gefunden</option>';
                 return;
             }
-    
-            const mitgliederIds = team.mitglieder || [];
-    
-            if (mitgliederIds.length === 0) {
-                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
+
+            const mitgliederLocalIds = team.mitglieder || [];
+            const anzeigbareMitglieder = lokaleTeilnehmer
+                .filter(t => mitgliederLocalIds.includes(t.localId) && t._syncStatus !== 'deleted')
+                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            if (anzeigbareMitglieder.length === 0) {
+                teamMitgliedSelect.innerHTML = '<option value="">Keine (aktiven) Mitglieder im Team</option>';
                 return;
             }
-    
-            const mitglieder = teilnehmerCache.filter(teilnehmer => mitgliederIds.includes(teilnehmer.id));
-    
-            if (mitglieder.length === 0) {
-                teamMitgliedSelect.innerHTML = '<option value="">Keine Mitglieder im Team</option>';
-                return;
-            }
-    
-            mitglieder.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    
-            mitglieder.forEach(mitglied => {
+
+             teamMitgliedSelect.innerHTML = '<option value="">-- Teammitglied auswählen --</option>';
+            anzeigbareMitglieder.forEach(mitglied => {
                 const option = document.createElement('option');
-                option.value = mitglied.id;
-                option.textContent = `${mitglied.vorname} ${mitglied.name}`.trim();
+                option.value = mitglied.localId;
+                option.textContent = `${mitglied.vorname || ''} ${mitglied.name || ''}`.trim();
+                if (selectedMitgliedId && mitglied.localId === selectedMitgliedId) {
+                    option.selected = true; // Mitglied vorauswählen (für Edit)
+                }
                 teamMitgliedSelect.appendChild(option);
             });
-    
             teamMitgliedSelect.disabled = false;
-        });
-    
-        document.getElementById('ergebnisEinzelSpeichern').addEventListener('click', async function() {
-            const teilnehmerId = document.getElementById('teilnehmerSelect').value;
-            const ergebnis = parseInt(document.getElementById('ergebnisEinzel').value);
-    
-            if (!teilnehmerId) {
-                alert('Bitte einen Teilnehmer auswählen!');
-                return;
-            }
-    
-            if (isNaN(ergebnis)) {
-                alert('Bitte ein gültiges Ergebnis eingeben!');
-                return;
-            }
-    
-            try {
-                await addDoc(collection(db, "ergebnisse"), {
-                    teilnehmerId: teilnehmerId,
-                    ergebnis: ergebnis,
-                    timestamp: serverTimestamp()
-                });
-    
-                alert('Ergebnis gespeichert!');
-                document.getElementById('ergebnisEinzel').value = '';
-            } catch (error) {
-                alert("Fehler beim Speichern: " + error.message);
-            }
-        });
-    
-        document.getElementById('ergebnisTeamSpeichern').addEventListener('click', async function() {
-            const teamId = document.getElementById('teamSelect').value;
-            const teilnehmerId = document.getElementById('teamMitgliedSelect').value;
-            const ergebnis = parseInt(document.getElementById('ergebnisTeam').value);
-    
-            if (!teamId) {
-                alert('Bitte ein Team auswählen!');
-                return;
-            }
-    
-            if (!teilnehmerId) {
-                alert('Bitte einen Teilnehmer auswählen!');
-                return;
-            }
-    
-            if (isNaN(ergebnis)) {
-                alert('Bitte ein gültiges Ergebnis eingeben!');
-                return;
-            }
-    
-            try {
-                await addDoc(collection(db, "ergebnisse"), {
-                    teamId: teamId,
-                    teilnehmerId: teilnehmerId,
-                    ergebnis: ergebnis,
-                    timestamp: serverTimestamp()
-                });
-    
-                alert('Ergebnis gespeichert!');
-                document.getElementById('ergebnisTeam').value = '';
-                calculateTeamTotals();
-            } catch (error) {
-                alert("Fehler beim Speichern: " + error.message);
-            }
-        });
-    
-        function displayErgebnisse() {
-    const q = query(collection(db, "ergebnisse"), orderBy("timestamp", "desc"));
-    onSnapshot(q, async (snapshot) => {
-        ergebnisseCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const tableBody = document.querySelector('#ergebnisseTabelle tbody');
-        tableBody.innerHTML = '';
-        const promises = ergebnisseCache.map(async (ergebnis) => {
-            const teilnehmer = teilnehmerCache.find(t => t.id === ergebnis.teilnehmerId);
-            if (!teilnehmer) return null;
-            const timestamp = ergebnis.timestamp?.toDate();
-            const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
-            return { vorname: teilnehmer.vorname, name: teilnehmer.name, ergebnis: ergebnis.ergebnis, datum: dateStr };
-        });
-        const results = (await Promise.all(promises)).filter(r => r !== null);
-        results.forEach(result => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${result.vorname}</td>
-                <td>${result.name}</td>
-                <td>${result.ergebnis}</td>
-                <td>${result.datum}</td>
-            `;
-            tableBody.appendChild(row);
-        });
-    });
-}
-    
-        function displayTeamErgebnisse() {
-            const q = query(
-                collection(db, "ergebnisse"),
-                orderBy("timestamp", "desc")
-            );
-    
-            onSnapshot(q, async (snapshot) => {
-                const tableBody = document.querySelector('#teamErgebnisseTabelle tbody');
-                tableBody.innerHTML = '';
-    
-                if (snapshot.empty) {
-                    return;
-                }
-    
-                const promises = snapshot.docs.map(async (docSnap) => {
-                    const data = docSnap.data();
-                    if (!data.teamId) return null;
-    
-                    const team = teamsCache.find(t => t.id === data.teamId);
-                    const teilnehmer =teilnehmerCache.find(t => t.id === data.teilnehmerId);
-                    if (!team || !teilnehmer) return null;
+        }
+        teamSelect.addEventListener('change', () => updateTeamMitgliederDropdown());
 
-const timestamp = data.timestamp?.toDate();
-const dateStr = timestamp ? timestamp.toLocaleString('de-DE') : 'Unbekannt';
+        // Speichern-Buttons
+        ergebnisEinzelSpeichernBtn.addEventListener('click', () => saveOrUpdateErgebnisLokal(false));
+        ergebnisTeamSpeichernBtn.addEventListener('click', () => saveOrUpdateErgebnisLokal(true));
 
-return {
-    teamId: data.teamId,
-    team: team.teamname,
-    vorname: teilnehmer.vorname,
-    name: teilnehmer.name,
-    ergebnis: data.ergebnis,
-    datum: dateStr
-};
-});
+        // Abbrechen-Buttons
+        ergebnisEinzelAbbrechenBtn.addEventListener('click', () => resetFormular('einzel'));
+        ergebnisTeamAbbrechenBtn.addEventListener('click', () => resetFormular('team'));
 
-const results = (await Promise.all(promises)).filter(r => r !== null);
 
-results.forEach(result => {
-const row = document.createElement('tr');
-row.innerHTML = `
-    <td>${result.team}</td>
-    <td>${result.vorname}</td>
-    <td>${result.name}</td>
-    <td>${result.ergebnis}</td>
-    <td>${result.datum}</td>
-`;
-tableBody.appendChild(row);
-});
+        // Event Delegation für Edit/Delete in Tabellen
+        function handleTableClick(event) {
+             const target = event.target;
+             const editButton = target.closest('.edit-btn');
+             const deleteButton = target.closest('.delete-btn');
 
-calculateTeamTotals();
-});
-}
+             if (editButton) {
+                 const localId = editButton.dataset.localId;
+                 if(localId) startEditErgebnis(localId);
+             } else if (deleteButton) {
+                 const localId = deleteButton.dataset.localId;
+                 if(localId) deleteErgebnisLokal(localId);
+             }
+        }
+        ergebnisseTabelleBody.addEventListener('click', handleTableClick);
+        teamErgebnisseTabelleBody.addEventListener('click', handleTableClick);
 
-async function calculateTeamTotals() {
-try {
-const teamErgebnisse = {};
-
-ergebnisseCache.forEach(ergebnis => {
-if (!ergebnis.teamId) return;
-
-const teamId = ergebnis.teamId;
-const ergebnisWert = ergebnis.ergebnis || 0;
-
-if (!teamErgebnisse[teamId]) {
-    teamErgebnisse[teamId] = {
-        summe: 0,
-        ergebnisse: []
-    };
-}
-
-teamErgebnisse[teamId].summe += ergebnisWert;
-teamErgebnisse[teamId].ergebnisse.push(ergebnisWert);
-});
-
-const teamTotalsTableBody = document.querySelector('#teamTotalsTabelle tbody');
-teamTotalsTableBody.innerHTML = '';
-
-const teamTotalsArray = [];
-
-teamsCache.forEach(team => {
-const teamData = teamErgebnisse[team.id] || { summe: 0, ergebnisse: [] };
-teamTotalsArray.push({
-    teamId: team.id,
-    teamName: team.teamname,
-    summe: teamData.summe,
-    anzahlErgebnisse: teamData.ergebnisse.length
-});
-});
-
-teamTotalsArray.sort((a, b) => a.teamName.localeCompare(b.teamName));
-
-teamTotalsArray.forEach(teamTotal => {
-const row = document.createElement('tr');
-row.className = 'total-row';
-row.innerHTML = `
-    <td>${teamTotal.teamName}</td>
-    <td>${teamTotal.summe} (${teamTotal.anzahlErgebnisse} Ergebnisse)</td>
-`;
-teamTotalsTableBody.appendChild(row);
-});
-} catch (error) {
-console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
-}
-}
 
         // Tab-Umschaltung
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
+                // Nur umschalten, wenn nicht im Bearbeitungsmodus oder wenn der User es explizit will
+                if (editingErgebnisLocalIdInput.value !== '') {
+                     // Optional: Nachfrage, ob Bearbeitung abgebrochen werden soll
+                     // zeigeConfirm("Bearbeitung abbrechen?", () => { /* ... umschalten ... */});
+                     // Vorerst: Einfach abbrechen
+                     resetFormular('alle');
+                }
                 const tabId = tab.dataset.tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -395,11 +665,24 @@ console.error("Fehler beim Berechnen der Team-Gesamtergebnisse", error);
             });
         });
 
+        // --- Initialisierung ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadTeilnehmer();
-            loadTeams();
-            displayErgebnisse();
-            displayTeamErgebnisse();
+             zeigeLoader(true, 'ladeAnzeige');
+            try {
+                ladeTeilnehmerLokal();
+                ladeTeamsLokal();
+                ladeErgebnisseLokal(); // Lädt Ergebnisse und ruft Display-Funktionen auf
+            } catch(error) {
+                console.error("Fehler bei Initialisierung:", error);
+                zeigeStatus("Fehler beim Laden der lokalen Daten.", 'fehler', statusMeldung);
+            } finally {
+                 zeigeLoader(false, 'ladeAnzeige');
+            }
+
+            // Kein Sync-Start hier, das sollte zentral erfolgen.
+            // Optional: Man könnte hier einen Listener für localStorage-Änderungen hinzufügen,
+            // um die Listen zu aktualisieren, wenn Daten in anderen Tabs geändert werden.
+            // window.addEventListener('storage', (event) => { ... });
         });
     </script>
 </body>
