@@ -6,7 +6,7 @@
     <title>Admin Bereich (Offline-First)</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* ... (bestehende Stile bleiben unverändert) ... */
+        /* ... (Stile bleiben unverändert) ... */
          #lastSyncInfo {
             margin-bottom: 20px;
             padding: 10px;
@@ -63,6 +63,7 @@
                 <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
                 <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
                 <li><a href="statistik.html">Statistik</a></li>
+                 <li><a href="scheibenErfassen.html">Scheiben erfassen</a></li> {/* NEU */}
                 <li><a href="adminOnly.html" class="aktiv">Admin</a></li>
             </ul>
         </nav>
@@ -82,6 +83,9 @@
         </main>
     </div>
 
+    <!-- Zentrales Auto-Sync Skript einbinden -->
+    <script type="module" src="auto-sync.js" defer></script>
+
     <script type="module">
         // UI Utils Imports
         import { zeigeStatus } from './ui-utils.js';
@@ -89,13 +93,13 @@
         // Local Storage Utils Imports
         import { getLocalData, setLocalData, LAST_SYNC_KEY } from './local-storage-utils.js';
 
-        // *** NEU: Importiere die ECHTE zentrale Sync-Funktion ***
+        // Importiere die zentrale Sync-Funktion
         import { synchronizeAllData } from './sync-manager.js';
 
         const lastSyncTimeSpan = document.getElementById('lastSyncTime');
         const manualSyncBtn = document.getElementById('manualSyncBtn');
         const syncSpinner = document.getElementById('syncSpinner');
-        const statusMeldung = document.getElementById('statusMeldung'); // Wird jetzt von sync-manager genutzt
+        const statusMeldung = document.getElementById('statusMeldung'); // Element für Statusmeldungen
 
         // Zeigt den letzten Sync-Zeitstempel an (unverändert)
         function displayLastSyncTime(timestampString) {
@@ -119,18 +123,17 @@
             // Statusmeldung wird jetzt in synchronizeAllData gesetzt
 
             try {
-                // *** Rufe die ECHTE zentrale Sync-Funktion auf ***
-                const syncSuccess = await synchronizeAllData(true); // true = zeige Statusmeldungen
+                // Rufe die zentrale Sync-Funktion auf, aktiviere UI-Feedback und übergib das Status-Element
+                const syncSuccess = await synchronizeAllData(true, statusMeldung); // true = zeige Status
 
-                // Nach erfolgreichem Sync (egal ob was geändert wurde oder nicht), Zeitstempel neu laden
-                if (syncSuccess) {
-                     const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
-                     displayLastSyncTime(lastSyncTimestamp); // UI direkt aktualisieren
-                }
-                // Fehlermeldungen werden von synchronizeAllData angezeigt
+                // Nach Sync-Versuch, Zeitstempel neu laden
+                const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+                displayLastSyncTime(lastSyncTimestamp); // UI direkt aktualisieren
+
+                // Erfolgs-/Fehlermeldungen werden von synchronizeAllData angezeigt
 
             } catch (error) {
-                // Fängt Fehler ab, die synchronizeAllData selbst wirft (sollte nicht passieren, da dort try/catch ist)
+                // Fängt Fehler ab, die synchronizeAllData selbst wirft (sollte selten sein)
                 console.error("Unerwarteter Fehler beim Aufruf der manuellen Synchronisation:", error);
                 zeigeStatus("Ein unerwarteter Fehler ist aufgetreten.", 'fehler', statusMeldung);
             } finally {
@@ -146,25 +149,14 @@
             displayLastSyncTime(lastSyncTimestamp);
 
             // --- Periodische Synchronisation ---
-            // Hier entscheiden, wie oft automatisch synchronisiert werden soll.
-            // Beispiel: Alle 15 Minuten (900000 ms)
-            const AUTO_SYNC_INTERVAL = 15 * 60 * 1000; // 15 Minuten
-            // const AUTO_SYNC_INTERVAL = 60 * 1000; // 1 Minute zum Testen
+            // ENTFERNT - Wird jetzt von auto-sync.js übernommen
 
-            // Starte den Timer für die automatische Synchronisation
-            setInterval(async () => {
-                 console.log("Automatischer Sync-Check gestartet...");
-                 // Führe den Sync "im Hintergrund" aus (ohne UI-Statusmeldungen auf dieser Seite)
-                 await synchronizeAllData(false);
-                 // Zeitstempel im Admin-Panel aktualisieren, falls es offen ist
-                 const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
-                 displayLastSyncTime(lastSyncTimestamp);
-            }, AUTO_SYNC_INTERVAL);
-
-             // Optional: Einmaliger Sync kurz nach dem Laden der Admin-Seite
+             // Optional: Einmaliger Sync kurz nach dem Laden der Admin-Seite (BLEIBT)
+             // Gibt dem Admin sofortiges Feedback auf dieser Seite.
              setTimeout(async () => {
                  console.log("Initialer Sync-Check nach Laden der Admin-Seite...");
-                 await synchronizeAllData(true); // Mit Statusmeldung beim ersten Mal
+                 // Mit Statusmeldung beim ersten Mal auf dieser Seite
+                 await synchronizeAllData(true, statusMeldung);
                  const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
                  displayLastSyncTime(lastSyncTimestamp);
              }, 5000); // 5 Sekunden nach Laden
