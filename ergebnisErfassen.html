@@ -400,8 +400,8 @@
             if (typ === 'einzel' || typ === 'alle') {
                 teilnehmerSelect.value = '';
                 ergebnisEinzelInput.value = '';
-                ergebnisEinzelSpeichernBtn.textContent = 'Ergebnis speichern';
-                ergebnisEinzelAbbrechenBtn.style.display = 'none';
+                ergebnisEinzelSpeichernBtn.textContent = 'Ergebnis speichern'; // Text zurücksetzen
+                ergebnisEinzelAbbrechenBtn.style.display = 'none'; // Abbrechen verstecken
                 // Markierung entfernen
                 document.querySelectorAll('#ergebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
             }
@@ -410,8 +410,8 @@
                 teamMitgliedSelect.innerHTML = '<option value="">-- Erst Team auswählen --</option>';
                 teamMitgliedSelect.disabled = true;
                 ergebnisTeamInput.value = '';
-                ergebnisTeamSpeichernBtn.textContent = 'Ergebnis speichern';
-                ergebnisTeamAbbrechenBtn.style.display = 'none';
+                ergebnisTeamSpeichernBtn.textContent = 'Ergebnis speichern'; // Text zurücksetzen
+                ergebnisTeamAbbrechenBtn.style.display = 'none'; // Abbrechen verstecken
                  // Markierung entfernen
                 document.querySelectorAll('#teamErgebnisseTabelle tbody tr.editing').forEach(r => r.classList.remove('editing'));
             }
@@ -419,14 +419,18 @@
 
         function saveOrUpdateErgebnisLokal(isTeamContext) {
             const editingId = editingErgebnisLocalIdInput.value;
-            const isEditing = !!editingId;
+            const isEditing = !!editingId; // True, wenn eine ID im versteckten Feld steht
+            // --- DEBUGGING START ---
+            console.log(`[saveOrUpdate] Start: isEditing=${isEditing}, editingId=${editingId}, isTeamContext=${isTeamContext}`);
+            // --- DEBUGGING END ---
 
             const teilnehmerLocalId = isTeamContext ? teamMitgliedSelect.value : teilnehmerSelect.value;
-            const teamLocalId = isTeamContext ? teamSelect.value : null; // Nur bei Team relevant
+            // Hole teamLocalId nur, wenn wir im Team-Kontext sind, sonst sicherstellen, dass es null ist
+            const teamLocalId = isTeamContext ? teamSelect.value : null;
             const ergebnisInput = isTeamContext ? ergebnisTeamInput : ergebnisEinzelInput;
             const ergebnisWert = parseInt(ergebnisInput.value);
 
-            // Validierung
+            // --- Validierung (unverändert) ---
             if (!teilnehmerLocalId) {
                 zeigeStatus("Bitte einen Teilnehmer auswählen!", 'fehler', statusMeldung); return;
             }
@@ -436,64 +440,134 @@
             if (isNaN(ergebnisWert) || ergebnisWert < 0) {
                 zeigeStatus("Bitte ein gültiges, nicht-negatives Ergebnis eingeben!", 'fehler', statusMeldung); return;
             }
+            // --- DEBUGGING START ---
+            console.log(`[saveOrUpdate] Validated Data: teilnehmerLocalId=${teilnehmerLocalId}, teamLocalId=${teamLocalId}, ergebnisWert=${ergebnisWert}`);
+            // --- DEBUGGING END ---
 
             // Aktuelle Ergebnisse holen
             let aktuelleErgebnisse = getLocalData(ERGEBNISSE_KEY);
             let success = false;
+            let hatSichGeaendert = false; // Variable, um zu prüfen, ob Änderungen vorgenommen wurden
 
             if (isEditing) {
-                // --- Bearbeiten ---
+                // --- BEARBEITEN ---
+                // --- DEBUGGING START ---
+                console.log(`[saveOrUpdate] Entering EDIT block for ID: ${editingId}`);
+                // --- DEBUGGING END ---
                 const index = aktuelleErgebnisse.findIndex(e => e.localId === editingId);
+                // --- DEBUGGING START ---
+                console.log(`[saveOrUpdate] Found index for editing: ${index}`);
+                // --- DEBUGGING END ---
+
                 if (index > -1) {
+                    // Eintrag gefunden, hole eine Referenz darauf *im Array*
                     const zuBearbeiten = aktuelleErgebnisse[index];
-                    // Prüfen, ob sich was geändert hat (optional, aber gut)
-                    if (zuBearbeiten.ergebnis !== ergebnisWert || zuBearbeiten.teilnehmerLocalId !== teilnehmerLocalId || zuBearbeiten.teamLocalId !== teamLocalId) {
-                         zuBearbeiten.ergebnis = ergebnisWert;
-                         zuBearbeiten.teilnehmerLocalId = teilnehmerLocalId;
-                         if(isTeamContext) zuBearbeiten.teamLocalId = teamLocalId;
-                         // Status nur ändern, wenn nicht schon 'new'
-                         if (zuBearbeiten._syncStatus !== 'new') {
-                             zuBearbeiten._syncStatus = 'modified';
-                         }
-                         zuBearbeiten.lastModifiedLocal = new Date().toISOString(); // Optional
-                         success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
-                         if(success) zeigeStatus("Änderung lokal gespeichert.", 'erfolg', statusMeldung);
+                    // --- DEBUGGING START ---
+                    console.log('[saveOrUpdate] Object BEFORE edit:', JSON.stringify(zuBearbeiten));
+                    // --- DEBUGGING END ---
+
+                    // Prüfen, ob sich relevante Daten geändert haben
+                    hatSichGeaendert = ( // Zuweisung zur Variable
+                        zuBearbeiten.ergebnis !== ergebnisWert ||
+                        zuBearbeiten.teilnehmerLocalId !== teilnehmerLocalId ||
+                        // Vergleiche teamLocalId sorgfältig (null vs. ID)
+                        (zuBearbeiten.teamLocalId || null) !== (teamLocalId || null) // Behandle undefined/null konsistent
+                    );
+                    // --- DEBUGGING START ---
+                    console.log(`[saveOrUpdate] Has data changed? ${hatSichGeaendert}`);
+                    // --- DEBUGGING END ---
+
+                    if (hatSichGeaendert) {
+                        // Daten direkt im Objekt im Array aktualisieren
+                        zuBearbeiten.ergebnis = ergebnisWert;
+                        zuBearbeiten.teilnehmerLocalId = teilnehmerLocalId;
+                        // Setze teamLocalId basierend auf dem *aktuellen* Kontext des Speichern-Klicks
+                        zuBearbeiten.teamLocalId = teamLocalId; // Ist null, wenn !isTeamContext
+
+                        // Sync-Status nur ändern, wenn es nicht bereits 'new' ist
+                        if (zuBearbeiten._syncStatus !== 'new') {
+                            zuBearbeiten._syncStatus = 'modified';
+                        }
+                        zuBearbeiten.lastModifiedLocal = new Date().toISOString(); // Optional: Zeitstempel der lokalen Änderung
+                        // --- DEBUGGING START ---
+                        console.log('[saveOrUpdate] Object AFTER edit:', JSON.stringify(zuBearbeiten));
+                        // --- DEBUGGING END ---
+
+                        // Speichere das *gesamte* Array zurück, das jetzt das geänderte Objekt enthält
+                        success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
+                        if(success) {
+                            // --- DEBUGGING START ---
+                            console.log('[saveOrUpdate] Edit successfully saved to localStorage.');
+                            // --- DEBUGGING END ---
+                            zeigeStatus("Änderung lokal gespeichert.", 'erfolg', statusMeldung);
+                        } else {
+                             // --- DEBUGGING START ---
+                             console.error('[saveOrUpdate] ERROR saving edited data to localStorage!');
+                             // --- DEBUGGING END ---
+                        }
                     } else {
+                        // Keine Änderungen, aber wir betrachten es als "Erfolg", da nichts zu tun war
                         zeigeStatus("Keine Änderungen festgestellt.", 'info', statusMeldung);
-                        success = true; // Keine Änderung, aber "erfolgreich" im Sinne von abgeschlossen
+                        success = true;
                     }
                 } else {
-                     zeigeStatus("Fehler: Zu bearbeitendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
+                    // Sollte nicht passieren, wenn editingId gesetzt ist, aber sicherheitshalber loggen
+                    // --- DEBUGGING START ---
+                    console.error(`[saveOrUpdate] EDIT FAILED: localId ${editingId} not found in array!`);
+                    // --- DEBUGGING END ---
+                    zeigeStatus("Fehler: Zu bearbeitendes Ergebnis nicht gefunden!", 'fehler', statusMeldung);
                 }
             } else {
-                // --- Neu Hinzufügen ---
+                // --- NEU HINZUFÜGEN --- (Dieser Block sollte nur ausgeführt werden, wenn isEditing false ist)
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] Entering NEW entry block.');
+                // --- DEBUGGING END ---
                 const neuesErgebnis = {
                     localId: generateLocalId(),
                     firestoreId: null,
                     teilnehmerLocalId: teilnehmerLocalId,
-                    teamLocalId: teamLocalId, // Ist null, wenn nicht im Team-Kontext
+                    teamLocalId: teamLocalId, // Korrekt: Ist null, wenn nicht im Team-Kontext
                     ergebnis: ergebnisWert,
                     createdAt: new Date().toISOString(),
                     _syncStatus: 'new'
                 };
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] Creating new entry object:', JSON.stringify(neuesErgebnis));
+                // --- DEBUGGING END ---
                 aktuelleErgebnisse.push(neuesErgebnis);
                 success = setLocalData(ERGEBNISSE_KEY, aktuelleErgebnisse);
-                 if(success) zeigeStatus("Neues Ergebnis lokal gespeichert.", 'erfolg', statusMeldung);
+                if(success) {
+                     // --- DEBUGGING START ---
+                     console.log('[saveOrUpdate] New entry successfully saved to localStorage.');
+                     // --- DEBUGGING END ---
+                    zeigeStatus("Neues Ergebnis lokal gespeichert.", 'erfolg', statusMeldung);
+                } else {
+                     // --- DEBUGGING START ---
+                     console.error('[saveOrUpdate] ERROR saving new data to localStorage!');
+                     // --- DEBUGGING END ---
+                }
             }
 
+            // --- UI Aktualisieren und Formular zurücksetzen (nur bei Erfolg) ---
             if (success) {
-                lokaleErgebnisse = aktuelleErgebnisse; // Lokalen Cache updaten
+                // Lokalen Cache und Anzeige aktualisieren
+                lokaleErgebnisse = aktuelleErgebnisse; // Wichtig: Cache mit dem *gespeicherten* Array aktualisieren
                 lokaleErgebnisse.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")); // Neu sortieren
                 displayErgebnisseLokal();
                 displayTeamErgebnisseLokal();
                 calculateTeamTotalsLokal();
+                // Formular erst zurücksetzen, *nachdem* alles erfolgreich war
                 resetFormular(isTeamContext ? 'team' : 'einzel');
-            } else if (!isEditing) { // Nur bei Fehler beim Hinzufügen
+                // --- DEBUGGING START ---
+                console.log('[saveOrUpdate] UI updated and form reset.');
+                // --- DEBUGGING END ---
+            } else if (!isEditing) { // Fehler nur anzeigen, wenn Hinzufügen fehlschlug
                  zeigeStatus("Fehler beim lokalen Speichern des neuen Ergebnisses!", 'fehler', statusMeldung);
-            } else if (isEditing && !success) { // Nur bei Fehler beim Bearbeiten
+            } else if (isEditing && !success && hatSichGeaendert) { // Fehler nur anzeigen, wenn Bearbeiten fehlschlug UND es Änderungen gab
                  zeigeStatus("Fehler beim lokalen Speichern der Änderung!", 'fehler', statusMeldung);
             }
         }
+
 
         function deleteErgebnisLokal(localId) {
             zeigeConfirm("Möchtest du dieses Ergebnis wirklich löschen?", () => {
@@ -558,8 +632,8 @@
                 // Wichtig: Teammitglieder für das ausgewählte Team laden *bevor* das Mitglied ausgewählt wird
                 updateTeamMitgliederDropdown(ergebnis.teilnehmerLocalId); // Übergib die ID zum Auswählen
                 ergebnisTeamInput.value = ergebnis.ergebnis;
-                ergebnisTeamSpeichernBtn.textContent = 'Änderung speichern';
-                ergebnisTeamAbbrechenBtn.style.display = 'inline-block';
+                ergebnisTeamSpeichernBtn.textContent = 'Änderung speichern'; // <-- Button Text ändern
+                ergebnisTeamAbbrechenBtn.style.display = 'inline-block'; // <-- Abbrechen anzeigen
                  // Zum Formular scrollen
                 teamSelect.scrollIntoView({ behavior: "smooth", block: "center" });
 
@@ -570,8 +644,8 @@
                 // Werte setzen
                 teilnehmerSelect.value = ergebnis.teilnehmerLocalId;
                 ergebnisEinzelInput.value = ergebnis.ergebnis;
-                ergebnisEinzelSpeichernBtn.textContent = 'Änderung speichern';
-                ergebnisEinzelAbbrechenBtn.style.display = 'inline-block';
+                ergebnisEinzelSpeichernBtn.textContent = 'Änderung speichern'; // <-- Button Text ändern
+                ergebnisEinzelAbbrechenBtn.style.display = 'inline-block'; // <-- Abbrechen anzeigen
                  // Zum Formular scrollen
                 teilnehmerSelect.scrollIntoView({ behavior: "smooth", block: "center" });
             }
