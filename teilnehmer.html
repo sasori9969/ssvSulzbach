@@ -337,10 +337,10 @@
             const syncInterval = 60000; // 60 Sekunden zum Testen
             // const syncInterval = 1000 * 60 * 60; // 1 Stunde für Produktion
 
-            setInterval(syncMitFirestore, syncInterval);
+      //      setInterval(syncMitFirestore, syncInterval);
 
             // Optional: Sofort einmal synchronisieren beim Start (nach kurzer Verzögerung, damit die App bereit ist)
-            setTimeout(syncMitFirestore, 5000); // 5 Sekunden nach dem Laden
+        //    setTimeout(syncMitFirestore, 5000); // 5 Sekunden nach dem Laden
         });
 
         // --- KEIN onSnapshot mehr für die Hauptliste ---

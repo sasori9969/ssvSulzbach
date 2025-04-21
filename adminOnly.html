@@ -6,8 +6,8 @@
     <title>Admin Bereich (Offline-First)</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Zusätzliche Stile für Admin-Seite */
-        #lastSyncInfo {
+        /* ... (bestehende Stile bleiben unverändert) ... */
+         #lastSyncInfo {
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f8f9fa;
@@ -63,7 +63,7 @@
                 <li><a href="ergebnisErfassen.html">Ergebnisse erfassen</a></li>
                 <li><a href="ergebnisseAusgeben.html">Ergebnisse ausgeben</a></li>
                 <li><a href="statistik.html">Statistik</a></li>
-                <li><a href="adminOnly.html" class="aktiv">Admin</a></li> <!-- NEU -->
+                <li><a href="adminOnly.html" class="aktiv">Admin</a></li>
             </ul>
         </nav>
         <main>
@@ -89,51 +89,15 @@
         // Local Storage Utils Imports
         import { getLocalData, setLocalData, LAST_SYNC_KEY } from './local-storage-utils.js';
 
-        // WICHTIG: Importiere hier deine ZENTRALE Sync-Funktion!
-        // Beispiel: import { synchronizeAllData } from './sync-manager.js';
-        // Da wir diese noch nicht haben, simulieren wir sie unten.
-        async function synchronizeAllData() {
-            console.log("Simuliere zentrale Synchronisation...");
-            zeigeStatus("Starte manuelle Synchronisation...", 'info', statusMeldung);
-            document.getElementById('syncSpinner').style.display = 'inline-block';
-            document.getElementById('manualSyncBtn').disabled = true;
-
-            // Hier würde der Code stehen, der Teilnehmer, Teams, Ergebnisse etc. prüft
-            // und in einem Batch an Firestore sendet.
-            // z.B. await syncTeilnehmer(); await syncTeams(); await syncErgebnisse();
-
-            // Simuliere eine Verzögerung
-            await new Promise(resolve => setTimeout(resolve, 3000)); // 3 Sekunden warten
-
-            // Simuliere Erfolg oder Fehler (zufällig)
-            const success = Math.random() > 0.3; // 70% Erfolgschance
-
-            if (success) {
-                console.log("Simulierte Synchronisation erfolgreich.");
-                // WICHTIG: Dieser Teil gehört EIGENTLICH in die *echte* synchronizeAllData Funktion!
-                // Nur nach erfolgreichem Commit setzen:
-                const now = new Date().toISOString();
-                setLocalData(LAST_SYNC_KEY, now);
-                displayLastSyncTime(now); // UI direkt aktualisieren
-                // --- Ende des Teils, der in die Sync-Funktion gehört ---
-
-                zeigeStatus("Manuelle Synchronisation erfolgreich abgeschlossen!", 'erfolg', statusMeldung);
-                return true; // Signalisiert Erfolg
-            } else {
-                console.error("Simulierte Synchronisation fehlgeschlagen.");
-                zeigeStatus("Manuelle Synchronisation fehlgeschlagen. Änderungen bleiben lokal.", 'fehler', statusMeldung);
-                return false; // Signalisiert Fehler
-            }
-        }
-        // --- Ende der simulierten Sync-Funktion ---
-
+        // *** NEU: Importiere die ECHTE zentrale Sync-Funktion ***
+        import { synchronizeAllData } from './sync-manager.js';
 
         const lastSyncTimeSpan = document.getElementById('lastSyncTime');
         const manualSyncBtn = document.getElementById('manualSyncBtn');
         const syncSpinner = document.getElementById('syncSpinner');
-        const statusMeldung = document.getElementById('statusMeldung');
+        const statusMeldung = document.getElementById('statusMeldung'); // Wird jetzt von sync-manager genutzt
 
-        // Zeigt den letzten Sync-Zeitstempel an
+        // Zeigt den letzten Sync-Zeitstempel an (unverändert)
         function displayLastSyncTime(timestampString) {
             if (timestampString) {
                 try {
@@ -148,26 +112,26 @@
             }
         }
 
-        // Event Listener für den manuellen Sync Button
+        // Event Listener für den manuellen Sync Button (angepasst)
         manualSyncBtn.addEventListener('click', async () => {
             manualSyncBtn.disabled = true;
             syncSpinner.style.display = 'inline-block';
-            zeigeStatus("Starte manuelle Synchronisation...", 'info', statusMeldung);
+            // Statusmeldung wird jetzt in synchronizeAllData gesetzt
 
             try {
-                // Rufe die (simulierte) zentrale Sync-Funktion auf
-                const syncSuccess = await synchronizeAllData();
+                // *** Rufe die ECHTE zentrale Sync-Funktion auf ***
+                const syncSuccess = await synchronizeAllData(true); // true = zeige Statusmeldungen
 
-                // Die Aktualisierung des Zeitstempels und der Erfolgsmeldung
-                // passiert jetzt IN der (simulierten) synchronizeAllData Funktion.
-                // Hier behandeln wir nur noch den Abschluss.
-
-                if (!syncSuccess) {
-                    // Fehlermeldung wurde schon in synchronizeAllData angezeigt
+                // Nach erfolgreichem Sync (egal ob was geändert wurde oder nicht), Zeitstempel neu laden
+                if (syncSuccess) {
+                     const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+                     displayLastSyncTime(lastSyncTimestamp); // UI direkt aktualisieren
                 }
+                // Fehlermeldungen werden von synchronizeAllData angezeigt
 
             } catch (error) {
-                console.error("Unerwarteter Fehler während der manuellen Synchronisation:", error);
+                // Fängt Fehler ab, die synchronizeAllData selbst wirft (sollte nicht passieren, da dort try/catch ist)
+                console.error("Unerwarteter Fehler beim Aufruf der manuellen Synchronisation:", error);
                 zeigeStatus("Ein unerwarteter Fehler ist aufgetreten.", 'fehler', statusMeldung);
             } finally {
                 // Spinner ausblenden und Button wieder aktivieren, egal ob Erfolg oder Fehler
@@ -176,10 +140,34 @@
             }
         });
 
-        // Initialisierung beim Laden der Seite
+        // Initialisierung beim Laden der Seite (unverändert)
         document.addEventListener('DOMContentLoaded', () => {
             const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
             displayLastSyncTime(lastSyncTimestamp);
+
+            // --- Periodische Synchronisation ---
+            // Hier entscheiden, wie oft automatisch synchronisiert werden soll.
+            // Beispiel: Alle 15 Minuten (900000 ms)
+            const AUTO_SYNC_INTERVAL = 15 * 60 * 1000; // 15 Minuten
+            // const AUTO_SYNC_INTERVAL = 60 * 1000; // 1 Minute zum Testen
+
+            // Starte den Timer für die automatische Synchronisation
+            setInterval(async () => {
+                 console.log("Automatischer Sync-Check gestartet...");
+                 // Führe den Sync "im Hintergrund" aus (ohne UI-Statusmeldungen auf dieser Seite)
+                 await synchronizeAllData(false);
+                 // Zeitstempel im Admin-Panel aktualisieren, falls es offen ist
+                 const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+                 displayLastSyncTime(lastSyncTimestamp);
+            }, AUTO_SYNC_INTERVAL);
+
+             // Optional: Einmaliger Sync kurz nach dem Laden der Admin-Seite
+             setTimeout(async () => {
+                 console.log("Initialer Sync-Check nach Laden der Admin-Seite...");
+                 await synchronizeAllData(true); // Mit Statusmeldung beim ersten Mal
+                 const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+                 displayLastSyncTime(lastSyncTimestamp);
+             }, 5000); // 5 Sekunden nach Laden
         });
 
     </script>
