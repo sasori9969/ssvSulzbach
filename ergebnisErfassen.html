@@ -53,22 +53,20 @@
         <form id="ergebnisForm">
           <input type="hidden" id="editLocalId" />
 
-          <label for="teilnehmerSelect">Teilnehmer:</label>
-          <select id="teilnehmerSelect" required>
-            <option value="">-- Bitte wählen --</option>
-          </select>
-
+          <!-- Team Auswahl zuerst (optional, aber vielleicht logischer?) -->
           <label for="teamSelect">Team (optional):</label>
           <select id="teamSelect">
             <option value="">-- Kein Team --</option>
           </select>
 
+          <label for="teilnehmerSelect">Teilnehmer:</label>
+          <select id="teilnehmerSelect" required>
+            <option value="">-- Bitte wählen --</option>
+            <!-- Optionen werden dynamisch gefiltert -->
+          </select>
+
           <label for="ringzahl">Ringzahl:</label>
           <input type="number" id="ringzahl" required min="0" />
-
-          <!-- Teiler Feld entfernt -->
-          <!-- <label for="teiler">Teiler (optional):</label>
-          <input type="number" id="teiler" step="0.1" min="0" /> -->
 
           <label for="bemerkung">Bemerkung (optional):</label>
           <input type="text" id="bemerkung" />
@@ -90,7 +88,6 @@
         </div>
 
         <h3>Gespeicherte Ergebnisse:</h3>
-        <!-- Ersetzt <ul> durch <table> -->
         <table id="ergebnisTabelle">
             <thead>
                 <tr>
@@ -104,7 +101,6 @@
                 </tr>
             </thead>
             <tbody id="ergebnisListe">
-                <!-- Ergebnisse werden hier dynamisch eingefügt -->
             </tbody>
         </table>
       </main>
@@ -131,29 +127,26 @@
       const teilnehmerSelect = document.getElementById("teilnehmerSelect");
       const teamSelect = document.getElementById("teamSelect");
       const ringzahlInput = document.getElementById("ringzahl");
-      // const teilerInput = document.getElementById("teiler"); // Entfernt
       const bemerkungInput = document.getElementById("bemerkung");
-      const ergebnisListe = document.getElementById("ergebnisListe"); // Jetzt tbody
+      const ergebnisListe = document.getElementById("ergebnisListe");
       const editLocalIdInput = document.getElementById("editLocalId");
       const cancelEditBtn = document.getElementById("cancelEditBtn");
 
       // Globale Variablen für Daten und Maps
       let teilnehmerMap = new Map();
       let teamMap = new Map();
+      let aktiveTeilnehmer = []; // NEU: Globale Liste der aktiven Teilnehmer
 
-      // Laden der initialen Daten (Teilnehmer, Teams) - unverändert
+      // Laden der initialen Daten (Teilnehmer, Teams)
       function loadInitialData() {
-        const teilnehmer = getActiveTeilnehmer();
+        // NEU: Aktive Teilnehmer in globaler Variable speichern
+        aktiveTeilnehmer = getActiveTeilnehmer();
         const teams = getActiveTeams();
 
-        teilnehmerSelect.innerHTML = '<option value="">-- Bitte wählen --</option>';
-        teilnehmer.forEach((t) => {
-          const option = document.createElement("option");
-          option.value = t.localId;
-          option.textContent = `${t.vorname || ""} ${t.name || ""}`.trim();
-          teilnehmerSelect.appendChild(option);
-        });
+        // Teilnehmer-Dropdown initial mit allen füllen
+        populateTeilnehmerDropdown(); // NEU: Aufruf der Hilfsfunktion
 
+        // Team-Dropdown füllen
         teamSelect.innerHTML = '<option value="">-- Kein Team --</option>';
         teams.forEach((t) => {
           const option = document.createElement("option");
@@ -162,74 +155,86 @@
           teamSelect.appendChild(option);
         });
 
-        teilnehmerMap = createTeilnehmerMap(teilnehmer);
+        // Maps erstellen
+        teilnehmerMap = createTeilnehmerMap(aktiveTeilnehmer); // Nutzt jetzt globale Liste
         teamMap = createTeamMap(teams);
       }
 
-      // Ergebnisse anzeigen - **ANGEPASST FÜR TABELLE**
+      // NEU: Hilfsfunktion zum Füllen des Teilnehmer-Dropdowns
+      /**
+       * Füllt das Teilnehmer-Dropdown, optional gefiltert nach Teammitgliedern.
+       * @param {Set<string>|null} [filterMitgliederIds=null] Ein Set mit localIds der anzuzeigenden Teilnehmer. Wenn null, werden alle angezeigt.
+       */
+      function populateTeilnehmerDropdown(filterMitgliederIds = null) {
+          const currentSelectedValue = teilnehmerSelect.value; // Aktuell ausgewählten Wert merken
+          teilnehmerSelect.innerHTML = '<option value="">-- Bitte wählen --</option>'; // Reset
+
+          aktiveTeilnehmer.forEach((t) => {
+              // Wenn gefiltert werden soll, prüfe ob Teilnehmer im Set ist
+              if (!filterMitgliederIds || filterMitgliederIds.has(t.localId)) {
+                  const option = document.createElement("option");
+                  option.value = t.localId;
+                  option.textContent = `${t.vorname || ""} ${t.name || ""}`.trim();
+                  teilnehmerSelect.appendChild(option);
+              }
+          });
+
+          // Versuche, den vorher ausgewählten Wert wiederherzustellen, falls er noch gültig ist
+          if (teilnehmerSelect.querySelector(`option[value="${currentSelectedValue}"]`)) {
+              teilnehmerSelect.value = currentSelectedValue;
+          } else {
+              teilnehmerSelect.value = ""; // Ansonsten auf "Bitte wählen" zurücksetzen
+          }
+      }
+
+      // Ergebnisse anzeigen - unverändert
       function displayErgebnisseFromLocal() {
-        const lokaleErgebnisse = getActiveErgebnisse(); // Holt aktive und sortierte Ergebnisse
-        ergebnisListe.innerHTML = ""; // tbody leeren
+        const lokaleErgebnisse = getActiveErgebnisse();
+        ergebnisListe.innerHTML = "";
 
         if (lokaleErgebnisse.length === 0) {
           const row = ergebnisListe.insertRow();
           const cell = row.insertCell();
-          cell.colSpan = 7; // Anzahl der Spalten
+          cell.colSpan = 7;
           cell.textContent = "Noch keine Ergebnisse lokal gespeichert.";
           return;
         }
 
         lokaleErgebnisse.forEach((ergebnis) => {
           const row = ergebnisListe.insertRow();
-          row.dataset.localId = ergebnis.localId; // ID an die Zeile hängen
+          row.dataset.localId = ergebnis.localId;
           row.dataset.syncStatus = ergebnis._syncStatus;
 
           const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
           const team = ergebnis.teamLocalId ? teamMap.get(ergebnis.teamLocalId) : null;
 
-          const teilnehmerName = teilnehmer
-            ? `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim()
-            : "Unbekannt";
+          const teilnehmerName = teilnehmer ? `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim() : "Unbekannt";
           const teamName = team ? (team.teamname || "Unbekannt") : "-";
           const ringe = ergebnis.ringzahl ?? "N/A";
-          // const teiler = ergebnis.teiler ? `${ergebnis.teiler}` : "-"; // Entfernt
           const bemerkung = ergebnis.bemerkung || "-";
-          const datum = ergebnis.createdAt
-            ? new Date(ergebnis.createdAt).toLocaleString("de-DE", { dateStyle: 'short', timeStyle: 'short'})
-            : "-";
+          const datum = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString("de-DE", { dateStyle: 'short', timeStyle: 'short'}) : "-";
 
           let syncStatusText = "";
           let statusKurz = "";
           if (ergebnis._syncStatus === "new") {
-            syncStatusText = "Neu, nicht synchronisiert";
-            statusKurz = "Neu";
+            syncStatusText = "Neu, nicht synchronisiert"; statusKurz = "Neu";
           } else if (ergebnis._syncStatus === "modified") {
-            syncStatusText = "Geändert, nicht synchronisiert";
-            statusKurz = "Geändert";
+            syncStatusText = "Geändert, nicht synchronisiert"; statusKurz = "Geändert";
           } else if (ergebnis._syncStatus === "deleted") {
-            // Sollte nicht mehr vorkommen, aber zur Sicherheit
-            syncStatusText = "Wird beim nächsten Sync gelöscht";
-            statusKurz = "Gelöscht";
-            row.classList.add("deleted");
+            syncStatusText = "Wird beim nächsten Sync gelöscht"; statusKurz = "Gelöscht"; row.classList.add("deleted");
           } else {
-             syncStatusText = "Synchronisiert";
-             statusKurz = "Synced";
+             syncStatusText = "Synchronisiert"; statusKurz = "Synced";
           }
 
-          // Zellen erstellen und füllen
           row.insertCell().textContent = datum;
           row.insertCell().textContent = teilnehmerName;
           row.insertCell().textContent = teamName;
           row.insertCell().textContent = ringe;
           row.insertCell().textContent = bemerkung;
-
-          // Status Zelle
           const statusCell = row.insertCell();
           statusCell.innerHTML = `<span class="sync-status" title="${syncStatusText}">${statusKurz}</span>`;
-
-          // Aktionen Zelle
           const actionsCell = row.insertCell();
-          actionsCell.classList.add('actions-cell'); // Klasse für Styling
+          actionsCell.classList.add('actions-cell');
           actionsCell.innerHTML = `
             <button class="edit-btn btn btn-secondary" data-local-id="${ergebnis.localId}">Edit</button>
             <button class="delete-btn btn btn-danger" data-local-id="${ergebnis.localId}">X</button>
@@ -237,21 +242,29 @@
         });
       }
 
-      // Ergebnis speichern oder aktualisieren - **ANGEPASST (ohne Teiler)**
+      // Ergebnis speichern oder aktualisieren - unverändert
       function saveOrUpdateErgebnisLokal(e) {
         e.preventDefault();
         const editLocalId = editLocalIdInput.value;
-
         const teilnehmerLocalId = teilnehmerSelect.value;
         const teamLocalId = teamSelect.value || null;
         const ringzahl = parseInt(ringzahlInput.value, 10);
-        // const teiler = teilerInput.value ? parseFloat(teilerInput.value) : null; // Entfernt
         const bemerkung = bemerkungInput.value.trim();
 
         if (!teilnehmerLocalId || isNaN(ringzahl)) {
           zeigeStatus("Bitte Teilnehmer auswählen und Ringzahl angeben.", "fehler");
           return;
         }
+
+        // NEU: Zusätzliche Prüfung, ob der ausgewählte Teilnehmer zum ausgewählten Team passt
+        if (teamLocalId) {
+            const team = teamMap.get(teamLocalId);
+            if (team && team.mitglieder && !team.mitglieder.includes(teilnehmerLocalId)) {
+                 zeigeStatus(`Fehler: Teilnehmer "${teilnehmerMap.get(teilnehmerLocalId)?.name || teilnehmerLocalId}" ist nicht Mitglied im ausgewählten Team "${team.teamname || teamLocalId}". Bitte korrigieren.`, "fehler", 5000);
+                 return; // Speichern verhindern
+            }
+        }
+        // Ende NEU
 
         const alleErgebnisse = getLocalData(ERGEBNISSE_KEY);
         let status = "erfolg";
@@ -266,13 +279,11 @@
               existingErgebnis.teilnehmerLocalId !== teilnehmerLocalId ||
               existingErgebnis.teamLocalId !== teamLocalId ||
               existingErgebnis.ringzahl !== ringzahl ||
-              // existingErgebnis.teiler !== teiler || // Entfernt
               existingErgebnis.bemerkung !== bemerkung
             ) {
               existingErgebnis.teilnehmerLocalId = teilnehmerLocalId;
               existingErgebnis.teamLocalId = teamLocalId;
               existingErgebnis.ringzahl = ringzahl;
-              // existingErgebnis.teiler = teiler; // Entfernt
               existingErgebnis.bemerkung = bemerkung;
               existingErgebnis.lastModifiedLocal = new Date().toISOString();
               if (existingErgebnis._syncStatus !== "new") {
@@ -295,7 +306,6 @@
             teilnehmerLocalId: teilnehmerLocalId,
             teamLocalId: teamLocalId,
             ringzahl: ringzahl,
-            // teiler: teiler, // Entfernt
             bemerkung: bemerkung,
             createdAt: new Date().toISOString(),
             _syncStatus: "new",
@@ -325,21 +335,30 @@
         ergebnisForm.reset();
         editLocalIdInput.value = "";
         cancelEditBtn.style.display = "none";
+        // NEU: Teilnehmer-Dropdown wieder mit allen füllen, wenn Formular zurückgesetzt wird
+        populateTeilnehmerDropdown();
         teilnehmerSelect.disabled = false;
         teamSelect.disabled = false;
       }
 
-      // Ergebnis zum Bearbeiten laden - **ANGEPASST (ohne Teiler)**
+      // Ergebnis zum Bearbeiten laden - unverändert
       function loadErgebnisForEdit(localId) {
         const alleErgebnisse = getLocalData(ERGEBNISSE_KEY);
         const ergebnis = alleErgebnisse.find((e) => e.localId === localId);
 
         if (ergebnis) {
           editLocalIdInput.value = ergebnis.localId;
+          teamSelect.value = ergebnis.teamLocalId || ""; // Team zuerst setzen
+
+          // NEU: Teilnehmer-Dropdown basierend auf dem geladenen Team filtern
+          const team = ergebnis.teamLocalId ? teamMap.get(ergebnis.teamLocalId) : null;
+          const mitgliederIds = team ? new Set(team.mitglieder || []) : null;
+          populateTeilnehmerDropdown(mitgliederIds);
+
+          // Erst *nach* dem Filtern den Teilnehmer auswählen
           teilnehmerSelect.value = ergebnis.teilnehmerLocalId;
-          teamSelect.value = ergebnis.teamLocalId || "";
+
           ringzahlInput.value = ergebnis.ringzahl ?? "";
-          // teilerInput.value = ergebnis.teiler ?? ""; // Entfernt
           bemerkungInput.value = ergebnis.bemerkung || "";
 
           cancelEditBtn.style.display = "inline-block";
@@ -379,11 +398,11 @@
         });
       }
 
-      // Event Listener - unverändert (nutzt Event Delegation für Tabelle)
+      // Event Listener
       ergebnisForm.addEventListener("submit", saveOrUpdateErgebnisLokal);
       cancelEditBtn.addEventListener("click", resetForm);
 
-      ergebnisListe.addEventListener("click", (e) => { // Listener am tbody
+      ergebnisListe.addEventListener("click", (e) => {
         const editButton = e.target.closest(".edit-btn");
         const deleteButton = e.target.closest(".delete-btn");
 
@@ -398,14 +417,28 @@
         }
       });
 
-      // Initialisierung - unverändert
+      // NEU: Event Listener für Team-Auswahl
+      teamSelect.addEventListener('change', (event) => {
+          const selectedTeamLocalId = event.target.value;
+          if (selectedTeamLocalId) {
+              const team = teamMap.get(selectedTeamLocalId);
+              const mitgliederIds = team ? new Set(team.mitglieder || []) : null;
+              populateTeilnehmerDropdown(mitgliederIds);
+          } else {
+              // Kein Team ausgewählt -> alle Teilnehmer anzeigen
+              populateTeilnehmerDropdown();
+          }
+      });
+
+      // Initialisierung
       document.addEventListener("DOMContentLoaded", () => {
         loadInitialData();
         displayErgebnisseFromLocal();
 
         window.addEventListener('datasync-complete', (event) => {
-            if (event.detail?.success) {
+            if (event.detail?.success && event.detail?.changesMade) { // Nur neu laden, wenn sich was geändert hat
                 console.log("Daten neu laden nach erfolgreichem Sync...");
+                // Wichtig: loadInitialData lädt alles neu, inkl. Dropdowns
                 loadInitialData();
                 displayErgebnisseFromLocal();
             }
