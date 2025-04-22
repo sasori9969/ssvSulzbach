@@ -1,314 +1,364 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Teams anlegen (Offline-First)</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
-<script type="module" src="auto-sync.js" defer></script>
- <!-- NEU: Skript zum Laden der Navigation einbinden -->
- <script src="load-nav.js" defer></script>
-
-</head>
-<body>
+    <script type="module" src="auto-sync.js" defer></script>
+    <!-- NEU: Skript zum Laden der Navigation einbinden -->
+    <script src="load-nav.js" defer></script>
+  </head>
+  <body>
     <header>
-        <h1>Schützenverein - Teams anlegen</h1>
+      <h1>Schützenverein - Teams anlegen</h1>
     </header>
     <div class="container">
-       <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
-        <div id="navigation-placeholder">
-            <!-- Die Navigation wird hier von load-nav.js eingefügt -->
+      <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+      <div id="navigation-placeholder">
+        <!-- Die Navigation wird hier von load-nav.js eingefügt -->
+      </div>
+      <main>
+        <h2>Teams anlegen</h2>
+        <form id="teamForm">
+          <label for="teamname">Teamname:</label>
+          <input type="text" id="teamname" required />
+          <button type="submit" class="btn btn-primary">Hinzufügen</button>
+        </form>
+
+        <!-- Status und Confirm Modal (optional, aber empfohlen) -->
+        <div id="statusMeldung" class="status-meldung"></div>
+        <div id="confirmModal" class="modal">
+          <div class="modal-content">
+            <p id="confirmModalText">Möchtest du das wirklich tun?</p>
+            <button id="confirmModalOk" class="btn btn-danger">Ja</button>
+            <button id="confirmModalCancel" class="btn">Abbrechen</button>
+          </div>
         </div>
-        <main>
-            <h2>Teams anlegen</h2>
-            <form id="teamForm">
-                <label for="teamname">Teamname:</label>
-                <input type="text" id="teamname" required>
-                <button type="submit" class="btn btn-primary">Hinzufügen</button>
-            </form>
 
-            <!-- Status und Confirm Modal (optional, aber empfohlen) -->
-            <div id="statusMeldung" class="status-meldung"></div>
-            <div id="confirmModal" class="modal" >
-                <div class="modal-content">
-                    <p id="confirmModalText">Möchtest du das wirklich tun?</p>
-                    <button id="confirmModalOk" class="btn btn-danger">Ja</button>
-                    <button id="confirmModalCancel" class="btn">Abbrechen</button>
-                </div>
-            </div>
-
-            <h3>Gespeicherte Teams:</h3>
-            <ul id="teamListe"></ul>
-        </main>
+        <h3>Gespeicherte Teams:</h3>
+        <ul id="teamListe"></ul>
+      </main>
     </div>
 
     <script type="module">
-        // Firebase Imports (nur noch für Sync benötigt)
-        import { db } from './firebase-config.js';
-        import { collection, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+      // Firebase Imports (nur noch für Sync benötigt)
+      import { db } from "./firebase-config.js";
+      import {
+        collection,
+        doc,
+        serverTimestamp,
+        writeBatch,
+      } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-        // UI Utils Imports (falls du zeigeStatus/zeigeConfirm verwendest)
-        import { zeigeStatus, zeigeConfirm } from './ui-utils.js'; // Pfad anpassen!
+      // UI Utils Imports (falls du zeigeStatus/zeigeConfirm verwendest)
+      import { zeigeStatus, zeigeConfirm } from "./ui-utils.js"; // Pfad anpassen!
 
-        // Local Storage Utils Imports
-        import {
-            getLocalData,
-            setLocalData,
-            generateLocalId,
-            finalizeLocalItems,
-            TEAMS_KEY // Importiere den Key für Teams
-        } from './local-storage-utils.js'; // Pfad anpassen!
+      // Local Storage Utils Imports
+      import {
+        getLocalData,
+        setLocalData,
+        generateLocalId,
+        finalizeLocalItems,
+        TEAMS_KEY, // Importiere den Key für Teams
+      } from "./local-storage-utils.js"; // Pfad anpassen!
 
-        const teamForm = document.getElementById("teamForm");
-        const teamListe = document.getElementById("teamListe");
+      const teamForm = document.getElementById("teamForm");
+      const teamListe = document.getElementById("teamListe");
 
-        // --- Lokale Teams anzeigen ---
-        function displayTeamsFromLocal() {
-            const lokaleTeams = getLocalData(TEAMS_KEY);
+      // --- Lokale Teams anzeigen ---
+      function displayTeamsFromLocal() {
+        const lokaleTeams = getLocalData(TEAMS_KEY);
 
-            // Sortieren (z.B. nach Teamname)
-            lokaleTeams.sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+        // Sortieren (z.B. nach Teamname)
+        lokaleTeams.sort((a, b) =>
+          (a.teamname || "").localeCompare(b.teamname || "")
+        );
 
-            teamListe.innerHTML = ""; // Liste leeren
+        teamListe.innerHTML = ""; // Liste leeren
 
-            if (lokaleTeams.length === 0) {
-                teamListe.innerHTML = "<li>Noch keine Teams lokal gespeichert.</li>";
-                return;
-            }
+        if (lokaleTeams.length === 0) {
+          teamListe.innerHTML = "<li>Noch keine Teams lokal gespeichert.</li>";
+          return;
+        }
 
-            lokaleTeams.forEach(team => {
-                let li = document.createElement("li");
-                const teamname = team.teamname || 'Unbenanntes Team';
-                let syncStatusText = '';
+        lokaleTeams.forEach((team) => {
+          let li = document.createElement("li");
+          const teamname = team.teamname || "Unbenanntes Team";
+          let syncStatusText = "";
 
-                // Status für Anzeige bestimmen
-                if (team._syncStatus === 'new') {
-                    syncStatusText = '<span class="sync-status">(Neu, nicht synchronisiert)</span>';
-                } else if (team._syncStatus === 'modified') {
-                    // Hinweis: 'modified' wird hier noch nicht gesetzt, da wir nur hinzufügen/löschen
-                    syncStatusText = '<span class="sync-status">(Geändert, nicht synchronisiert)</span>';
-                } else if (team._syncStatus === 'deleted') {
-                    syncStatusText = '<span class="sync-status">(Wird beim nächsten Sync gelöscht)</span>';
-                    li.classList.add('deleted');
-                }
+          // Status für Anzeige bestimmen
+          if (team._syncStatus === "new") {
+            syncStatusText =
+              '<span class="sync-status">(Neu, nicht synchronisiert)</span>';
+          } else if (team._syncStatus === "modified") {
+            // Hinweis: 'modified' wird hier noch nicht gesetzt, da wir nur hinzufügen/löschen
+            syncStatusText =
+              '<span class="sync-status">(Geändert, nicht synchronisiert)</span>';
+          } else if (team._syncStatus === "deleted") {
+            syncStatusText =
+              '<span class="sync-status">(Wird beim nächsten Sync gelöscht)</span>';
+            li.classList.add("deleted");
+          }
 
-                li.innerHTML = `
+          li.innerHTML = `
                     <span>${teamname}</span>
                     ${syncStatusText}
                     <button class="delete-btn" data-local-id="${team.localId}">Löschen</button>
                 `;
-                // Füge data-Attribute hinzu
-                li.dataset.localId = team.localId;
-                li.dataset.syncStatus = team._syncStatus;
+          // Füge data-Attribute hinzu
+          li.dataset.localId = team.localId;
+          li.dataset.syncStatus = team._syncStatus;
 
-                teamListe.appendChild(li);
-            });
+          teamListe.appendChild(li);
+        });
+      }
+
+      // --- Team hinzufügen (LOKAL) ---
+      teamForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        let teamname = document.getElementById("teamname").value.trim();
+
+        if (teamname === "") {
+          zeigeStatus("Bitte einen Teamnamen eingeben!", "fehler");
+          return;
         }
 
-        // --- Team hinzufügen (LOKAL) ---
-        teamForm.addEventListener("submit", function (e) {
-            e.preventDefault();
-            let teamname = document.getElementById("teamname").value.trim();
+        // Neues Team-Objekt für lokalen Speicher
+        const neuesTeam = {
+          localId: generateLocalId(), // Eigene lokale ID
+          firestoreId: null, // Firestore ID kommt erst nach Sync
+          teamname: teamname,
+          mitglieder: [], // Initial leere Mitgliederliste (wird in zuordnung.html gefüllt)
+          createdAt: new Date().toISOString(), // Lokaler Zeitstempel
+          _syncStatus: "new", // Status für Sync
+        };
 
-            if (teamname === "") {
-                zeigeStatus("Bitte einen Teamnamen eingeben!", 'fehler');
-                return;
+        // Aktuelle Liste holen, neues Team hinzufügen, zurückspeichern
+        const aktuelleTeams = getLocalData(TEAMS_KEY);
+        aktuelleTeams.push(neuesTeam);
+        const success = setLocalData(TEAMS_KEY, aktuelleTeams);
+
+        if (success) {
+          zeigeStatus("Team lokal hinzugefügt!", "erfolg");
+          teamForm.reset();
+          displayTeamsFromLocal(); // Liste sofort aktualisieren
+        } else {
+          zeigeStatus("Fehler beim lokalen Speichern des Teams!", "fehler");
+        }
+      });
+
+      // --- Team löschen (LOKAL markieren) ---
+      teamListe.addEventListener("click", (e) => {
+        const deleteButton = e.target.closest(".delete-btn");
+        if (deleteButton) {
+          e.stopPropagation();
+          const localId = deleteButton.getAttribute("data-local-id");
+          const listItem = deleteButton.closest("li");
+          const currentSyncStatus = listItem.dataset.syncStatus;
+
+          if (currentSyncStatus === "deleted") {
+            return; // Nicht erneut löschen
+          }
+
+          // Wichtiger Hinweis: Hier sollte geprüft werden, ob das Team noch Mitglieder hat
+          // oder in Ergebnissen verwendet wird, bevor es gelöscht wird.
+          // Das macht die Logik komplexer und erfordert Zugriff auf andere lokale Daten.
+          // Fürs Erste implementieren wir das einfache Löschen.
+          // Man könnte auch in der `zuordnung.html` verhindern, dass gelöschte Teams ausgewählt werden.
+
+          zeigeConfirm(
+            `Möchtest du das Team "${
+              listItem.querySelector("span").textContent
+            }" wirklich löschen?`,
+            () => {
+              const aktuelleTeams = getLocalData(TEAMS_KEY);
+              const index = aktuelleTeams.findIndex(
+                (t) => t.localId === localId
+              );
+
+              if (index > -1) {
+                if (aktuelleTeams[index]._syncStatus === "new") {
+                  aktuelleTeams.splice(index, 1);
+                  zeigeStatus(
+                    "Team lokal entfernt (war noch nicht synchronisiert).",
+                    "erfolg"
+                  );
+                } else {
+                  aktuelleTeams[index]._syncStatus = "deleted";
+                  // Wichtig: Auch die Mitgliederliste sollte hier ggf. geleert werden,
+                  // oder die Zuordnungslogik muss gelöschte Teams ignorieren.
+                  // aktuelleTeams[index].mitglieder = []; // Optional: Mitglieder entfernen
+                  zeigeStatus(
+                    "Team zum Löschen markiert (wird beim nächsten Sync entfernt).",
+                    "erfolg"
+                  );
+                }
+
+                const success = setLocalData(TEAMS_KEY, aktuelleTeams);
+                if (success) {
+                  displayTeamsFromLocal(); // Liste neu anzeigen
+                } else {
+                  zeigeStatus(
+                    "Fehler beim lokalen Speichern der Löschmarkierung!",
+                    "fehler"
+                  );
+                }
+              } else {
+                zeigeStatus("Team nicht gefunden.", "fehler");
+              }
+            }
+          );
+        }
+      });
+
+      // --- Periodische Synchronisation für Teams mit Firestore ---
+      async function syncTeamsMitFirestore() {
+        console.log(
+          "Prüfe auf lokale Änderungen für Synchronisation (Teams)..."
+        );
+
+        const lokaleTeams = getLocalData(TEAMS_KEY);
+
+        const hatAenderungen = lokaleTeams.some(
+          (item) => item._syncStatus && item._syncStatus !== "synced"
+        );
+
+        if (!hatAenderungen) {
+          console.log("Keine lokalen Team-Änderungen zum Synchronisieren.");
+          return;
+        }
+
+        console.log(
+          "Änderungen bei Teams gefunden. Starte Sync mit Firestore..."
+        );
+        zeigeStatus("Synchronisiere Teams mit Server...", "info");
+
+        const batch = writeBatch(db);
+        let changesInBatch = false;
+        let zuAktualisierendeLokaleTeams = structuredClone(lokaleTeams);
+
+        try {
+          zuAktualisierendeLokaleTeams.forEach((team, index) => {
+            if (!team._syncStatus || team._syncStatus === "synced") {
+              return;
             }
 
-            // Neues Team-Objekt für lokalen Speicher
-            const neuesTeam = {
-                localId: generateLocalId(), // Eigene lokale ID
-                firestoreId: null,          // Firestore ID kommt erst nach Sync
-                teamname: teamname,
-                mitglieder: [],             // Initial leere Mitgliederliste (wird in zuordnung.html gefüllt)
-                createdAt: new Date().toISOString(), // Lokaler Zeitstempel
-                _syncStatus: 'new'          // Status für Sync
-            };
+            if (team._syncStatus === "new") {
+              const docRef = doc(collection(db, "teams"));
+              batch.set(docRef, {
+                teamname: team.teamname,
+                mitglieder: team.mitglieder || [], // Sicherstellen, dass es ein Array ist
+                timestamp: serverTimestamp(),
+              });
+              zuAktualisierendeLokaleTeams[index].firestoreId = docRef.id;
+              zuAktualisierendeLokaleTeams[index]._pendingSync = true;
+              changesInBatch = true;
+              console.log(
+                `Sync: Neues Team "${team.teamname}" wird hinzugefügt.`
+              );
+            } else if (team._syncStatus === "modified" && team.firestoreId) {
+              // Diese Logik wird relevant, wenn wir Teams bearbeiten (z.B. in zuordnung.html)
+              const docRef = doc(db, "teams", team.firestoreId);
+              batch.update(docRef, {
+                teamname: team.teamname, // Falls Name änderbar wäre
+                mitglieder: team.mitglieder || [], // Wichtig für Zuordnungs-Updates
+              });
+              zuAktualisierendeLokaleTeams[index]._pendingSync = true;
+              changesInBatch = true;
+              console.log(
+                `Sync: Team "${team.teamname}" (${team.firestoreId}) wird aktualisiert.`
+              );
+            } else if (team._syncStatus === "deleted" && team.firestoreId) {
+              const docRef = doc(db, "teams", team.firestoreId);
+              batch.delete(docRef);
+              zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
+              changesInBatch = true;
+              console.log(
+                `Sync: Team "${team.teamname}" (${team.firestoreId}) wird gelöscht.`
+              );
+            } else if (team._syncStatus === "deleted" && !team.firestoreId) {
+              console.warn(
+                `Sync: Team "${team.teamname}" war zum Löschen markiert, hatte aber keine Firestore ID. Wird lokal entfernt.`
+              );
+              zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
+            } else if (team._syncStatus === "modified" && !team.firestoreId) {
+              console.error(
+                `Sync: Inkonsistenter Status für "${team.teamname}". Status 'modified' aber keine Firestore ID.`
+              );
+            }
+          });
 
-            // Aktuelle Liste holen, neues Team hinzufügen, zurückspeichern
-            const aktuelleTeams = getLocalData(TEAMS_KEY);
-            aktuelleTeams.push(neuesTeam);
-            const success = setLocalData(TEAMS_KEY, aktuelleTeams);
+          if (changesInBatch) {
+            await batch.commit();
+            console.log("Firestore Batch-Commit für Teams erfolgreich.");
+
+            const finaleLokaleTeams = finalizeLocalItems(
+              zuAktualisierendeLokaleTeams
+            );
+            const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
 
             if (success) {
-                zeigeStatus("Team lokal hinzugefügt!", 'erfolg');
-                teamForm.reset();
-                displayTeamsFromLocal(); // Liste sofort aktualisieren
+              displayTeamsFromLocal();
+              zeigeStatus("Teams erfolgreich synchronisiert!", "erfolg");
             } else {
-                 zeigeStatus("Fehler beim lokalen Speichern des Teams!", 'fehler');
+              zeigeStatus(
+                "Fehler beim Speichern der finalen lokalen Teamdaten nach Sync!",
+                "fehler"
+              );
             }
-        });
-
-        // --- Team löschen (LOKAL markieren) ---
-        teamListe.addEventListener('click', (e) => {
-            const deleteButton = e.target.closest('.delete-btn');
-            if (deleteButton) {
-                e.stopPropagation();
-                const localId = deleteButton.getAttribute('data-local-id');
-                const listItem = deleteButton.closest('li');
-                const currentSyncStatus = listItem.dataset.syncStatus;
-
-                if (currentSyncStatus === 'deleted') {
-                    return; // Nicht erneut löschen
-                }
-
-                // Wichtiger Hinweis: Hier sollte geprüft werden, ob das Team noch Mitglieder hat
-                // oder in Ergebnissen verwendet wird, bevor es gelöscht wird.
-                // Das macht die Logik komplexer und erfordert Zugriff auf andere lokale Daten.
-                // Fürs Erste implementieren wir das einfache Löschen.
-                // Man könnte auch in der `zuordnung.html` verhindern, dass gelöschte Teams ausgewählt werden.
-
-                zeigeConfirm(`Möchtest du das Team "${listItem.querySelector('span').textContent}" wirklich löschen?`, () => {
-                    const aktuelleTeams = getLocalData(TEAMS_KEY);
-                    const index = aktuelleTeams.findIndex(t => t.localId === localId);
-
-                    if (index > -1) {
-                        if (aktuelleTeams[index]._syncStatus === 'new') {
-                            aktuelleTeams.splice(index, 1);
-                            zeigeStatus("Team lokal entfernt (war noch nicht synchronisiert).", 'erfolg');
-                        } else {
-                            aktuelleTeams[index]._syncStatus = 'deleted';
-                            // Wichtig: Auch die Mitgliederliste sollte hier ggf. geleert werden,
-                            // oder die Zuordnungslogik muss gelöschte Teams ignorieren.
-                            // aktuelleTeams[index].mitglieder = []; // Optional: Mitglieder entfernen
-                            zeigeStatus("Team zum Löschen markiert (wird beim nächsten Sync entfernt).", 'erfolg');
-                        }
-
-                        const success = setLocalData(TEAMS_KEY, aktuelleTeams);
-                        if (success) {
-                            displayTeamsFromLocal(); // Liste neu anzeigen
-                        } else {
-                             zeigeStatus("Fehler beim lokalen Speichern der Löschmarkierung!", 'fehler');
-                        }
-
-                    } else {
-                         zeigeStatus("Team nicht gefunden.", 'fehler');
-                    }
-                });
+          } else {
+            // Nur lokale Bereinigung durchführen, falls nötig
+            const finaleLokaleTeams = finalizeLocalItems(
+              zuAktualisierendeLokaleTeams
+            );
+            if (finaleLokaleTeams.length !== lokaleTeams.length) {
+              const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
+              if (success) {
+                displayTeamsFromLocal();
+                zeigeStatus("Lokale Team-Bereinigung abgeschlossen.", "info");
+              } else {
+                zeigeStatus(
+                  "Fehler beim Speichern der bereinigten lokalen Teamdaten!",
+                  "fehler"
+                );
+              }
+            } else {
+              console.log(
+                "Keine Firestore-Operationen für Teams und keine lokale Bereinigung nötig."
+              );
             }
-        });
-
-        // --- Periodische Synchronisation für Teams mit Firestore ---
-        async function syncTeamsMitFirestore() {
-            console.log("Prüfe auf lokale Änderungen für Synchronisation (Teams)...");
-
-            const lokaleTeams = getLocalData(TEAMS_KEY);
-
-            const hatAenderungen = lokaleTeams.some(item => item._syncStatus && item._syncStatus !== 'synced');
-
-            if (!hatAenderungen) {
-                console.log("Keine lokalen Team-Änderungen zum Synchronisieren.");
-                return;
-            }
-
-            console.log("Änderungen bei Teams gefunden. Starte Sync mit Firestore...");
-            zeigeStatus("Synchronisiere Teams mit Server...", "info");
-
-            const batch = writeBatch(db);
-            let changesInBatch = false;
-            let zuAktualisierendeLokaleTeams = structuredClone(lokaleTeams);
-
-            try {
-                zuAktualisierendeLokaleTeams.forEach((team, index) => {
-                    if (!team._syncStatus || team._syncStatus === 'synced') {
-                        return;
-                    }
-
-                    if (team._syncStatus === 'new') {
-                        const docRef = doc(collection(db, "teams"));
-                        batch.set(docRef, {
-                            teamname: team.teamname,
-                            mitglieder: team.mitglieder || [], // Sicherstellen, dass es ein Array ist
-                            timestamp: serverTimestamp()
-                        });
-                        zuAktualisierendeLokaleTeams[index].firestoreId = docRef.id;
-                        zuAktualisierendeLokaleTeams[index]._pendingSync = true;
-                        changesInBatch = true;
-                        console.log(`Sync: Neues Team "${team.teamname}" wird hinzugefügt.`);
-
-                    } else if (team._syncStatus === 'modified' && team.firestoreId) {
-                        // Diese Logik wird relevant, wenn wir Teams bearbeiten (z.B. in zuordnung.html)
-                        const docRef = doc(db, "teams", team.firestoreId);
-                        batch.update(docRef, {
-                            teamname: team.teamname, // Falls Name änderbar wäre
-                            mitglieder: team.mitglieder || [] // Wichtig für Zuordnungs-Updates
-                        });
-                        zuAktualisierendeLokaleTeams[index]._pendingSync = true;
-                        changesInBatch = true;
-                        console.log(`Sync: Team "${team.teamname}" (${team.firestoreId}) wird aktualisiert.`);
-
-                    } else if (team._syncStatus === 'deleted' && team.firestoreId) {
-                        const docRef = doc(db, "teams", team.firestoreId);
-                        batch.delete(docRef);
-                        zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
-                        changesInBatch = true;
-                        console.log(`Sync: Team "${team.teamname}" (${team.firestoreId}) wird gelöscht.`);
-
-                    } else if (team._syncStatus === 'deleted' && !team.firestoreId) {
-                        console.warn(`Sync: Team "${team.teamname}" war zum Löschen markiert, hatte aber keine Firestore ID. Wird lokal entfernt.`);
-                        zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
-
-                    } else if (team._syncStatus === 'modified' && !team.firestoreId) {
-                        console.error(`Sync: Inkonsistenter Status für "${team.teamname}". Status 'modified' aber keine Firestore ID.`);
-                    }
-                });
-
-                if (changesInBatch) {
-                    await batch.commit();
-                    console.log("Firestore Batch-Commit für Teams erfolgreich.");
-
-                    const finaleLokaleTeams = finalizeLocalItems(zuAktualisierendeLokaleTeams);
-                    const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
-
-                    if (success) {
-                        displayTeamsFromLocal();
-                        zeigeStatus("Teams erfolgreich synchronisiert!", 'erfolg');
-                    } else {
-                        zeigeStatus("Fehler beim Speichern der finalen lokalen Teamdaten nach Sync!", 'fehler');
-                    }
-
-                } else {
-                    // Nur lokale Bereinigung durchführen, falls nötig
-                    const finaleLokaleTeams = finalizeLocalItems(zuAktualisierendeLokaleTeams);
-                     if (finaleLokaleTeams.length !== lokaleTeams.length) {
-                         const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
-                         if (success) {
-                             displayTeamsFromLocal();
-                             zeigeStatus("Lokale Team-Bereinigung abgeschlossen.", 'info');
-                         } else {
-                              zeigeStatus("Fehler beim Speichern der bereinigten lokalen Teamdaten!", 'fehler');
-                         }
-                     } else {
-                         console.log("Keine Firestore-Operationen für Teams und keine lokale Bereinigung nötig.");
-                     }
-                }
-
-            } catch (error) {
-                console.error("Fehler während der Team-Synchronisation oder beim Batch-Commit:", error);
-                zeigeStatus("Synchronisation der Teams fehlgeschlagen. Änderungen bleiben lokal.", 'fehler');
-            }
+          }
+        } catch (error) {
+          console.error(
+            "Fehler während der Team-Synchronisation oder beim Batch-Commit:",
+            error
+          );
+          zeigeStatus(
+            "Synchronisation der Teams fehlgeschlagen. Änderungen bleiben lokal.",
+            "fehler"
+          );
         }
+      }
 
-        // --- Initialisierung und Intervall ---
-        document.addEventListener('DOMContentLoaded', () => {
-            displayTeamsFromLocal(); // Beim Laden aus LocalStorage anzeigen
+      // --- Initialisierung und Intervall ---
+      document.addEventListener("DOMContentLoaded", () => {
+        displayTeamsFromLocal(); // Beim Laden aus LocalStorage anzeigen
 
-            // Sync alle 1 Stunde starten (oder kürzer zum Testen)
-            const syncInterval = 60000; // 60 Sekunden zum Testen
-            // const syncInterval = 1000 * 60 * 60; // 1 Stunde für Produktion
+        // Sync alle 1 Stunde starten (oder kürzer zum Testen)
+        const syncInterval = 60000; // 60 Sekunden zum Testen
+        // const syncInterval = 1000 * 60 * 60; // 1 Stunde für Produktion
 
-            // WICHTIG: Rufe hier die Sync-Funktion für Teams auf.
-            // Wenn du eine zentrale Sync-Funktion hast, rufe diese auf.
-            // Ansonsten rufe die spezifische Funktion für Teams auf.
-      //      setInterval(syncTeamsMitFirestore, syncInterval);
+        // WICHTIG: Rufe hier die Sync-Funktion für Teams auf.
+        // Wenn du eine zentrale Sync-Funktion hast, rufe diese auf.
+        // Ansonsten rufe die spezifische Funktion für Teams auf.
+        //      setInterval(syncTeamsMitFirestore, syncInterval);
 
-            // Optional: Sofort einmal synchronisieren beim Start
+        // Optional: Sofort einmal synchronisieren beim Start
         //    setTimeout(syncTeamsMitFirestore, 5500); // Leicht versetzt zu Teilnehmern, falls getrennt
-        });
-
+      });
     </script>
-
-</body>
+  </body>
 </html>

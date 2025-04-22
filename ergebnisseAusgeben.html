@@ -1,249 +1,305 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSV1928 Sulzbach e.V. - Ergebnisse (Offline)</title> <!-- Titel angepasst -->
-    <link rel="stylesheet" href="style.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSV1928 Sulzbach e.V. - Ergebnisse (Offline)</title>
+    <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css" />
     <!-- Zentrales Auto-Sync Skript einbinden -->
-<script type="module" src="auto-sync.js" defer></script>
- <!-- NEU: Skript zum Laden der Navigation einbinden -->
- <script src="load-nav.js" defer></script>
+    <script type="module" src="auto-sync.js" defer></script>
+    <!-- NEU: Skript zum Laden der Navigation einbinden -->
+    <script src="load-nav.js" defer></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-</head>
-<body>
+  </head>
+  <body>
     <header>
-        <h1>SSV1928 Sulzbach e.V.</h1>
+      <h1>SSV1928 Sulzbach e.V.</h1>
     </header>
 
     <div class="container">
- <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
-    <div id="navigation-placeholder">
+      <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+      <div id="navigation-placeholder">
         <!-- Die Navigation wird hier von load-nav.js eingefügt -->
-    </div>        <main>
-             <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
-             <div id="ladeAnzeige" class="lade-anzeige">
-                 <div class="lade-kreis"></div>
-                 <p>Lade lokale Daten...</p>
-             </div>
+      </div>
+      <main>
+        <div
+          id="statusMeldung"
+          class="status-meldung"
+          style="display: none"
+        ></div>
+        <div id="ladeAnzeige" class="lade-anzeige">
+          <div class="lade-kreis"></div>
+          <p>Lade lokale Daten...</p>
+        </div>
 
-            <div class="container"> <!-- Zusätzlicher Container für Spaltenlayout -->
-                <div class="column">
-                    <h2>Einzelergebnisse (Lokal)</h2>
-                    <button id="pdfEinzelButton" class="btn btn-primary">PDF erstellen</button>
-                    <table id="einzelErgebnisseTabelle">
-                        <thead>
-                            <tr>
-                                <th>Platz</th>
-                                <th>Name</th>
-                                <th>Bestes Ergebnis</th> <!-- Geändert von Punktzahl -->
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="column">
-                    <h2>Mannschaftsergebnisse (Lokal)</h2>
-                    <button id="pdfTeamButton" class="btn btn-primary">PDF erstellen</button>
-                    <table id="teamErgebnisseTabelle">
-                        <thead>
-                            <tr>
-                                <th>Platz</th>
-                                <th>Team</th>
-                                <th>Gesamtergebnis</th> <!-- Geändert von Punktzahl -->
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+        <div class="container">
+          <!-- Zusätzlicher Container für Spaltenlayout -->
+          <div class="column">
+            <h2>Einzelergebnisse (Lokal)</h2>
+            <button id="pdfEinzelButton" class="btn btn-primary">
+              PDF erstellen
+            </button>
+            <table id="einzelErgebnisseTabelle">
+              <thead>
+                <tr>
+                  <th>Platz</th>
+                  <th>Name</th>
+                  <th>Bestes Ergebnis</th>
+                  <!-- Geändert von Punktzahl -->
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="column">
+            <h2>Mannschaftsergebnisse (Lokal)</h2>
+            <button id="pdfTeamButton" class="btn btn-primary">
+              PDF erstellen
+            </button>
+            <table id="teamErgebnisseTabelle">
+              <thead>
+                <tr>
+                  <th>Platz</th>
+                  <th>Team</th>
+                  <th>Gesamtergebnis</th>
+                  <!-- Geändert von Punktzahl -->
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
     </div>
 
     <script type="module">
-        // Entfernt: Firebase Imports für getDocs etc.
-        // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        // import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-        // import { db } from './firebase-config.js';
+      // Entfernt: Firebase Imports für getDocs etc.
+      // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+      // import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+      // import { db } from './firebase-config.js';
 
-        // NEU: Local Storage Utils Imports
-        import {
-            getLocalData,
-            TEILNEHMER_KEY,
-            TEAMS_KEY,
-            ERGEBNISSE_KEY
-        } from './local-storage-utils.js';
+      // NEU: Local Storage Utils Imports
+      import {
+        getLocalData,
+        TEILNEHMER_KEY,
+        TEAMS_KEY,
+        ERGEBNISSE_KEY,
+      } from "./local-storage-utils.js";
 
-        // NEU: UI Utils Imports (optional für Statusmeldungen)
-        import { zeigeStatus } from './ui-utils.js';
+      // NEU: UI Utils Imports (optional für Statusmeldungen)
+      import { zeigeStatus } from "./ui-utils.js";
 
-        const einzelErgebnisseTableBody = document.querySelector("#einzelErgebnisseTabelle tbody");
-        const teamErgebnisseTableBody = document.querySelector("#teamErgebnisseTabelle tbody");
-        const ladeAnzeige = document.getElementById('ladeAnzeige');
-        const statusMeldung = document.getElementById('statusMeldung');
+      const einzelErgebnisseTableBody = document.querySelector(
+        "#einzelErgebnisseTabelle tbody"
+      );
+      const teamErgebnisseTableBody = document.querySelector(
+        "#teamErgebnisseTabelle tbody"
+      );
+      const ladeAnzeige = document.getElementById("ladeAnzeige");
+      const statusMeldung = document.getElementById("statusMeldung");
 
-        function zeigeLoader(anzeigen) {
-            if (ladeAnzeige) ladeAnzeige.style.display = anzeigen ? "block" : "none";
+      function zeigeLoader(anzeigen) {
+        if (ladeAnzeige)
+          ladeAnzeige.style.display = anzeigen ? "block" : "none";
+      }
+
+      function loadAndDisplayLocalData() {
+        zeigeLoader(true);
+        try {
+          // 1. Lade alle benötigten Daten aus dem Local Storage
+          const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+          const lokaleTeams = getLocalData(TEAMS_KEY);
+          const lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+
+          // Filterung: Nur nicht als gelöscht markierte Elemente verwenden
+          const aktiveTeilnehmer = lokaleTeilnehmer.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          const aktiveTeams = lokaleTeams.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          const aktiveErgebnisse = lokaleErgebnisse.filter(
+            (e) => e._syncStatus !== "deleted"
+          );
+
+          // Maps für schnellen Zugriff erstellen (nur aktive Elemente)
+          const teilnehmerMap = new Map(
+            aktiveTeilnehmer.map((t) => [t.localId, t])
+          );
+          const teamMap = new Map(aktiveTeams.map((t) => [t.localId, t]));
+
+          // 2. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer)
+          const einzelErgebnisse = {}; // Objekt: { teilnehmerLocalId: { name: "...", ergebnis: 123 } }
+          aktiveErgebnisse.forEach((ergebnis) => {
+            // Nur Ergebnisse von aktiven Teilnehmern berücksichtigen
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
+            if (teilnehmer) {
+              const currentBest =
+                einzelErgebnisse[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1; // Bisheriges Bestes oder -1
+              const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
+
+              if (ergebnisWert > currentBest) {
+                einzelErgebnisse[ergebnis.teilnehmerLocalId] = {
+                  name: `${teilnehmer.vorname || ""} ${
+                    teilnehmer.name || ""
+                  }`.trim(),
+                  ergebnis: ergebnisWert,
+                };
+              }
+            }
+          });
+
+          // 3. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team)
+          const teamErgebnisse = {}; // Objekt: { teamLocalId: { name: "...", ergebnis: 456 } }
+          aktiveErgebnisse.forEach((ergebnis) => {
+            // Nur Ergebnisse von aktiven Teams und aktiven Teilnehmern berücksichtigen
+            const team = teamMap.get(ergebnis.teamLocalId);
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId); // Prüfen, ob der Schütze noch aktiv ist
+
+            if (team && teilnehmer) {
+              // Nur wenn Team UND Teilnehmer existieren und nicht gelöscht sind
+              if (!teamErgebnisse[ergebnis.teamLocalId]) {
+                teamErgebnisse[ergebnis.teamLocalId] = {
+                  name: team.teamname || "Unbenanntes Team",
+                  ergebnis: 0,
+                };
+              }
+              teamErgebnisse[ergebnis.teamLocalId].ergebnis +=
+                parseInt(ergebnis.ergebnis) || 0;
+            }
+          });
+
+          // 4. Zeige die Ergebnisse an
+          displayResults(einzelErgebnisse, einzelErgebnisseTableBody);
+          displayResults(teamErgebnisse, teamErgebnisseTableBody);
+        } catch (error) {
+          console.error(
+            "Fehler beim Laden oder Verarbeiten der lokalen Daten:",
+            error
+          );
+          zeigeStatus(
+            "Fehler beim Anzeigen der Ergebnisse. Details siehe Konsole.",
+            "fehler",
+            statusMeldung
+          );
+        } finally {
+          zeigeLoader(false);
+        }
+      }
+
+      // Hilfsfunktion zum Anzeigen der sortierten Ergebnisse in einer Tabelle
+      function displayResults(results, tableBody) {
+        tableBody.innerHTML = ""; // Tabelle leeren
+
+        // Ergebnisse nach Punktzahl sortieren (absteigend)
+        const sortedResults = Object.entries(results).sort(
+          ([, a], [, b]) => b.ergebnis - a.ergebnis
+        );
+
+        if (sortedResults.length === 0) {
+          tableBody.innerHTML =
+            '<tr><td colspan="3">Keine Ergebnisse vorhanden.</td></tr>';
+          return;
         }
 
-        function loadAndDisplayLocalData() {
-            zeigeLoader(true);
-            try {
-                // 1. Lade alle benötigten Daten aus dem Local Storage
-                const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
-                const lokaleTeams = getLocalData(TEAMS_KEY);
-                const lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
-
-                // Filterung: Nur nicht als gelöscht markierte Elemente verwenden
-                const aktiveTeilnehmer = lokaleTeilnehmer.filter(t => t._syncStatus !== 'deleted');
-                const aktiveTeams = lokaleTeams.filter(t => t._syncStatus !== 'deleted');
-                const aktiveErgebnisse = lokaleErgebnisse.filter(e => e._syncStatus !== 'deleted');
-
-                // Maps für schnellen Zugriff erstellen (nur aktive Elemente)
-                const teilnehmerMap = new Map(aktiveTeilnehmer.map(t => [t.localId, t]));
-                const teamMap = new Map(aktiveTeams.map(t => [t.localId, t]));
-
-                // 2. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer)
-                const einzelErgebnisse = {}; // Objekt: { teilnehmerLocalId: { name: "...", ergebnis: 123 } }
-                aktiveErgebnisse.forEach(ergebnis => {
-                    // Nur Ergebnisse von aktiven Teilnehmern berücksichtigen
-                    const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
-                    if (teilnehmer) {
-                        const currentBest = einzelErgebnisse[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1; // Bisheriges Bestes oder -1
-                        const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
-
-                        if (ergebnisWert > currentBest) {
-                            einzelErgebnisse[ergebnis.teilnehmerLocalId] = {
-                                name: `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim(),
-                                ergebnis: ergebnisWert
-                            };
-                        }
-                    }
-                });
-
-                // 3. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team)
-                const teamErgebnisse = {}; // Objekt: { teamLocalId: { name: "...", ergebnis: 456 } }
-                aktiveErgebnisse.forEach(ergebnis => {
-                    // Nur Ergebnisse von aktiven Teams und aktiven Teilnehmern berücksichtigen
-                    const team = teamMap.get(ergebnis.teamLocalId);
-                    const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId); // Prüfen, ob der Schütze noch aktiv ist
-
-                    if (team && teilnehmer) { // Nur wenn Team UND Teilnehmer existieren und nicht gelöscht sind
-                        if (!teamErgebnisse[ergebnis.teamLocalId]) {
-                            teamErgebnisse[ergebnis.teamLocalId] = {
-                                name: team.teamname || 'Unbenanntes Team',
-                                ergebnis: 0
-                            };
-                        }
-                        teamErgebnisse[ergebnis.teamLocalId].ergebnis += parseInt(ergebnis.ergebnis) || 0;
-                    }
-                });
-
-                // 4. Zeige die Ergebnisse an
-                displayResults(einzelErgebnisse, einzelErgebnisseTableBody);
-                displayResults(teamErgebnisse, teamErgebnisseTableBody);
-
-            } catch (error) {
-                console.error("Fehler beim Laden oder Verarbeiten der lokalen Daten:", error);
-                zeigeStatus("Fehler beim Anzeigen der Ergebnisse. Details siehe Konsole.", 'fehler', statusMeldung);
-            } finally {
-                zeigeLoader(false);
-            }
-        }
-
-        // Hilfsfunktion zum Anzeigen der sortierten Ergebnisse in einer Tabelle
-        function displayResults(results, tableBody) {
-            tableBody.innerHTML = ""; // Tabelle leeren
-
-            // Ergebnisse nach Punktzahl sortieren (absteigend)
-            const sortedResults = Object.entries(results).sort(([, a], [, b]) => b.ergebnis - a.ergebnis);
-
-            if (sortedResults.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="3">Keine Ergebnisse vorhanden.</td></tr>';
-                 return;
-            }
-
-            sortedResults.forEach(([id, result], index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+        sortedResults.forEach(([id, result], index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${result.name}</td>
                     <td>${result.ergebnis}</td>
                 `;
-                tableBody.appendChild(row);
-            });
-        }
-
-        // --- Initialisierung und PDF-Funktionen (unverändert) ---
-        document.addEventListener('DOMContentLoaded', function() {
-            // PDF-Generierungsfunktion (bleibt gleich, da sie die HTML-Tabelle liest)
-            window.generatePDF = function(tableId, title) {
-                try {
-                    const { jsPDF } = window.jspdf;
-                    if (!jsPDF) {
-                        throw new Error("jsPDF nicht verfügbar");
-                    }
-
-                    const doc = new jsPDF();
-                    const table = document.getElementById(tableId);
-
-                    // Prüfen, ob die Tabelle existiert und Zeilen hat
-                    if (!table) {
-                        throw new Error(`Tabelle mit ID "${tableId}" nicht gefunden.`);
-                    }
-                    const rows = table.querySelectorAll('tbody tr');
-                    if (rows.length === 0 || (rows.length === 1 && rows[0].textContent.includes("Keine Ergebnisse"))) {
-                         alert(`Keine Daten in Tabelle "${title}" zum Exportieren vorhanden.`);
-                         return; // Kein PDF erstellen, wenn keine Daten da sind
-                    }
-
-
-                    doc.text(title, 14, 15); // Titel etwas eingerückt
-
-                    // autoTable direkt auf das HTML-Element anwenden (einfacher)
-                    doc.autoTable({
-                        html: `#${tableId}`,
-                        startY: 20,
-                        theme: 'grid', // Optional: Stil anpassen
-                        headStyles: { fillColor: [22, 160, 133] }, // Optional: Kopfzeilenfarbe
-                    });
-
-                    doc.save(`${title.replace(/\s+/g, '_')}_Lokal.pdf`); // Dateiname angepasst
-                } catch (error) {
-                    console.error("Fehler beim PDF-Export:", error);
-                    alert("Fehler beim PDF-Export: " + error.message);
-                    // Optional: zeigeStatus("Fehler beim PDF-Export: " + error.message, 'fehler', statusMeldung);
-                }
-            };
-
-            // Event Listener hinzufügen (bleibt gleich)
-            document.getElementById('pdfEinzelButton').addEventListener('click', () => {
-                generatePDF('einzelErgebnisseTabelle', 'Einzelergebnisse');
-            });
-
-            document.getElementById('pdfTeamButton').addEventListener('click', () => {
-                generatePDF('teamErgebnisseTabelle', 'Mannschaftsergebnisse');
-            });
-
-            // Daten aus Local Storage laden und anzeigen
-            loadAndDisplayLocalData();
-
-            // Optional: Listener für Storage-Events, um bei Änderungen in anderen Tabs zu aktualisieren
-            window.addEventListener('storage', (event) => {
-                // Prüfen, ob sich relevante Daten geändert haben könnten
-                if (event.key === TEILNEHMER_KEY || event.key === TEAMS_KEY || event.key === ERGEBNISSE_KEY || event.key === LAST_SYNC_KEY) {
-                    console.log('LocalStorage geändert, lade Ergebnisse neu...');
-                    loadAndDisplayLocalData();
-                }
-            });
-             // Optional: Listener für erfolgreichen Sync (falls vom sync-manager ausgelöst)
-             window.addEventListener('datasync-complete', () => {
-                 console.log('Datensynchronisation abgeschlossen, lade Ergebnisse neu...');
-                 loadAndDisplayLocalData();
-             });
+          tableBody.appendChild(row);
         });
+      }
+
+      // --- Initialisierung und PDF-Funktionen (unverändert) ---
+      document.addEventListener("DOMContentLoaded", function () {
+        // PDF-Generierungsfunktion (bleibt gleich, da sie die HTML-Tabelle liest)
+        window.generatePDF = function (tableId, title) {
+          try {
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+              throw new Error("jsPDF nicht verfügbar");
+            }
+
+            const doc = new jsPDF();
+            const table = document.getElementById(tableId);
+
+            // Prüfen, ob die Tabelle existiert und Zeilen hat
+            if (!table) {
+              throw new Error(`Tabelle mit ID "${tableId}" nicht gefunden.`);
+            }
+            const rows = table.querySelectorAll("tbody tr");
+            if (
+              rows.length === 0 ||
+              (rows.length === 1 &&
+                rows[0].textContent.includes("Keine Ergebnisse"))
+            ) {
+              alert(
+                `Keine Daten in Tabelle "${title}" zum Exportieren vorhanden.`
+              );
+              return; // Kein PDF erstellen, wenn keine Daten da sind
+            }
+
+            doc.text(title, 14, 15); // Titel etwas eingerückt
+
+            // autoTable direkt auf das HTML-Element anwenden (einfacher)
+            doc.autoTable({
+              html: `#${tableId}`,
+              startY: 20,
+              theme: "grid", // Optional: Stil anpassen
+              headStyles: { fillColor: [22, 160, 133] }, // Optional: Kopfzeilenfarbe
+            });
+
+            doc.save(`${title.replace(/\s+/g, "_")}_Lokal.pdf`); // Dateiname angepasst
+          } catch (error) {
+            console.error("Fehler beim PDF-Export:", error);
+            alert("Fehler beim PDF-Export: " + error.message);
+            // Optional: zeigeStatus("Fehler beim PDF-Export: " + error.message, 'fehler', statusMeldung);
+          }
+        };
+
+        // Event Listener hinzufügen (bleibt gleich)
+        document
+          .getElementById("pdfEinzelButton")
+          .addEventListener("click", () => {
+            generatePDF("einzelErgebnisseTabelle", "Einzelergebnisse");
+          });
+
+        document
+          .getElementById("pdfTeamButton")
+          .addEventListener("click", () => {
+            generatePDF("teamErgebnisseTabelle", "Mannschaftsergebnisse");
+          });
+
+        // Daten aus Local Storage laden und anzeigen
+        loadAndDisplayLocalData();
+
+        // Optional: Listener für Storage-Events, um bei Änderungen in anderen Tabs zu aktualisieren
+        window.addEventListener("storage", (event) => {
+          // Prüfen, ob sich relevante Daten geändert haben könnten
+          if (
+            event.key === TEILNEHMER_KEY ||
+            event.key === TEAMS_KEY ||
+            event.key === ERGEBNISSE_KEY ||
+            event.key === LAST_SYNC_KEY
+          ) {
+            console.log("LocalStorage geändert, lade Ergebnisse neu...");
+            loadAndDisplayLocalData();
+          }
+        });
+        // Optional: Listener für erfolgreichen Sync (falls vom sync-manager ausgelöst)
+        window.addEventListener("datasync-complete", () => {
+          console.log(
+            "Datensynchronisation abgeschlossen, lade Ergebnisse neu..."
+          );
+          loadAndDisplayLocalData();
+        });
+      });
     </script>
-</body>
+  </body>
 </html>

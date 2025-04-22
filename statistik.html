@@ -1,282 +1,350 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistik (Offline)</title> <!-- Titel angepasst -->
-    <link rel="stylesheet" href="style.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Statistik (Offline)</title>
+    <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css" />
     <!-- Zentrales Auto-Sync Skript einbinden -->
-<script type="module" src="auto-sync.js" defer></script>
- <!-- NEU: Skript zum Laden der Navigation einbinden -->
- <script src="load-nav.js" defer></script>
-
-</head>
-<body>
+    <script type="module" src="auto-sync.js" defer></script>
+    <!-- NEU: Skript zum Laden der Navigation einbinden -->
+    <script src="load-nav.js" defer></script>
+  </head>
+  <body>
     <header>
-        <h1>Schützenverein - Statistik</h1>
+      <h1>Schützenverein - Statistik</h1>
     </header>
     <div class="container">
- <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
-    <div id="navigation-placeholder">
+      <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+      <div id="navigation-placeholder">
         <!-- Die Navigation wird hier von load-nav.js eingefügt -->
-    </div>        <main>
-             <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
-             <div id="ladeAnzeige" class="lade-anzeige">
-                 <div class="lade-kreis"></div>
-                 <p>Lade lokale Daten...</p>
-             </div>
+      </div>
+      <main>
+        <div
+          id="statusMeldung"
+          class="status-meldung"
+          style="display: none"
+        ></div>
+        <div id="ladeAnzeige" class="lade-anzeige">
+          <div class="lade-kreis"></div>
+          <p>Lade lokale Daten...</p>
+        </div>
 
-            <h2>Übersicht (Basierend auf lokalen Daten)</h2>
+        <h2>Übersicht (Basierend auf lokalen Daten)</h2>
 
-            <div class="statistik-section">
-                <h3>Teilnehmer</h3>
-                <p>Anzahl aktiver Teilnehmer: <span id="anzahlTeilnehmer" class="statistik-value">0</span></p>
-            </div>
+        <div class="statistik-section">
+          <h3>Teilnehmer</h3>
+          <p>
+            Anzahl aktiver Teilnehmer:
+            <span id="anzahlTeilnehmer" class="statistik-value">0</span>
+          </p>
+        </div>
 
-            <div class="statistik-section">
-                <h3>Teams</h3>
-                <p>Anzahl aktiver Teams: <span id="anzahlTeams" class="statistik-value">0</span></p>
-            </div>
+        <div class="statistik-section">
+          <h3>Teams</h3>
+          <p>
+            Anzahl aktiver Teams:
+            <span id="anzahlTeams" class="statistik-value">0</span>
+          </p>
+        </div>
 
-            <div class="statistik-section">
-                <h3>Beste Schützen (Einzel - Bestes Ergebnis)</h3>
-                <table id="besteSchuetzenTable" class="statistik-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Bestes Ergebnis</th>
-                        </tr>
-                    </thead>
-                    <tbody><tr><td colspan="2">Lade...</td></tr></tbody>
-                </table>
-            </div>
+        <div class="statistik-section">
+          <h3>Beste Schützen (Einzel - Bestes Ergebnis)</h3>
+          <table id="besteSchuetzenTable" class="statistik-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Bestes Ergebnis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="2">Lade...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-            <div class="statistik-section">
-                <h3>Beste Teams (Gesamtergebnis)</h3>
-                <table id="besteTeamsTable" class="statistik-table">
-                    <thead>
-                        <tr>
-                            <th>Teamname</th>
-                            <th>Gesamtergebnis</th>
-                        </tr>
-                    </thead>
-                    <tbody><tr><td colspan="2">Lade...</td></tr></tbody>
-                </table>
-            </div>
-             <div class="statistik-section">
-                <h3>Durchschnittliche Ergebnisse pro Teammitglied</h3>
-                <table id="durchschnittTeamErgebnisseTable" class="statistik-table">
-                    <thead>
-                        <tr>
-                            <th>Teamname</th>
-                            <th>Durchschnittliches Ergebnis</th>
-                        </tr>
-                    </thead>
-                    <tbody><tr><td colspan="2">Lade...</td></tr></tbody>
-                </table>
-            </div>
-        </main>
+        <div class="statistik-section">
+          <h3>Beste Teams (Gesamtergebnis)</h3>
+          <table id="besteTeamsTable" class="statistik-table">
+            <thead>
+              <tr>
+                <th>Teamname</th>
+                <th>Gesamtergebnis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="2">Lade...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="statistik-section">
+          <h3>Durchschnittliche Ergebnisse pro Teammitglied</h3>
+          <table id="durchschnittTeamErgebnisseTable" class="statistik-table">
+            <thead>
+              <tr>
+                <th>Teamname</th>
+                <th>Durchschnittliches Ergebnis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="2">Lade...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
 
     <script type="module">
-        // Entfernt: Firebase Imports
-        // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        // import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-        // import { db } from './firebase-config.js';
+      // Entfernt: Firebase Imports
+      // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+      // import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+      // import { db } from './firebase-config.js';
 
-        // NEU: Local Storage Utils Imports
-        import {
-            getLocalData,
-            TEILNEHMER_KEY,
-            TEAMS_KEY,
-            ERGEBNISSE_KEY,
-            LAST_SYNC_KEY // Optional für Storage Listener
-        } from './local-storage-utils.js';
+      // NEU: Local Storage Utils Imports
+      import {
+        getLocalData,
+        TEILNEHMER_KEY,
+        TEAMS_KEY,
+        ERGEBNISSE_KEY,
+        LAST_SYNC_KEY, // Optional für Storage Listener
+      } from "./local-storage-utils.js";
 
-         // NEU: UI Utils Imports (optional für Statusmeldungen)
-        import { zeigeStatus } from './ui-utils.js';
+      // NEU: UI Utils Imports (optional für Statusmeldungen)
+      import { zeigeStatus } from "./ui-utils.js";
 
-        // DOM Elemente
-        const anzahlTeilnehmerSpan = document.getElementById("anzahlTeilnehmer");
-        const anzahlTeamsSpan = document.getElementById("anzahlTeams");
-        const besteSchuetzenTableBody = document.querySelector("#besteSchuetzenTable tbody");
-        const besteTeamsTableBody = document.querySelector("#besteTeamsTable tbody");
-        const durchschnittTeamErgebnisseTableBody = document.querySelector("#durchschnittTeamErgebnisseTable tbody");
-        const ladeAnzeige = document.getElementById('ladeAnzeige');
-        const statusMeldung = document.getElementById('statusMeldung');
+      // DOM Elemente
+      const anzahlTeilnehmerSpan = document.getElementById("anzahlTeilnehmer");
+      const anzahlTeamsSpan = document.getElementById("anzahlTeams");
+      const besteSchuetzenTableBody = document.querySelector(
+        "#besteSchuetzenTable tbody"
+      );
+      const besteTeamsTableBody = document.querySelector(
+        "#besteTeamsTable tbody"
+      );
+      const durchschnittTeamErgebnisseTableBody = document.querySelector(
+        "#durchschnittTeamErgebnisseTable tbody"
+      );
+      const ladeAnzeige = document.getElementById("ladeAnzeige");
+      const statusMeldung = document.getElementById("statusMeldung");
 
+      function zeigeLoader(anzeigen) {
+        if (ladeAnzeige)
+          ladeAnzeige.style.display = anzeigen ? "block" : "none";
+      }
 
-        function zeigeLoader(anzeigen) {
-            if (ladeAnzeige) ladeAnzeige.style.display = anzeigen ? "block" : "none";
-        }
+      async function loadAndDisplayLocalStatistik() {
+        zeigeLoader(true);
+        // Tabellen leeren oder "Lade..." anzeigen
+        besteSchuetzenTableBody.innerHTML =
+          '<tr><td colspan="2">Lade...</td></tr>';
+        besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
+        durchschnittTeamErgebnisseTableBody.innerHTML =
+          '<tr><td colspan="2">Lade...</td></tr>';
 
-        async function loadAndDisplayLocalStatistik() {
-             zeigeLoader(true);
-             // Tabellen leeren oder "Lade..." anzeigen
-             besteSchuetzenTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
-             besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
-             durchschnittTeamErgebnisseTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
+        try {
+          // 1. Lade alle benötigten Daten aus dem Local Storage
+          const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+          const lokaleTeams = getLocalData(TEAMS_KEY);
+          const lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
 
-            try {
-                // 1. Lade alle benötigten Daten aus dem Local Storage
-                const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
-                const lokaleTeams = getLocalData(TEAMS_KEY);
-                const lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+          // 2. Filterung: Nur nicht als gelöscht markierte Elemente verwenden
+          const aktiveTeilnehmer = lokaleTeilnehmer.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          const aktiveTeams = lokaleTeams.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          const aktiveErgebnisse = lokaleErgebnisse.filter(
+            (e) => e._syncStatus !== "deleted"
+          );
 
-                // 2. Filterung: Nur nicht als gelöscht markierte Elemente verwenden
-                const aktiveTeilnehmer = lokaleTeilnehmer.filter(t => t._syncStatus !== 'deleted');
-                const aktiveTeams = lokaleTeams.filter(t => t._syncStatus !== 'deleted');
-                const aktiveErgebnisse = lokaleErgebnisse.filter(e => e._syncStatus !== 'deleted');
+          // 3. Berechne einfache Zählungen
+          anzahlTeilnehmerSpan.textContent = aktiveTeilnehmer.length;
+          anzahlTeamsSpan.textContent = aktiveTeams.length;
 
-                // 3. Berechne einfache Zählungen
-                anzahlTeilnehmerSpan.textContent = aktiveTeilnehmer.length;
-                anzahlTeamsSpan.textContent = aktiveTeams.length;
+          // 4. Maps für schnellen Zugriff erstellen (nur aktive Elemente)
+          const teilnehmerMap = new Map(
+            aktiveTeilnehmer.map((t) => [t.localId, t])
+          );
+          const teamMap = new Map(aktiveTeams.map((t) => [t.localId, t]));
 
-                // 4. Maps für schnellen Zugriff erstellen (nur aktive Elemente)
-                const teilnehmerMap = new Map(aktiveTeilnehmer.map(t => [t.localId, t]));
-                const teamMap = new Map(aktiveTeams.map(t => [t.localId, t]));
-
-                // 5. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer) - wie in ergebnisseAusgeben
-                const einzelErgebnisse = {};
-                aktiveErgebnisse.forEach(ergebnis => {
-                    const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
-                    if (teilnehmer) {
-                        const currentBest = einzelErgebnisse[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1;
-                        const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
-                        if (ergebnisWert > currentBest) {
-                            einzelErgebnisse[ergebnis.teilnehmerLocalId] = {
-                                name: `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim(),
-                                ergebnis: ergebnisWert
-                            };
-                        }
-                    }
-                });
-
-                // 6. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team) - wie in ergebnisseAusgeben
-                const teamErgebnisse = {}; // { teamLocalId: { name: "...", ergebnis: 0, anzahlErgebnisse: 0, mitgliederCount: 0 } }
-                aktiveErgebnisse.forEach(ergebnis => {
-                    const team = teamMap.get(ergebnis.teamLocalId);
-                    const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
-                    if (team && teilnehmer) {
-                        if (!teamErgebnisse[ergebnis.teamLocalId]) {
-                            // Mitgliederzahl des Teams aus teamMap holen (nur aktive Mitglieder zählen?)
-                            // Hier zählen wir erstmal alle zugewiesenen Mitglieder laut Team-Definition
-                            const mitgliederIds = team.mitglieder || [];
-                            // Zähle, wie viele dieser Mitglieder auch in der *aktiven* Teilnehmerliste sind
-                            const aktiveMitgliederCount = mitgliederIds.filter(id => teilnehmerMap.has(id)).length;
-
-                            teamErgebnisse[ergebnis.teamLocalId] = {
-                                name: team.teamname || 'Unbenanntes Team',
-                                ergebnis: 0,
-                                anzahlErgebnisse: 0, // Zählt die Anzahl der Einzelergebnisse, die zum Team gehören
-                                mitgliederCount: aktiveMitgliederCount // Anzahl der *aktiven* Mitglieder im Team
-                            };
-                        }
-                        teamErgebnisse[ergebnis.teamLocalId].ergebnis += parseInt(ergebnis.ergebnis) || 0;
-                        teamErgebnisse[ergebnis.teamLocalId].anzahlErgebnisse++;
-                    }
-                });
-
-                // 7. Zeige Statistiken an
-                displayBesteSchuetzen(einzelErgebnisse);
-                displayBesteTeams(teamErgebnisse);
-                displayTeamAverages(teamErgebnisse); // Nutzt die bereits berechneten teamErgebnisse
-
-            } catch (error) {
-                console.error("Fehler beim Laden oder Verarbeiten der lokalen Statistikdaten:", error);
-                 zeigeStatus("Fehler beim Anzeigen der Statistik. Details siehe Konsole.", 'fehler', statusMeldung);
-                 // Setze Tabellen auf Fehlerzustand
-                 besteSchuetzenTableBody.innerHTML = '<tr><td colspan="2">Fehler beim Laden</td></tr>';
-                 besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Fehler beim Laden</td></tr>';
-                 durchschnittTeamErgebnisseTableBody.innerHTML = '<tr><td colspan="2">Fehler beim Laden</td></tr>';
-            } finally {
-                zeigeLoader(false);
+          // 5. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer) - wie in ergebnisseAusgeben
+          const einzelErgebnisse = {};
+          aktiveErgebnisse.forEach((ergebnis) => {
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
+            if (teilnehmer) {
+              const currentBest =
+                einzelErgebnisse[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1;
+              const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
+              if (ergebnisWert > currentBest) {
+                einzelErgebnisse[ergebnis.teilnehmerLocalId] = {
+                  name: `${teilnehmer.vorname || ""} ${
+                    teilnehmer.name || ""
+                  }`.trim(),
+                  ergebnis: ergebnisWert,
+                };
+              }
             }
-        }
+          });
 
-        // --- Anzeige-Funktionen (angepasst) ---
+          // 6. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team) - wie in ergebnisseAusgeben
+          const teamErgebnisse = {}; // { teamLocalId: { name: "...", ergebnis: 0, anzahlErgebnisse: 0, mitgliederCount: 0 } }
+          aktiveErgebnisse.forEach((ergebnis) => {
+            const team = teamMap.get(ergebnis.teamLocalId);
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
+            if (team && teilnehmer) {
+              if (!teamErgebnisse[ergebnis.teamLocalId]) {
+                // Mitgliederzahl des Teams aus teamMap holen (nur aktive Mitglieder zählen?)
+                // Hier zählen wir erstmal alle zugewiesenen Mitglieder laut Team-Definition
+                const mitgliederIds = team.mitglieder || [];
+                // Zähle, wie viele dieser Mitglieder auch in der *aktiven* Teilnehmerliste sind
+                const aktiveMitgliederCount = mitgliederIds.filter((id) =>
+                  teilnehmerMap.has(id)
+                ).length;
 
-        function displayBesteSchuetzen(einzelErgebnisse) {
-            besteSchuetzenTableBody.innerHTML = ""; // Leeren
-            const sortedResults = Object.entries(einzelErgebnisse)
-                                      .sort(([, a], [, b]) => b.ergebnis - a.ergebnis)
-                                      .slice(0, 5); // Top 5 anzeigen
-
-             if (sortedResults.length === 0) {
-                 besteSchuetzenTableBody.innerHTML = '<tr><td colspan="2">Keine Einzelergebnisse vorhanden.</td></tr>';
-                 return;
+                teamErgebnisse[ergebnis.teamLocalId] = {
+                  name: team.teamname || "Unbenanntes Team",
+                  ergebnis: 0,
+                  anzahlErgebnisse: 0, // Zählt die Anzahl der Einzelergebnisse, die zum Team gehören
+                  mitgliederCount: aktiveMitgliederCount, // Anzahl der *aktiven* Mitglieder im Team
+                };
+              }
+              teamErgebnisse[ergebnis.teamLocalId].ergebnis +=
+                parseInt(ergebnis.ergebnis) || 0;
+              teamErgebnisse[ergebnis.teamLocalId].anzahlErgebnisse++;
             }
+          });
 
-            sortedResults.forEach(([id, result]) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${result.name}</td><td>${result.ergebnis}</td>`;
-                besteSchuetzenTableBody.appendChild(row);
-            });
+          // 7. Zeige Statistiken an
+          displayBesteSchuetzen(einzelErgebnisse);
+          displayBesteTeams(teamErgebnisse);
+          displayTeamAverages(teamErgebnisse); // Nutzt die bereits berechneten teamErgebnisse
+        } catch (error) {
+          console.error(
+            "Fehler beim Laden oder Verarbeiten der lokalen Statistikdaten:",
+            error
+          );
+          zeigeStatus(
+            "Fehler beim Anzeigen der Statistik. Details siehe Konsole.",
+            "fehler",
+            statusMeldung
+          );
+          // Setze Tabellen auf Fehlerzustand
+          besteSchuetzenTableBody.innerHTML =
+            '<tr><td colspan="2">Fehler beim Laden</td></tr>';
+          besteTeamsTableBody.innerHTML =
+            '<tr><td colspan="2">Fehler beim Laden</td></tr>';
+          durchschnittTeamErgebnisseTableBody.innerHTML =
+            '<tr><td colspan="2">Fehler beim Laden</td></tr>';
+        } finally {
+          zeigeLoader(false);
+        }
+      }
+
+      // --- Anzeige-Funktionen (angepasst) ---
+
+      function displayBesteSchuetzen(einzelErgebnisse) {
+        besteSchuetzenTableBody.innerHTML = ""; // Leeren
+        const sortedResults = Object.entries(einzelErgebnisse)
+          .sort(([, a], [, b]) => b.ergebnis - a.ergebnis)
+          .slice(0, 5); // Top 5 anzeigen
+
+        if (sortedResults.length === 0) {
+          besteSchuetzenTableBody.innerHTML =
+            '<tr><td colspan="2">Keine Einzelergebnisse vorhanden.</td></tr>';
+          return;
         }
 
-        function displayBesteTeams(teamErgebnisse) {
-            besteTeamsTableBody.innerHTML = ""; // Leeren
-            const sortedResults = Object.entries(teamErgebnisse)
-                                      .sort(([, a], [, b]) => b.ergebnis - a.ergebnis);
-
-             if (sortedResults.length === 0) {
-                 besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Keine Teamergebnisse vorhanden.</td></tr>';
-                 return;
-            }
-
-            sortedResults.forEach(([id, result]) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${result.name}</td><td>${result.ergebnis}</td>`;
-                besteTeamsTableBody.appendChild(row);
-            });
-        }
-
-        function displayTeamAverages(teamErgebnisse) {
-            durchschnittTeamErgebnisseTableBody.innerHTML = ""; // Leeren
-
-            // Filtere Teams ohne Mitglieder oder ohne Ergebnisse heraus
-            const teamsMitDaten = Object.entries(teamErgebnisse)
-                                        .filter(([id, result]) => result.mitgliederCount > 0 && result.anzahlErgebnisse > 0);
-
-            if (teamsMitDaten.length === 0) {
-                 durchschnittTeamErgebnisseTableBody.innerHTML = '<tr><td colspan="2">Keine Teams mit Mitgliedern und Ergebnissen vorhanden.</td></tr>';
-                 return;
-            }
-
-            // Berechne Durchschnitt und sortiere
-            const sortedAverages = teamsMitDaten
-                .map(([id, result]) => ({
-                    name: result.name,
-                    durchschnitt: result.ergebnis / result.mitgliederCount // Durchschnitt pro *aktivem* Mitglied
-                    // Alternative: result.ergebnis / result.anzahlErgebnisse (Durchschnitt pro abgegebenem Ergebnis)
-                }))
-                .sort((a, b) => b.durchschnitt - a.durchschnitt);
-
-
-            sortedAverages.forEach(result => {
-                const row = document.createElement("tr");
-                row.innerHTML = `<td>${result.name}</td><td>${result.durchschnitt.toFixed(2)}</td>`;
-                durchschnittTeamErgebnisseTableBody.appendChild(row);
-            });
-        }
-
-        // --- Initialisierung ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAndDisplayLocalStatistik();
-
-             // Optional: Listener für Storage-Events
-            window.addEventListener('storage', (event) => {
-                if (event.key === TEILNEHMER_KEY || event.key === TEAMS_KEY || event.key === ERGEBNISSE_KEY || event.key === LAST_SYNC_KEY) {
-                    console.log('LocalStorage geändert, lade Statistik neu...');
-                    loadAndDisplayLocalStatistik();
-                }
-            });
-             // Optional: Listener für erfolgreichen Sync
-             window.addEventListener('datasync-complete', () => {
-                 console.log('Datensynchronisation abgeschlossen, lade Statistik neu...');
-                 loadAndDisplayLocalStatistik();
-             });
+        sortedResults.forEach(([id, result]) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${result.name}</td><td>${result.ergebnis}</td>`;
+          besteSchuetzenTableBody.appendChild(row);
         });
+      }
+
+      function displayBesteTeams(teamErgebnisse) {
+        besteTeamsTableBody.innerHTML = ""; // Leeren
+        const sortedResults = Object.entries(teamErgebnisse).sort(
+          ([, a], [, b]) => b.ergebnis - a.ergebnis
+        );
+
+        if (sortedResults.length === 0) {
+          besteTeamsTableBody.innerHTML =
+            '<tr><td colspan="2">Keine Teamergebnisse vorhanden.</td></tr>';
+          return;
+        }
+
+        sortedResults.forEach(([id, result]) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${result.name}</td><td>${result.ergebnis}</td>`;
+          besteTeamsTableBody.appendChild(row);
+        });
+      }
+
+      function displayTeamAverages(teamErgebnisse) {
+        durchschnittTeamErgebnisseTableBody.innerHTML = ""; // Leeren
+
+        // Filtere Teams ohne Mitglieder oder ohne Ergebnisse heraus
+        const teamsMitDaten = Object.entries(teamErgebnisse).filter(
+          ([id, result]) =>
+            result.mitgliederCount > 0 && result.anzahlErgebnisse > 0
+        );
+
+        if (teamsMitDaten.length === 0) {
+          durchschnittTeamErgebnisseTableBody.innerHTML =
+            '<tr><td colspan="2">Keine Teams mit Mitgliedern und Ergebnissen vorhanden.</td></tr>';
+          return;
+        }
+
+        // Berechne Durchschnitt und sortiere
+        const sortedAverages = teamsMitDaten
+          .map(([id, result]) => ({
+            name: result.name,
+            durchschnitt: result.ergebnis / result.mitgliederCount, // Durchschnitt pro *aktivem* Mitglied
+            // Alternative: result.ergebnis / result.anzahlErgebnisse (Durchschnitt pro abgegebenem Ergebnis)
+          }))
+          .sort((a, b) => b.durchschnitt - a.durchschnitt);
+
+        sortedAverages.forEach((result) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${
+            result.name
+          }</td><td>${result.durchschnitt.toFixed(2)}</td>`;
+          durchschnittTeamErgebnisseTableBody.appendChild(row);
+        });
+      }
+
+      // --- Initialisierung ---
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAndDisplayLocalStatistik();
+
+        // Optional: Listener für Storage-Events
+        window.addEventListener("storage", (event) => {
+          if (
+            event.key === TEILNEHMER_KEY ||
+            event.key === TEAMS_KEY ||
+            event.key === ERGEBNISSE_KEY ||
+            event.key === LAST_SYNC_KEY
+          ) {
+            console.log("LocalStorage geändert, lade Statistik neu...");
+            loadAndDisplayLocalStatistik();
+          }
+        });
+        // Optional: Listener für erfolgreichen Sync
+        window.addEventListener("datasync-complete", () => {
+          console.log(
+            "Datensynchronisation abgeschlossen, lade Statistik neu..."
+          );
+          loadAndDisplayLocalStatistik();
+        });
+      });
     </script>
-</body>
+  </body>
 </html>

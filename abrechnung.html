@@ -1,419 +1,465 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Abrechnung (Offline)</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
     <script src="load-nav.js" defer></script>
 
     <style>
-        /* Zusätzliche Stile für die Abrechnungsseite */
-        #abrechnung main h2 {
-            margin-bottom: 20px;
-            color: #333; /* Etwas dunklere Überschrift */
-        }
-        #summenAnzeige {
-            font-size: 1.3em; /* Etwas größer */
-            font-weight: bold;
-            margin-bottom: 30px; /* Mehr Abstand nach unten */
-            padding: 18px 25px; /* Mehr Innenabstand */
-            background-color: #f8f9fa; /* Hellerer Hintergrund */
-            border: 1px solid #dee2e6; /* Subtilerer Rand */
-            border-radius: 8px; /* Rundere Ecken */
-            display: inline-block;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Leichter Schatten */
-        }
-        #summenAnzeige span {
-            color: #28a745;
-            font-size: 1.1em; /* Summe etwas größer */
-        }
-        #teamAbrechnungListe {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            border: 1px solid #dee2e6; /* Rahmen um die ganze Liste */
-            border-radius: 8px; /* Abgerundete Ecken für den Rahmen */
-            overflow: hidden; /* Verhindert, dass Innenränder über den Radius hinausragen */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.08); /* Leichter Schatten für die Liste */
-        }
+      /* Zusätzliche Stile für die Abrechnungsseite */
+      #abrechnung main h2 {
+        margin-bottom: 20px;
+        color: #333; /* Etwas dunklere Überschrift */
+      }
+      #summenAnzeige {
+        font-size: 1.3em; /* Etwas größer */
+        font-weight: bold;
+        margin-bottom: 30px; /* Mehr Abstand nach unten */
+        padding: 18px 25px; /* Mehr Innenabstand */
+        background-color: #f8f9fa; /* Hellerer Hintergrund */
+        border: 1px solid #dee2e6; /* Subtilerer Rand */
+        border-radius: 8px; /* Rundere Ecken */
+        display: inline-block;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Leichter Schatten */
+      }
+      #summenAnzeige span {
+        color: #28a745;
+        font-size: 1.1em; /* Summe etwas größer */
+      }
+      #teamAbrechnungListe {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        border: 1px solid #dee2e6; /* Rahmen um die ganze Liste */
+        border-radius: 8px; /* Abgerundete Ecken für den Rahmen */
+        overflow: hidden; /* Verhindert, dass Innenränder über den Radius hinausragen */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08); /* Leichter Schatten für die Liste */
+      }
+      #teamAbrechnungListe li {
+        padding: 15px 20px; /* Mehr Padding */
+        border-bottom: 1px solid #eee; /* Subtilere Trennlinie */
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #fff;
+        flex-wrap: wrap;
+        transition: background-color 0.2s ease-in-out; /* Hover-Effekt */
+      }
+      #teamAbrechnungListe li:last-child {
+        border-bottom: none; /* Keine Linie beim letzten Element */
+      }
+      #teamAbrechnungListe li:hover {
+        background-color: #f8f9fa; /* Leichter Hover-Effekt */
+      }
+
+      .team-info {
+        display: flex;
+        align-items: center;
+        flex-grow: 1;
+        margin-right: 20px; /* Mehr Abstand */
+        font-size: 1.1em; /* Teamname etwas größer */
+        color: #495057;
+      }
+      .team-info span:first-child {
+        /* Nur der Teamname */
+        font-weight: 500; /* Etwas fetter */
+      }
+
+      .team-controls {
+        display: flex;
+        align-items: center;
+        gap: 25px; /* Größerer Abstand zwischen Controls */
+        flex-shrink: 0; /* Verhindert Schrumpfen der Controls */
+      }
+
+      .team-controls label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        white-space: nowrap;
+        font-size: 0.95em; /* Etwas kleinere Schrift für Labels */
+        color: #6c757d; /* Grauton für Labels */
+      }
+      .team-controls label:hover {
+        color: #333; /* Dunkler bei Hover */
+      }
+
+      .team-controls input[type="checkbox"] {
+        margin-right: 8px; /* Mehr Abstand zur Beschriftung */
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #007bff; /* Farbe für Checkbox (moderne Browser) */
+      }
+
+      .team-controls select {
+        padding: 6px 10px; /* Mehr Padding im Select */
+        cursor: pointer;
+        min-width: 60px; /* Etwas breiter */
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background-color: #fff;
+        margin-left: 5px; /* Kleiner Abstand zum Label */
+      }
+
+      .team-summe {
+        font-weight: bold;
+        margin-left: 25px; /* Mehr Abstand */
+        white-space: nowrap;
+        min-width: 75px; /* Etwas breiter für die Summe */
+        text-align: right;
+        font-size: 1.1em; /* Summe etwas größer */
+        color: #343a40; /* Dunklerer Farbton */
+      }
+
+      /* Hervorhebung, wenn Startgeld bezahlt wurde */
+      #teamAbrechnungListe li.startgeld-bezahlt .team-info span:first-child {
+        color: #198754; /* Grün, wenn bezahlt */
+        /* font-weight: bold; */ /* Optional: Fett */
+      }
+      #teamAbrechnungListe li.startgeld-bezahlt {
+        /* background-color: #e9f7ef; */ /* Optional: Leichter grüner Hintergrund */
+      }
+
+      .sync-status-indicator {
+        font-size: 0.8em;
+        margin-left: 10px; /* Mehr Abstand */
+        color: #fd7e14; /* Helleres Orange */
+        font-style: italic;
+        background-color: #fff3e0; /* Sehr heller Oranger Hintergrund */
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+
+      /* Responsive Anpassung (leicht angepasst) */
+      @media (max-width: 768px) {
         #teamAbrechnungListe li {
-            padding: 15px 20px; /* Mehr Padding */
-            border-bottom: 1px solid #eee; /* Subtilere Trennlinie */
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #fff;
-            flex-wrap: wrap;
-            transition: background-color 0.2s ease-in-out; /* Hover-Effekt */
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 15px; /* Etwas weniger Padding auf Mobil */
         }
-        #teamAbrechnungListe li:last-child {
-            border-bottom: none; /* Keine Linie beim letzten Element */
-        }
-        #teamAbrechnungListe li:hover {
-             background-color: #f8f9fa; /* Leichter Hover-Effekt */
-        }
-
         .team-info {
-            display: flex;
-            align-items: center;
-            flex-grow: 1;
-            margin-right: 20px; /* Mehr Abstand */
-            font-size: 1.1em; /* Teamname etwas größer */
-            color: #495057;
+          margin-right: 0; /* Kein rechter Rand mehr */
+          margin-bottom: 15px; /* Abstand nach unten */
+          width: 100%; /* Volle Breite */
         }
-        .team-info span:first-child { /* Nur der Teamname */
-            font-weight: 500; /* Etwas fetter */
-        }
-
         .team-controls {
-            display: flex;
-            align-items: center;
-            gap: 25px; /* Größerer Abstand zwischen Controls */
-            flex-shrink: 0; /* Verhindert Schrumpfen der Controls */
+          margin-top: 0; /* Kein Abstand nach oben mehr nötig */
+          width: 100%;
+          justify-content: space-between;
+          gap: 15px; /* Etwas weniger Gap */
+          margin-bottom: 10px; /* Abstand zur Summe */
         }
-
         .team-controls label {
-             display: flex;
-             align-items: center;
-             cursor: pointer;
-             white-space: nowrap;
-             font-size: 0.95em; /* Etwas kleinere Schrift für Labels */
-             color: #6c757d; /* Grauton für Labels */
+          font-size: 0.9em; /* Noch etwas kleiner auf Mobil */
         }
-        .team-controls label:hover {
-             color: #333; /* Dunkler bei Hover */
-        }
-
-        .team-controls input[type="checkbox"] {
-            margin-right: 8px; /* Mehr Abstand zur Beschriftung */
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #007bff; /* Farbe für Checkbox (moderne Browser) */
-        }
-
-        .team-controls select {
-            padding: 6px 10px; /* Mehr Padding im Select */
-            cursor: pointer;
-            min-width: 60px; /* Etwas breiter */
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            background-color: #fff;
-            margin-left: 5px; /* Kleiner Abstand zum Label */
-        }
-
         .team-summe {
-            font-weight: bold;
-            margin-left: 25px; /* Mehr Abstand */
-            white-space: nowrap;
-            min-width: 75px; /* Etwas breiter für die Summe */
-            text-align: right;
-            font-size: 1.1em; /* Summe etwas größer */
-            color: #343a40; /* Dunklerer Farbton */
+          margin-left: 0;
+          margin-top: 5px;
+          align-self: flex-end;
+          font-size: 1.2em; /* Summe auf Mobil größer */
         }
-
-        /* Hervorhebung, wenn Startgeld bezahlt wurde */
-        #teamAbrechnungListe li.startgeld-bezahlt .team-info span:first-child {
-             color: #198754; /* Grün, wenn bezahlt */
-             /* font-weight: bold; */ /* Optional: Fett */
-        }
-        #teamAbrechnungListe li.startgeld-bezahlt {
-             /* background-color: #e9f7ef; */ /* Optional: Leichter grüner Hintergrund */
-        }
-
-
-        .sync-status-indicator {
-             font-size: 0.8em;
-             margin-left: 10px; /* Mehr Abstand */
-             color: #fd7e14; /* Helleres Orange */
-             font-style: italic;
-             background-color: #fff3e0; /* Sehr heller Oranger Hintergrund */
-             padding: 2px 5px;
-             border-radius: 3px;
-        }
-
-         /* Responsive Anpassung (leicht angepasst) */
-         @media (max-width: 768px) {
-            #teamAbrechnungListe li {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 15px; /* Etwas weniger Padding auf Mobil */
-            }
-            .team-info {
-                margin-right: 0; /* Kein rechter Rand mehr */
-                margin-bottom: 15px; /* Abstand nach unten */
-                width: 100%; /* Volle Breite */
-            }
-            .team-controls {
-                margin-top: 0; /* Kein Abstand nach oben mehr nötig */
-                width: 100%;
-                justify-content: space-between;
-                gap: 15px; /* Etwas weniger Gap */
-                margin-bottom: 10px; /* Abstand zur Summe */
-            }
-             .team-controls label {
-                 font-size: 0.9em; /* Noch etwas kleiner auf Mobil */
-             }
-            .team-summe {
-                 margin-left: 0;
-                 margin-top: 5px;
-                 align-self: flex-end;
-                 font-size: 1.2em; /* Summe auf Mobil größer */
-            }
-         }
-
+      }
     </style>
-</head>
-<body id="abrechnung">
+  </head>
+  <body id="abrechnung">
     <header>
-        <h1>Schützenverein - Abrechnung</h1>
+      <h1>Schützenverein - Abrechnung</h1>
     </header>
     <div class="container">
-
-<!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
-    <div id="navigation-placeholder">
+      <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+      <div id="navigation-placeholder">
         <!-- Die Navigation wird hier von load-nav.js eingefügt -->
-    </div>
+      </div>
 
-        <main>
-            <h2>Abrechnung Startgeld & Nachlösungen</h2>
+      <main>
+        <h2>Abrechnung Startgeld & Nachlösungen</h2>
 
-            <div id="statusMeldung" class="status-meldung"></div>
-            <div id="ladeAnzeige" class="lade-anzeige">
-                <div class="lade-kreis"></div>
-                <p>Lade Teamdaten und Zahlungsstatus...</p>
-            </div>
+        <div id="statusMeldung" class="status-meldung"></div>
+        <div id="ladeAnzeige" class="lade-anzeige">
+          <div class="lade-kreis"></div>
+          <p>Lade Teamdaten und Zahlungsstatus...</p>
+        </div>
 
-            <div id="summenAnzeige">
-                Gesamteinnahmen: <span id="gesamtSumme">0.00 €</span>
-            </div>
+        <div id="summenAnzeige">
+          Gesamteinnahmen: <span id="gesamtSumme">0.00 €</span>
+        </div>
 
-            <h3>Teams</h3>
-            <ul id="teamAbrechnungListe">
-                <!-- Teamliste wird hier dynamisch eingefügt -->
-                <li>Keine Teams gefunden.</li>
-            </ul>
-        </main>
+        <h3>Teams</h3>
+        <ul id="teamAbrechnungListe">
+          <!-- Teamliste wird hier dynamisch eingefügt -->
+          <li>Keine Teams gefunden.</li>
+        </ul>
+      </main>
     </div>
 
     <script type="module">
-        import { getLocalData, setLocalData, TEAMS_KEY } from './local-storage-utils.js';
-        import { zeigeStatus } from './ui-utils.js';
+      import {
+        getLocalData,
+        setLocalData,
+        TEAMS_KEY,
+      } from "./local-storage-utils.js";
+      import { zeigeStatus } from "./ui-utils.js";
 
-        // Konfiguration
-        const STARTGELD_BASIS = 12; // Kosten für die erste Teilnahme
-        const STARTGELD_NACHLOESUNG = 6; // Kosten pro Nachlösung
-        const MAX_NACHLOESUNGEN = 5; // Maximale Anzahl an Nachlösungen
-        const PAYMENT_STATUS_KEY = 'paymentStatus_v2'; // Neuer Key für die geänderte Struktur
+      // Konfiguration
+      const STARTGELD_BASIS = 12; // Kosten für die erste Teilnahme
+      const STARTGELD_NACHLOESUNG = 6; // Kosten pro Nachlösung
+      const MAX_NACHLOESUNGEN = 5; // Maximale Anzahl an Nachlösungen
+      const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Neuer Key für die geänderte Struktur
 
-        // DOM Elemente
-        const teamListeUl = document.getElementById('teamAbrechnungListe');
-        const gesamtSummeSpan = document.getElementById('gesamtSumme');
-        const ladeAnzeige = document.getElementById('ladeAnzeige');
-        const statusMeldung = document.getElementById('statusMeldung');
+      // DOM Elemente
+      const teamListeUl = document.getElementById("teamAbrechnungListe");
+      const gesamtSummeSpan = document.getElementById("gesamtSumme");
+      const ladeAnzeige = document.getElementById("ladeAnzeige");
+      const statusMeldung = document.getElementById("statusMeldung");
 
-        // Lokaler Cache für Zahlungsstatus
-        // Format: { teamLocalId1: { basePaid: boolean, rebuys: number }, teamLocalId2: {...}, ... }
-        let paymentStatus = {};
+      // Lokaler Cache für Zahlungsstatus
+      // Format: { teamLocalId1: { basePaid: boolean, rebuys: number }, teamLocalId2: {...}, ... }
+      let paymentStatus = {};
 
-        function zeigeLoader(anzeigen) {
-            if (ladeAnzeige) ladeAnzeige.style.display = anzeigen ? "block" : "none";
-        }
+      function zeigeLoader(anzeigen) {
+        if (ladeAnzeige)
+          ladeAnzeige.style.display = anzeigen ? "block" : "none";
+      }
 
-        // Berechnet die Summe für ein einzelnes Team
-        function berechneTeamSumme(status) {
-            const baseCost = status.basePaid ? STARTGELD_BASIS : 0;
-            const rebuyCost = (status.rebuys || 0) * STARTGELD_NACHLOESUNG;
-            return baseCost + rebuyCost;
-        }
+      // Berechnet die Summe für ein einzelnes Team
+      function berechneTeamSumme(status) {
+        const baseCost = status.basePaid ? STARTGELD_BASIS : 0;
+        const rebuyCost = (status.rebuys || 0) * STARTGELD_NACHLOESUNG;
+        return baseCost + rebuyCost;
+      }
 
-        // Lädt Teams und Zahlungsstatus, zeigt die Liste an
-        function loadAndDisplayData() {
-            zeigeLoader(true);
-            teamListeUl.innerHTML = '<li>Lade Daten...</li>'; // Platzhalter
+      // Lädt Teams und Zahlungsstatus, zeigt die Liste an
+      function loadAndDisplayData() {
+        zeigeLoader(true);
+        teamListeUl.innerHTML = "<li>Lade Daten...</li>"; // Platzhalter
 
-            try {
-                // 1. Teams laden
-                const lokaleTeams = getLocalData(TEAMS_KEY);
-                const aktiveTeams = lokaleTeams.filter(t => t._syncStatus !== 'deleted');
-                aktiveTeams.sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+        try {
+          // 1. Teams laden
+          const lokaleTeams = getLocalData(TEAMS_KEY);
+          const aktiveTeams = lokaleTeams.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          aktiveTeams.sort((a, b) =>
+            (a.teamname || "").localeCompare(b.teamname || "")
+          );
 
-                // 2. Zahlungsstatus laden (oder initialisieren)
-                paymentStatus = getLocalData(PAYMENT_STATUS_KEY) || {};
+          // 2. Zahlungsstatus laden (oder initialisieren)
+          paymentStatus = getLocalData(PAYMENT_STATUS_KEY) || {};
 
-                // 3. Liste generieren
-                teamListeUl.innerHTML = ""; // Liste leeren
+          // 3. Liste generieren
+          teamListeUl.innerHTML = ""; // Liste leeren
 
-                if (aktiveTeams.length === 0) {
-                    teamListeUl.innerHTML = "<li>Keine aktiven Teams vorhanden.</li>";
-                    berechneUndZeigeGesamtSumme(); // Summe trotzdem aktualisieren (sollte 0 sein)
-                    zeigeLoader(false);
-                    return;
-                }
+          if (aktiveTeams.length === 0) {
+            teamListeUl.innerHTML = "<li>Keine aktiven Teams vorhanden.</li>";
+            berechneUndZeigeGesamtSumme(); // Summe trotzdem aktualisieren (sollte 0 sein)
+            zeigeLoader(false);
+            return;
+          }
 
-                aktiveTeams.forEach(team => {
-                    const li = document.createElement('li');
-                    const teamLocalId = team.localId;
-                    // Hole Status oder setze Default, falls Team neu ist
-                    const currentStatus = paymentStatus[teamLocalId] || { basePaid: false, rebuys: 0 };
+          aktiveTeams.forEach((team) => {
+            const li = document.createElement("li");
+            const teamLocalId = team.localId;
+            // Hole Status oder setze Default, falls Team neu ist
+            const currentStatus = paymentStatus[teamLocalId] || {
+              basePaid: false,
+              rebuys: 0,
+            };
 
-                    li.dataset.localId = teamLocalId;
-                    if (currentStatus.basePaid) {
-                        li.classList.add('startgeld-bezahlt'); // Klasse für bezahltes Startgeld
-                    }
+            li.dataset.localId = teamLocalId;
+            if (currentStatus.basePaid) {
+              li.classList.add("startgeld-bezahlt"); // Klasse für bezahltes Startgeld
+            }
 
-                    // Sync-Status Text (optional)
-                    let syncStatusText = '';
-                     if (team._syncStatus && team._syncStatus !== 'synced') {
-                         syncStatusText = `<span class="sync-status-indicator">(${team._syncStatus})</span>`;
-                     }
+            // Sync-Status Text (optional)
+            let syncStatusText = "";
+            if (team._syncStatus && team._syncStatus !== "synced") {
+              syncStatusText = `<span class="sync-status-indicator">(${team._syncStatus})</span>`;
+            }
 
-                    // Optionen für Nachlösungs-Dropdown generieren
-                    let rebuyOptionsHtml = '';
-                    for (let i = 0; i <= MAX_NACHLOESUNGEN; i++) {
-                        rebuyOptionsHtml += `<option value="${i}" ${currentStatus.rebuys === i ? 'selected' : ''}>${i}</option>`;
-                    }
+            // Optionen für Nachlösungs-Dropdown generieren
+            let rebuyOptionsHtml = "";
+            for (let i = 0; i <= MAX_NACHLOESUNGEN; i++) {
+              rebuyOptionsHtml += `<option value="${i}" ${
+                currentStatus.rebuys === i ? "selected" : ""
+              }>${i}</option>`;
+            }
 
-                    // Team-Summe berechnen
-                    const teamSumme = berechneTeamSumme(currentStatus);
+            // Team-Summe berechnen
+            const teamSumme = berechneTeamSumme(currentStatus);
 
-                    li.innerHTML = `
+            li.innerHTML = `
                         <div class="team-info">
-                            <span>${team.teamname || 'Unbenanntes Team'}</span>
+                            <span>${team.teamname || "Unbenanntes Team"}</span>
                             ${syncStatusText}
                         </div>
                         <div class="team-controls">
                             <label>
-                                <input type="checkbox" class="base-paid-check" ${currentStatus.basePaid ? 'checked' : ''}>
+                                <input type="checkbox" class="base-paid-check" ${
+                                  currentStatus.basePaid ? "checked" : ""
+                                }>
                                 Startgeld (${STARTGELD_BASIS.toFixed(2)} €)
                             </label>
                             <label>
-                                Nachlösungen (${STARTGELD_NACHLOESUNG.toFixed(2)} €):
+                                Nachlösungen (${STARTGELD_NACHLOESUNG.toFixed(
+                                  2
+                                )} €):
                                 <select class="rebuy-select">
                                     ${rebuyOptionsHtml}
                                 </select>
                             </label>
                         </div>
-                        <span class="team-summe">${teamSumme.toFixed(2)} €</span>
+                        <span class="team-summe">${teamSumme.toFixed(
+                          2
+                        )} €</span>
                     `;
 
-                    // Event Listener für Checkbox und Select hinzufügen
-                    const checkbox = li.querySelector('.base-paid-check');
-                    const select = li.querySelector('.rebuy-select');
+            // Event Listener für Checkbox und Select hinzufügen
+            const checkbox = li.querySelector(".base-paid-check");
+            const select = li.querySelector(".rebuy-select");
 
-                    checkbox.addEventListener('change', () => handlePaymentChange(teamLocalId, li));
-                    select.addEventListener('change', () => handlePaymentChange(teamLocalId, li));
+            checkbox.addEventListener("change", () =>
+              handlePaymentChange(teamLocalId, li)
+            );
+            select.addEventListener("change", () =>
+              handlePaymentChange(teamLocalId, li)
+            );
 
-                    teamListeUl.appendChild(li);
-                });
+            teamListeUl.appendChild(li);
+          });
 
-                // 4. Initiale Gesamtsumme berechnen und anzeigen
-                berechneUndZeigeGesamtSumme();
-
-            } catch (error) {
-                console.error("Fehler beim Laden der Abrechnungsdaten:", error);
-                zeigeStatus("Fehler beim Laden der Daten. Details siehe Konsole.", 'fehler', statusMeldung);
-                teamListeUl.innerHTML = "<li>Fehler beim Laden der Teams.</li>";
-            } finally {
-                zeigeLoader(false);
-            }
+          // 4. Initiale Gesamtsumme berechnen und anzeigen
+          berechneUndZeigeGesamtSumme();
+        } catch (error) {
+          console.error("Fehler beim Laden der Abrechnungsdaten:", error);
+          zeigeStatus(
+            "Fehler beim Laden der Daten. Details siehe Konsole.",
+            "fehler",
+            statusMeldung
+          );
+          teamListeUl.innerHTML = "<li>Fehler beim Laden der Teams.</li>";
+        } finally {
+          zeigeLoader(false);
         }
+      }
 
-        // Wird aufgerufen, wenn eine Checkbox oder ein Select geändert wird
-        function handlePaymentChange(teamLocalId, listItem) {
-            const checkbox = listItem.querySelector('.base-paid-check');
-            const select = listItem.querySelector('.rebuy-select');
+      // Wird aufgerufen, wenn eine Checkbox oder ein Select geändert wird
+      function handlePaymentChange(teamLocalId, listItem) {
+        const checkbox = listItem.querySelector(".base-paid-check");
+        const select = listItem.querySelector(".rebuy-select");
 
-            const newBasePaid = checkbox.checked;
-            const newRebuys = parseInt(select.value);
+        const newBasePaid = checkbox.checked;
+        const newRebuys = parseInt(select.value);
 
-            // Alten Status sichern, falls Speichern fehlschlägt
-            const oldStatus = { ...(paymentStatus[teamLocalId] || { basePaid: false, rebuys: 0 }) };
+        // Alten Status sichern, falls Speichern fehlschlägt
+        const oldStatus = {
+          ...(paymentStatus[teamLocalId] || { basePaid: false, rebuys: 0 }),
+        };
 
-            // 1. Status im lokalen Cache aktualisieren
-            paymentStatus[teamLocalId] = { basePaid: newBasePaid, rebuys: newRebuys };
+        // 1. Status im lokalen Cache aktualisieren
+        paymentStatus[teamLocalId] = {
+          basePaid: newBasePaid,
+          rebuys: newRebuys,
+        };
 
-            // 2. Aktualisierten Status im Local Storage speichern
-            const success = setLocalData(PAYMENT_STATUS_KEY, paymentStatus);
+        // 2. Aktualisierten Status im Local Storage speichern
+        const success = setLocalData(PAYMENT_STATUS_KEY, paymentStatus);
 
-            if (success) {
-                // 3. UI aktualisieren
-                // Klasse für bezahltes Startgeld
-                if (newBasePaid) {
-                    listItem.classList.add('startgeld-bezahlt');
-                } else {
-                    listItem.classList.remove('startgeld-bezahlt');
-                }
-                // Team-Summe aktualisieren
-                const teamSumme = berechneTeamSumme(paymentStatus[teamLocalId]);
-                listItem.querySelector('.team-summe').textContent = `${teamSumme.toFixed(2)} €`;
+        if (success) {
+          // 3. UI aktualisieren
+          // Klasse für bezahltes Startgeld
+          if (newBasePaid) {
+            listItem.classList.add("startgeld-bezahlt");
+          } else {
+            listItem.classList.remove("startgeld-bezahlt");
+          }
+          // Team-Summe aktualisieren
+          const teamSumme = berechneTeamSumme(paymentStatus[teamLocalId]);
+          listItem.querySelector(
+            ".team-summe"
+          ).textContent = `${teamSumme.toFixed(2)} €`;
 
-                // Gesamtsumme neu berechnen
-                berechneUndZeigeGesamtSumme();
+          // Gesamtsumme neu berechnen
+          berechneUndZeigeGesamtSumme();
 
-                // Kurze Erfolgsmeldung (optional)
-                // zeigeStatus(`Zahlungsstatus für Team aktualisiert.`, 'info', statusMeldung, 2000);
-            } else {
-                // Fehler beim Speichern
-                zeigeStatus("Fehler beim Speichern des Zahlungsstatus!", 'fehler', statusMeldung);
+          // Kurze Erfolgsmeldung (optional)
+          // zeigeStatus(`Zahlungsstatus für Team aktualisiert.`, 'info', statusMeldung, 2000);
+        } else {
+          // Fehler beim Speichern
+          zeigeStatus(
+            "Fehler beim Speichern des Zahlungsstatus!",
+            "fehler",
+            statusMeldung
+          );
 
-                // UI und Cache auf alten Wert zurücksetzen
-                paymentStatus[teamLocalId] = oldStatus; // Cache zurücksetzen
-                checkbox.checked = oldStatus.basePaid;
-                select.value = oldStatus.rebuys;
+          // UI und Cache auf alten Wert zurücksetzen
+          paymentStatus[teamLocalId] = oldStatus; // Cache zurücksetzen
+          checkbox.checked = oldStatus.basePaid;
+          select.value = oldStatus.rebuys;
 
-                 // Klasse und Team-Summe auch zurücksetzen
-                if (oldStatus.basePaid) {
-                    listItem.classList.add('startgeld-bezahlt');
-                } else {
-                    listItem.classList.remove('startgeld-bezahlt');
-                }
-                const teamSumme = berechneTeamSumme(oldStatus);
-                listItem.querySelector('.team-summe').textContent = `${teamSumme.toFixed(2)} €`;
+          // Klasse und Team-Summe auch zurücksetzen
+          if (oldStatus.basePaid) {
+            listItem.classList.add("startgeld-bezahlt");
+          } else {
+            listItem.classList.remove("startgeld-bezahlt");
+          }
+          const teamSumme = berechneTeamSumme(oldStatus);
+          listItem.querySelector(
+            ".team-summe"
+          ).textContent = `${teamSumme.toFixed(2)} €`;
 
-                // Gesamtsumme muss nicht neu berechnet werden, da nichts gespeichert wurde
-            }
+          // Gesamtsumme muss nicht neu berechnet werden, da nichts gespeichert wurde
         }
+      }
 
-        // Berechnet die Gesamtsumme basierend auf dem 'paymentStatus' Objekt
-        function berechneUndZeigeGesamtSumme() {
-            let gesamtSumme = 0;
-            const lokaleTeams = getLocalData(TEAMS_KEY); // Hole aktuelle Teams für die Berechnung
+      // Berechnet die Gesamtsumme basierend auf dem 'paymentStatus' Objekt
+      function berechneUndZeigeGesamtSumme() {
+        let gesamtSumme = 0;
+        const lokaleTeams = getLocalData(TEAMS_KEY); // Hole aktuelle Teams für die Berechnung
 
-            // Gehe durch alle *aktiven* Teams
-            lokaleTeams.filter(t => t._syncStatus !== 'deleted').forEach(team => {
-                 // Hole den Status für das Team aus dem Cache
-                 const status = paymentStatus[team.localId] || { basePaid: false, rebuys: 0 };
-                 // Addiere die berechnete Summe für dieses Team hinzu
-                 gesamtSumme += berechneTeamSumme(status);
-            });
+        // Gehe durch alle *aktiven* Teams
+        lokaleTeams
+          .filter((t) => t._syncStatus !== "deleted")
+          .forEach((team) => {
+            // Hole den Status für das Team aus dem Cache
+            const status = paymentStatus[team.localId] || {
+              basePaid: false,
+              rebuys: 0,
+            };
+            // Addiere die berechnete Summe für dieses Team hinzu
+            gesamtSumme += berechneTeamSumme(status);
+          });
 
-            // Formatieren und anzeigen
-            gesamtSummeSpan.textContent = `${gesamtSumme.toFixed(2)} €`;
-        }
+        // Formatieren und anzeigen
+        gesamtSummeSpan.textContent = `${gesamtSumme.toFixed(2)} €`;
+      }
 
-        // Initialisierung beim Laden der Seite
-        document.addEventListener('DOMContentLoaded', () => {
+      // Initialisierung beim Laden der Seite
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAndDisplayData();
+
+        // Optional: Listener für Storage-Events
+        window.addEventListener("storage", (event) => {
+          if (event.key === TEAMS_KEY || event.key === PAYMENT_STATUS_KEY) {
+            console.log(
+              "LocalStorage geändert (Teams/Payment), lade Abrechnung neu..."
+            );
             loadAndDisplayData();
-
-            // Optional: Listener für Storage-Events
-            window.addEventListener('storage', (event) => {
-                if (event.key === TEAMS_KEY || event.key === PAYMENT_STATUS_KEY) {
-                    console.log('LocalStorage geändert (Teams/Payment), lade Abrechnung neu...');
-                    loadAndDisplayData();
-                }
-            });
-
-            // Optional: Listener für erfolgreichen Sync
-            window.addEventListener('datasync-complete', () => {
-                console.log('Datensynchronisation abgeschlossen, lade Abrechnung neu...');
-                loadAndDisplayData();
-            });
+          }
         });
 
+        // Optional: Listener für erfolgreichen Sync
+        window.addEventListener("datasync-complete", () => {
+          console.log(
+            "Datensynchronisation abgeschlossen, lade Abrechnung neu..."
+          );
+          loadAndDisplayData();
+        });
+      });
     </script>
-</body>
+  </body>
 </html>

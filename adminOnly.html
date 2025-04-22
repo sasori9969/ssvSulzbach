@@ -1,159 +1,197 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Bereich (Offline-First)</title>
-    <link rel="stylesheet" href="style.css">
-     <!-- NEU: Skript zum Laden der Navigation einbinden -->
-     <script src="load-nav.js" defer></script>
+    <link rel="stylesheet" href="style.css" />
+    <!-- NEU: Skript zum Laden der Navigation einbinden -->
+    <script src="load-nav.js" defer></script>
+    <script type="module" src="auto-sync.js" defer></script>
+
     <style>
-        /* ... (Stile bleiben unverändert) ... */
-         #lastSyncInfo {
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
+      /* ... (Stile bleiben unverändert) ... */
+      #lastSyncInfo {
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+      }
+      #manualSyncBtn {
+        margin-right: 10px;
+      }
+      .lade-anzeige {
+        /* Style für Ladeanzeige */
+        display: none; /* Standardmäßig ausblenden */
+        margin-left: 10px;
+        font-style: italic;
+      }
+      .lade-kreis {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
+        display: inline-block; /* Damit es neben Text steht */
+        vertical-align: middle;
+        margin-right: 5px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
-        #manualSyncBtn {
-            margin-right: 10px;
+        100% {
+          transform: rotate(360deg);
         }
-        .lade-anzeige { /* Style für Ladeanzeige */
-            display: none; /* Standardmäßig ausblenden */
-            margin-left: 10px;
-            font-style: italic;
-        }
-        .lade-kreis {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            display: inline-block; /* Damit es neben Text steht */
-            vertical-align: middle;
-            margin-right: 5px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-         /* Statusmeldungen (wie in ui-utils.js definiert) */
-        .status-meldung {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            display: none; /* Standardmäßig ausblenden */
-        }
-        .status-meldung.erfolg { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-meldung.fehler { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .status-meldung.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+      }
+      /* Statusmeldungen (wie in ui-utils.js definiert) */
+      .status-meldung {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        display: none; /* Standardmäßig ausblenden */
+      }
+      .status-meldung.erfolg {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status-meldung.fehler {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .status-meldung.info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <header>
-        <h1>Schützenverein - Admin Bereich</h1>
+      <h1>Schützenverein - Admin Bereich</h1>
     </header>
     <div class="container">
- <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
-    <div id="navigation-placeholder">
+      <!-- ERSETZT: Der alte <nav>-Block wird durch diesen Platzhalter ersetzt -->
+      <div id="navigation-placeholder">
         <!-- Die Navigation wird hier von load-nav.js eingefügt -->
-    </div>        <main>
-            <h2>Admin Aktionen</h2>
-            <div id="statusMeldung" class="status-meldung" style="display: none;"></div>
+      </div>
+      <main>
+        <h2>Admin Aktionen</h2>
+        <div
+          id="statusMeldung"
+          class="status-meldung"
+          style="display: none"
+        ></div>
 
-            <div id="lastSyncInfo">
-                Letzte erfolgreiche Synchronisation: <span id="lastSyncTime">Wird geladen...</span>
-            </div>
+        <div id="lastSyncInfo">
+          Letzte erfolgreiche Synchronisation:
+          <span id="lastSyncTime">Wird geladen...</span>
+        </div>
 
-            <button id="manualSyncBtn" class="btn btn-primary">Manuelle Synchronisation starten</button>
-            <span id="syncSpinner" class="lade-anzeige">
-                <span class="lade-kreis"></span> Synchronisiere...
-            </span>
-
-        </main>
+        <button id="manualSyncBtn" class="btn btn-primary">
+          Manuelle Synchronisation starten
+        </button>
+        <span id="syncSpinner" class="lade-anzeige">
+          <span class="lade-kreis"></span> Synchronisiere...
+        </span>
+      </main>
     </div>
 
     <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
 
     <script type="module">
-        // UI Utils Imports
-        import { zeigeStatus } from './ui-utils.js';
+      // UI Utils Imports
+      import { zeigeStatus } from "./ui-utils.js";
 
-        // Local Storage Utils Imports
-        import { getLocalData, setLocalData, LAST_SYNC_KEY } from './local-storage-utils.js';
+      // Local Storage Utils Imports
+      import {
+        getLocalData,
+        setLocalData,
+        LAST_SYNC_KEY,
+      } from "./local-storage-utils.js";
 
-        // Importiere die zentrale Sync-Funktion
-        import { synchronizeAllData } from './sync-manager.js';
+      // Importiere die zentrale Sync-Funktion
+      import { synchronizeAllData } from "./sync-manager.js";
 
-        const lastSyncTimeSpan = document.getElementById('lastSyncTime');
-        const manualSyncBtn = document.getElementById('manualSyncBtn');
-        const syncSpinner = document.getElementById('syncSpinner');
-        const statusMeldung = document.getElementById('statusMeldung'); // Element für Statusmeldungen
+      const lastSyncTimeSpan = document.getElementById("lastSyncTime");
+      const manualSyncBtn = document.getElementById("manualSyncBtn");
+      const syncSpinner = document.getElementById("syncSpinner");
+      const statusMeldung = document.getElementById("statusMeldung"); // Element für Statusmeldungen
 
-        // Zeigt den letzten Sync-Zeitstempel an (unverändert)
-        function displayLastSyncTime(timestampString) {
-            if (timestampString) {
-                try {
-                    const date = new Date(timestampString);
-                    lastSyncTimeSpan.textContent = date.toLocaleString('de-DE');
-                } catch (e) {
-                    lastSyncTimeSpan.textContent = "Ungültiges Datum";
-                    console.error("Ungültiges Datum im localStorage für LAST_SYNC_KEY:", timestampString);
-                }
-            } else {
-                lastSyncTimeSpan.textContent = "Noch nie synchronisiert";
-            }
+      // Zeigt den letzten Sync-Zeitstempel an (unverändert)
+      function displayLastSyncTime(timestampString) {
+        if (timestampString) {
+          try {
+            const date = new Date(timestampString);
+            lastSyncTimeSpan.textContent = date.toLocaleString("de-DE");
+          } catch (e) {
+            lastSyncTimeSpan.textContent = "Ungültiges Datum";
+            console.error(
+              "Ungültiges Datum im localStorage für LAST_SYNC_KEY:",
+              timestampString
+            );
+          }
+        } else {
+          lastSyncTimeSpan.textContent = "Noch nie synchronisiert";
         }
+      }
 
-        // Event Listener für den manuellen Sync Button (angepasst)
-        manualSyncBtn.addEventListener('click', async () => {
-            manualSyncBtn.disabled = true;
-            syncSpinner.style.display = 'inline-block';
-            // Statusmeldung wird jetzt in synchronizeAllData gesetzt
+      // Event Listener für den manuellen Sync Button (angepasst)
+      manualSyncBtn.addEventListener("click", async () => {
+        manualSyncBtn.disabled = true;
+        syncSpinner.style.display = "inline-block";
+        // Statusmeldung wird jetzt in synchronizeAllData gesetzt
 
-            try {
-                // Rufe die zentrale Sync-Funktion auf, aktiviere UI-Feedback und übergib das Status-Element
-                const syncSuccess = await synchronizeAllData(true, statusMeldung); // true = zeige Status
+        try {
+          // Rufe die zentrale Sync-Funktion auf, aktiviere UI-Feedback und übergib das Status-Element
+          const syncSuccess = await synchronizeAllData(true, statusMeldung); // true = zeige Status
 
-                // Nach Sync-Versuch, Zeitstempel neu laden
-                const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
-                displayLastSyncTime(lastSyncTimestamp); // UI direkt aktualisieren
+          // Nach Sync-Versuch, Zeitstempel neu laden
+          const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+          displayLastSyncTime(lastSyncTimestamp); // UI direkt aktualisieren
 
-                // Erfolgs-/Fehlermeldungen werden von synchronizeAllData angezeigt
+          // Erfolgs-/Fehlermeldungen werden von synchronizeAllData angezeigt
+        } catch (error) {
+          // Fängt Fehler ab, die synchronizeAllData selbst wirft (sollte selten sein)
+          console.error(
+            "Unerwarteter Fehler beim Aufruf der manuellen Synchronisation:",
+            error
+          );
+          zeigeStatus(
+            "Ein unerwarteter Fehler ist aufgetreten.",
+            "fehler",
+            statusMeldung
+          );
+        } finally {
+          // Spinner ausblenden und Button wieder aktivieren, egal ob Erfolg oder Fehler
+          syncSpinner.style.display = "none";
+          manualSyncBtn.disabled = false;
+        }
+      });
 
-            } catch (error) {
-                // Fängt Fehler ab, die synchronizeAllData selbst wirft (sollte selten sein)
-                console.error("Unerwarteter Fehler beim Aufruf der manuellen Synchronisation:", error);
-                zeigeStatus("Ein unerwarteter Fehler ist aufgetreten.", 'fehler', statusMeldung);
-            } finally {
-                // Spinner ausblenden und Button wieder aktivieren, egal ob Erfolg oder Fehler
-                syncSpinner.style.display = 'none';
-                manualSyncBtn.disabled = false;
-            }
-        });
+      // Initialisierung beim Laden der Seite (unverändert)
+      document.addEventListener("DOMContentLoaded", () => {
+        const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+        displayLastSyncTime(lastSyncTimestamp);
 
-        // Initialisierung beim Laden der Seite (unverändert)
-        document.addEventListener('DOMContentLoaded', () => {
-            const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
-            displayLastSyncTime(lastSyncTimestamp);
+        // --- Periodische Synchronisation ---
+        // ENTFERNT - Wird jetzt von auto-sync.js übernommen
 
-            // --- Periodische Synchronisation ---
-            // ENTFERNT - Wird jetzt von auto-sync.js übernommen
-
-             // Optional: Einmaliger Sync kurz nach dem Laden der Admin-Seite (BLEIBT)
-             // Gibt dem Admin sofortiges Feedback auf dieser Seite.
-             setTimeout(async () => {
-                 console.log("Initialer Sync-Check nach Laden der Admin-Seite...");
-                 // Mit Statusmeldung beim ersten Mal auf dieser Seite
-                 await synchronizeAllData(true, statusMeldung);
-                 const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
-                 displayLastSyncTime(lastSyncTimestamp);
-             }, 5000); // 5 Sekunden nach Laden
-        });
-
+        // Optional: Einmaliger Sync kurz nach dem Laden der Admin-Seite (BLEIBT)
+        // Gibt dem Admin sofortiges Feedback auf dieser Seite.
+        setTimeout(async () => {
+          console.log("Initialer Sync-Check nach Laden der Admin-Seite...");
+          // Mit Statusmeldung beim ersten Mal auf dieser Seite
+          await synchronizeAllData(true, statusMeldung);
+          const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
+          displayLastSyncTime(lastSyncTimestamp);
+        }, 5000); // 5 Sekunden nach Laden
+      });
     </script>
-</body>
+  </body>
 </html>
