@@ -102,18 +102,18 @@
     </div>
 
     <script type="module">
-      // Entfernt: Firebase Imports
-      // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-      // import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-      // import { db } from './firebase-config.js';
-
-      // NEU: Local Storage Utils Imports
+      // NEU: Local Storage Utils Imports (inkl. neuer Hilfsfunktionen)
       import {
-        getLocalData,
-        TEILNEHMER_KEY,
-        TEAMS_KEY,
-        ERGEBNISSE_KEY,
-        LAST_SYNC_KEY, // Optional für Storage Listener
+        // getLocalData, // Nicht mehr direkt benötigt
+        TEILNEHMER_KEY, // Nicht mehr direkt benötigt
+        TEAMS_KEY,      // Nicht mehr direkt benötigt
+        ERGEBNISSE_KEY, // Nicht mehr direkt benötigt
+        LAST_SYNC_KEY,  // Für Storage Listener
+        getActiveTeilnehmer,
+        getActiveTeams,
+        getActiveErgebnisse,
+        createTeilnehmerMap,
+        createTeamMap,
       } from "./local-storage-utils.js";
 
       // NEU: UI Utils Imports (optional für Statusmeldungen)
@@ -139,6 +139,7 @@
           ladeAnzeige.style.display = anzeigen ? "block" : "none";
       }
 
+      // *** ANGEPASST: Verwendet jetzt die neuen Hilfsfunktionen ***
       async function loadAndDisplayLocalStatistik() {
         zeigeLoader(true);
         // Tabellen leeren oder "Lade..." anzeigen
@@ -149,40 +150,28 @@
           '<tr><td colspan="2">Lade...</td></tr>';
 
         try {
-          // 1. Lade alle benötigten Daten aus dem Local Storage
-          const lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
-          const lokaleTeams = getLocalData(TEAMS_KEY);
-          const lokaleErgebnisse = getLocalData(ERGEBNISSE_KEY);
+          // 1. Lade alle benötigten *aktiven* Daten mit den neuen Hilfsfunktionen
+          const aktiveTeilnehmer = getActiveTeilnehmer();
+          const aktiveTeams = getActiveTeams();
+          const aktiveErgebnisse = getActiveErgebnisse(); // Holt bereits gefiltert und sortiert (nach Datum)
 
-          // 2. Filterung: Nur nicht als gelöscht markierte Elemente verwenden
-          const aktiveTeilnehmer = lokaleTeilnehmer.filter(
-            (t) => t._syncStatus !== "deleted"
-          );
-          const aktiveTeams = lokaleTeams.filter(
-            (t) => t._syncStatus !== "deleted"
-          );
-          const aktiveErgebnisse = lokaleErgebnisse.filter(
-            (e) => e._syncStatus !== "deleted"
-          );
-
-          // 3. Berechne einfache Zählungen
+          // 2. Berechne einfache Zählungen
           anzahlTeilnehmerSpan.textContent = aktiveTeilnehmer.length;
           anzahlTeamsSpan.textContent = aktiveTeams.length;
 
-          // 4. Maps für schnellen Zugriff erstellen (nur aktive Elemente)
-          const teilnehmerMap = new Map(
-            aktiveTeilnehmer.map((t) => [t.localId, t])
-          );
-          const teamMap = new Map(aktiveTeams.map((t) => [t.localId, t]));
+          // 3. Maps für schnellen Zugriff erstellen (nur aktive Elemente)
+          const teilnehmerMap = createTeilnehmerMap(aktiveTeilnehmer);
+          const teamMap = createTeamMap(aktiveTeams);
 
-          // 5. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer) - wie in ergebnisseAusgeben
+          // 4. Berechne Einzelergebnisse (bestes Ergebnis pro Teilnehmer)
           const einzelErgebnisse = {};
           aktiveErgebnisse.forEach((ergebnis) => {
             const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
             if (teilnehmer) {
               const currentBest =
                 einzelErgebnisse[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1;
-              const ergebnisWert = parseInt(ergebnis.ergebnis) || 0;
+              // *** KORREKTUR HIER: ergebnis.ringzahl statt ergebnis.ergebnis ***
+              const ergebnisWert = parseInt(ergebnis.ringzahl) || 0; // Verwende ringzahl
               if (ergebnisWert > currentBest) {
                 einzelErgebnisse[ergebnis.teilnehmerLocalId] = {
                   name: `${teilnehmer.vorname || ""} ${
@@ -194,15 +183,14 @@
             }
           });
 
-          // 6. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team) - wie in ergebnisseAusgeben
+          // 5. Berechne Teamergebnisse (Summe aller Ergebnisse pro Team)
           const teamErgebnisse = {}; // { teamLocalId: { name: "...", ergebnis: 0, anzahlErgebnisse: 0, mitgliederCount: 0 } }
           aktiveErgebnisse.forEach((ergebnis) => {
             const team = teamMap.get(ergebnis.teamLocalId);
             const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
             if (team && teilnehmer) {
               if (!teamErgebnisse[ergebnis.teamLocalId]) {
-                // Mitgliederzahl des Teams aus teamMap holen (nur aktive Mitglieder zählen?)
-                // Hier zählen wir erstmal alle zugewiesenen Mitglieder laut Team-Definition
+                // Mitgliederzahl des Teams aus teamMap holen
                 const mitgliederIds = team.mitglieder || [];
                 // Zähle, wie viele dieser Mitglieder auch in der *aktiven* Teilnehmerliste sind
                 const aktiveMitgliederCount = mitgliederIds.filter((id) =>
@@ -216,13 +204,14 @@
                   mitgliederCount: aktiveMitgliederCount, // Anzahl der *aktiven* Mitglieder im Team
                 };
               }
+              // *** KORREKTUR HIER: ergebnis.ringzahl statt ergebnis.ergebnis ***
               teamErgebnisse[ergebnis.teamLocalId].ergebnis +=
-                parseInt(ergebnis.ergebnis) || 0;
+                parseInt(ergebnis.ringzahl) || 0; // Verwende ringzahl
               teamErgebnisse[ergebnis.teamLocalId].anzahlErgebnisse++;
             }
           });
 
-          // 7. Zeige Statistiken an
+          // 6. Zeige Statistiken an
           displayBesteSchuetzen(einzelErgebnisse);
           displayBesteTeams(teamErgebnisse);
           displayTeamAverages(teamErgebnisse); // Nutzt die bereits berechneten teamErgebnisse
@@ -248,7 +237,7 @@
         }
       }
 
-      // --- Anzeige-Funktionen (angepasst) ---
+      // --- Anzeige-Funktionen (unverändert) ---
 
       function displayBesteSchuetzen(einzelErgebnisse) {
         besteSchuetzenTableBody.innerHTML = ""; // Leeren
@@ -327,6 +316,7 @@
 
         // Optional: Listener für Storage-Events
         window.addEventListener("storage", (event) => {
+          // Prüfen, ob sich relevante Daten geändert haben könnten
           if (
             event.key === TEILNEHMER_KEY ||
             event.key === TEAMS_KEY ||
@@ -338,11 +328,14 @@
           }
         });
         // Optional: Listener für erfolgreichen Sync
-        window.addEventListener("datasync-complete", () => {
-          console.log(
-            "Datensynchronisation abgeschlossen, lade Statistik neu..."
-          );
-          loadAndDisplayLocalStatistik();
+        window.addEventListener("datasync-complete", (event) => {
+          // Prüfen, ob der Sync erfolgreich war (optional, aber gut)
+          if (event.detail?.success) {
+            console.log(
+              "Datensynchronisation abgeschlossen, lade Statistik neu..."
+            );
+            loadAndDisplayLocalStatistik();
+          }
         });
       });
     </script>
