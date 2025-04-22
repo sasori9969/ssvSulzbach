@@ -202,6 +202,7 @@
         getLocalData,
         setLocalData,
         TEAMS_KEY,
+        PAYMENT_STATUS_KEY, // Importiere den Key für den Zahlungsstatus
       } from "./local-storage-utils.js";
       import { zeigeStatus } from "./ui-utils.js";
 
@@ -209,7 +210,7 @@
       const STARTGELD_BASIS = 12; // Kosten für die erste Teilnahme
       const STARTGELD_NACHLOESUNG = 6; // Kosten pro Nachlösung
       const MAX_NACHLOESUNGEN = 5; // Maximale Anzahl an Nachlösungen
-      const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Neuer Key für die geänderte Struktur
+      // const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Key wird jetzt importiert
 
       // DOM Elemente
       const teamListeUl = document.getElementById("teamAbrechnungListe");
@@ -218,7 +219,7 @@
       const statusMeldung = document.getElementById("statusMeldung");
 
       // Lokaler Cache für Zahlungsstatus
-      // Format: { teamLocalId1: { basePaid: boolean, rebuys: number }, teamLocalId2: {...}, ... }
+      // Format: { teamLocalId1: { basePaid: boolean, rebuys: number, _syncStatus?: 'modified' }, teamLocalId2: {...}, ... }
       let paymentStatus = {};
 
       function zeigeLoader(anzeigen) {
@@ -275,11 +276,17 @@
               li.classList.add("startgeld-bezahlt"); // Klasse für bezahltes Startgeld
             }
 
-            // Sync-Status Text (optional)
-            let syncStatusText = "";
+            // Sync-Status Text für das Team selbst (optional)
+            let teamSyncStatusText = "";
             if (team._syncStatus && team._syncStatus !== "synced") {
-              syncStatusText = `<span class="sync-status-indicator">(${team._syncStatus})</span>`;
+              teamSyncStatusText = `<span class="sync-status-indicator">(${team._syncStatus})</span>`;
             }
+            // Sync-Status Text für den Zahlungsstatus (wichtiger hier)
+            let paymentSyncStatusText = "";
+            if (currentStatus._syncStatus === 'modified') {
+                 paymentSyncStatusText = `<span class="sync-status-indicator">(Zahlung geändert)</span>`;
+            }
+
 
             // Optionen für Nachlösungs-Dropdown generieren
             let rebuyOptionsHtml = "";
@@ -295,7 +302,7 @@
             li.innerHTML = `
                         <div class="team-info">
                             <span>${team.teamname || "Unbenanntes Team"}</span>
-                            ${syncStatusText}
+                            ${teamSyncStatusText} ${paymentSyncStatusText} <!-- Beide Status anzeigen -->
                         </div>
                         <div class="team-controls">
                             <label>
@@ -356,15 +363,39 @@
         const newRebuys = parseInt(select.value);
 
         // Alten Status sichern, falls Speichern fehlschlägt
-        const oldStatus = {
-          ...(paymentStatus[teamLocalId] || { basePaid: false, rebuys: 0 }),
-        };
+        const oldStatus = structuredClone(paymentStatus[teamLocalId] || { basePaid: false, rebuys: 0 });
 
         // 1. Status im lokalen Cache aktualisieren
-        paymentStatus[teamLocalId] = {
-          basePaid: newBasePaid,
-          rebuys: newRebuys,
-        };
+        if (!paymentStatus[teamLocalId]) {
+            paymentStatus[teamLocalId] = { basePaid: false, rebuys: 0 };
+        }
+        paymentStatus[teamLocalId].basePaid = newBasePaid;
+        paymentStatus[teamLocalId].rebuys = newRebuys;
+
+        // ---> NEU: Sync-Status hinzufügen/aktualisieren <---
+        // Setze den Status auf 'modified', es sei denn, das Team selbst ist noch 'new'
+        const teamData = getLocalData(TEAMS_KEY).find(t => t.localId === teamLocalId);
+        let needsSync = false;
+        if (teamData && teamData._syncStatus !== 'new') {
+             paymentStatus[teamLocalId]._syncStatus = 'modified';
+             needsSync = true;
+        } else if (teamData && teamData._syncStatus === 'new') {
+             // Wenn das Team neu ist, braucht der PaymentStatus keinen eigenen Sync-Status,
+             // da das ganze Team eh hochgeladen wird. Wir setzen ihn trotzdem.
+             paymentStatus[teamLocalId]._syncStatus = 'modified';
+             needsSync = true; // Markieren, dass sich was geändert hat
+        } else if (!teamData) {
+             console.warn(`Team mit localId ${teamLocalId} nicht gefunden für Payment-Status-Update.`);
+             // Status trotzdem setzen, falls das Team später wieder auftaucht?
+             paymentStatus[teamLocalId]._syncStatus = 'modified';
+             needsSync = true;
+        }
+        // Optional: Zeitstempel der letzten Änderung
+        if (needsSync) {
+            paymentStatus[teamLocalId]._lastModifiedLocal = new Date().toISOString();
+        }
+        // ---> Ende NEU <---
+
 
         // 2. Aktualisierten Status im Local Storage speichern
         const success = setLocalData(PAYMENT_STATUS_KEY, paymentStatus);
@@ -382,6 +413,22 @@
           listItem.querySelector(
             ".team-summe"
           ).textContent = `${teamSumme.toFixed(2)} €`;
+
+          // Sync-Status-Anzeige aktualisieren
+          const teamInfoDiv = listItem.querySelector('.team-info');
+          // Entferne alte Payment-Status-Anzeige
+          const oldPaymentStatusSpan = teamInfoDiv.querySelector('.sync-status-indicator:last-of-type'); // Annahme: Payment-Status ist der letzte
+          if (oldPaymentStatusSpan && oldPaymentStatusSpan.textContent.includes('Zahlung')) {
+              oldPaymentStatusSpan.remove();
+          }
+          // Füge neue hinzu, wenn nötig
+          if (paymentStatus[teamLocalId]._syncStatus === 'modified') {
+              const paymentSyncStatusSpan = document.createElement('span');
+              paymentSyncStatusSpan.className = 'sync-status-indicator';
+              paymentSyncStatusSpan.textContent = '(Zahlung geändert)';
+              teamInfoDiv.appendChild(paymentSyncStatusSpan);
+          }
+
 
           // Gesamtsumme neu berechnen
           berechneUndZeigeGesamtSumme();
@@ -411,6 +458,21 @@
           listItem.querySelector(
             ".team-summe"
           ).textContent = `${teamSumme.toFixed(2)} €`;
+
+          // Sync-Status-Anzeige zurücksetzen (falls vorhanden)
+           const teamInfoDiv = listItem.querySelector('.team-info');
+           const oldPaymentStatusSpan = teamInfoDiv.querySelector('.sync-status-indicator:last-of-type');
+           if (oldPaymentStatusSpan && oldPaymentStatusSpan.textContent.includes('Zahlung')) {
+               oldPaymentStatusSpan.remove();
+           }
+           // Füge alten Status wieder hinzu, falls er 'modified' war
+           if (oldStatus._syncStatus === 'modified') {
+               const paymentSyncStatusSpan = document.createElement('span');
+               paymentSyncStatusSpan.className = 'sync-status-indicator';
+               paymentSyncStatusSpan.textContent = '(Zahlung geändert)';
+               teamInfoDiv.appendChild(paymentSyncStatusSpan);
+           }
+
 
           // Gesamtsumme muss nicht neu berechnet werden, da nichts gespeichert wurde
         }
@@ -453,10 +515,11 @@
         });
 
         // Optional: Listener für erfolgreichen Sync
-        window.addEventListener("datasync-complete", () => {
+        window.addEventListener("datasync-complete", (event) => {
           console.log(
             "Datensynchronisation abgeschlossen, lade Abrechnung neu..."
           );
+          // Lade neu, um ggf. Sync-Status-Anzeigen zu aktualisieren
           loadAndDisplayData();
         });
       });

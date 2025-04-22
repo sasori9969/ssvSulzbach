@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css" />
     <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
-    <script type="module" src="auto-sync.js" defer></script>
     <!-- NEU: Skript zum Laden der Navigation einbinden -->
     <script src="load-nav.js" defer></script>
   </head>
@@ -44,14 +43,9 @@
     </div>
 
     <script type="module">
-      // Firebase Imports (nur noch für Sync benötigt)
+      // Firebase Imports (bleiben vorerst, falls sync-manager sie braucht)
       import { db } from "./firebase-config.js";
-      import {
-        collection,
-        doc,
-        serverTimestamp,
-        writeBatch,
-      } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+      // import { collection, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
       // UI Utils Imports (falls du zeigeStatus/zeigeConfirm verwendest)
       import { zeigeStatus, zeigeConfirm } from "./ui-utils.js"; // Pfad anpassen!
@@ -61,7 +55,7 @@
         getLocalData,
         setLocalData,
         generateLocalId,
-        finalizeLocalItems,
+        finalizeLocalItems, // Wird vom zentralen Sync genutzt, bleibt hier aber ungenutzt
         TEAMS_KEY, // Importiere den Key für Teams
       } from "./local-storage-utils.js"; // Pfad anpassen!
 
@@ -215,149 +209,13 @@
       });
 
       // --- Periodische Synchronisation für Teams mit Firestore ---
-      async function syncTeamsMitFirestore() {
-        console.log(
-          "Prüfe auf lokale Änderungen für Synchronisation (Teams)..."
-        );
-
-        const lokaleTeams = getLocalData(TEAMS_KEY);
-
-        const hatAenderungen = lokaleTeams.some(
-          (item) => item._syncStatus && item._syncStatus !== "synced"
-        );
-
-        if (!hatAenderungen) {
-          console.log("Keine lokalen Team-Änderungen zum Synchronisieren.");
-          return;
-        }
-
-        console.log(
-          "Änderungen bei Teams gefunden. Starte Sync mit Firestore..."
-        );
-        zeigeStatus("Synchronisiere Teams mit Server...", "info");
-
-        const batch = writeBatch(db);
-        let changesInBatch = false;
-        let zuAktualisierendeLokaleTeams = structuredClone(lokaleTeams);
-
-        try {
-          zuAktualisierendeLokaleTeams.forEach((team, index) => {
-            if (!team._syncStatus || team._syncStatus === "synced") {
-              return;
-            }
-
-            if (team._syncStatus === "new") {
-              const docRef = doc(collection(db, "teams"));
-              batch.set(docRef, {
-                teamname: team.teamname,
-                mitglieder: team.mitglieder || [], // Sicherstellen, dass es ein Array ist
-                timestamp: serverTimestamp(),
-              });
-              zuAktualisierendeLokaleTeams[index].firestoreId = docRef.id;
-              zuAktualisierendeLokaleTeams[index]._pendingSync = true;
-              changesInBatch = true;
-              console.log(
-                `Sync: Neues Team "${team.teamname}" wird hinzugefügt.`
-              );
-            } else if (team._syncStatus === "modified" && team.firestoreId) {
-              // Diese Logik wird relevant, wenn wir Teams bearbeiten (z.B. in zuordnung.html)
-              const docRef = doc(db, "teams", team.firestoreId);
-              batch.update(docRef, {
-                teamname: team.teamname, // Falls Name änderbar wäre
-                mitglieder: team.mitglieder || [], // Wichtig für Zuordnungs-Updates
-              });
-              zuAktualisierendeLokaleTeams[index]._pendingSync = true;
-              changesInBatch = true;
-              console.log(
-                `Sync: Team "${team.teamname}" (${team.firestoreId}) wird aktualisiert.`
-              );
-            } else if (team._syncStatus === "deleted" && team.firestoreId) {
-              const docRef = doc(db, "teams", team.firestoreId);
-              batch.delete(docRef);
-              zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
-              changesInBatch = true;
-              console.log(
-                `Sync: Team "${team.teamname}" (${team.firestoreId}) wird gelöscht.`
-              );
-            } else if (team._syncStatus === "deleted" && !team.firestoreId) {
-              console.warn(
-                `Sync: Team "${team.teamname}" war zum Löschen markiert, hatte aber keine Firestore ID. Wird lokal entfernt.`
-              );
-              zuAktualisierendeLokaleTeams[index]._toBeRemoved = true;
-            } else if (team._syncStatus === "modified" && !team.firestoreId) {
-              console.error(
-                `Sync: Inkonsistenter Status für "${team.teamname}". Status 'modified' aber keine Firestore ID.`
-              );
-            }
-          });
-
-          if (changesInBatch) {
-            await batch.commit();
-            console.log("Firestore Batch-Commit für Teams erfolgreich.");
-
-            const finaleLokaleTeams = finalizeLocalItems(
-              zuAktualisierendeLokaleTeams
-            );
-            const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
-
-            if (success) {
-              displayTeamsFromLocal();
-              zeigeStatus("Teams erfolgreich synchronisiert!", "erfolg");
-            } else {
-              zeigeStatus(
-                "Fehler beim Speichern der finalen lokalen Teamdaten nach Sync!",
-                "fehler"
-              );
-            }
-          } else {
-            // Nur lokale Bereinigung durchführen, falls nötig
-            const finaleLokaleTeams = finalizeLocalItems(
-              zuAktualisierendeLokaleTeams
-            );
-            if (finaleLokaleTeams.length !== lokaleTeams.length) {
-              const success = setLocalData(TEAMS_KEY, finaleLokaleTeams);
-              if (success) {
-                displayTeamsFromLocal();
-                zeigeStatus("Lokale Team-Bereinigung abgeschlossen.", "info");
-              } else {
-                zeigeStatus(
-                  "Fehler beim Speichern der bereinigten lokalen Teamdaten!",
-                  "fehler"
-                );
-              }
-            } else {
-              console.log(
-                "Keine Firestore-Operationen für Teams und keine lokale Bereinigung nötig."
-              );
-            }
-          }
-        } catch (error) {
-          console.error(
-            "Fehler während der Team-Synchronisation oder beim Batch-Commit:",
-            error
-          );
-          zeigeStatus(
-            "Synchronisation der Teams fehlgeschlagen. Änderungen bleiben lokal.",
-            "fehler"
-          );
-        }
-      }
+      // GELÖSCHT: async function syncTeamsMitFirestore() { ... }
 
       // --- Initialisierung und Intervall ---
       document.addEventListener("DOMContentLoaded", () => {
         displayTeamsFromLocal(); // Beim Laden aus LocalStorage anzeigen
 
-        // Sync alle 1 Stunde starten (oder kürzer zum Testen)
-        const syncInterval = 60000; // 60 Sekunden zum Testen
-        // const syncInterval = 1000 * 60 * 60; // 1 Stunde für Produktion
-
-        // WICHTIG: Rufe hier die Sync-Funktion für Teams auf.
-        // Wenn du eine zentrale Sync-Funktion hast, rufe diese auf.
-        // Ansonsten rufe die spezifische Funktion für Teams auf.
-        //      setInterval(syncTeamsMitFirestore, syncInterval);
-
-        // Optional: Sofort einmal synchronisieren beim Start
-        //    setTimeout(syncTeamsMitFirestore, 5500); // Leicht versetzt zu Teilnehmern, falls getrennt
+        // GELÖSCHT: Interval-Logik für syncTeamsMitFirestore()
       });
     </script>
   </body>
