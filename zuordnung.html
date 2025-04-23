@@ -34,6 +34,12 @@
           </select>
 
           <h3>Wähle bis zu 3 Teilnehmer:</h3>
+
+          <!-- NEU: Suchfeld hinzufügen -->
+          <label for="teilnehmerSuche">Teilnehmer suchen:</label>
+          <input type="text" id="teilnehmerSuche" placeholder="Namen eingeben..." style="margin-bottom: 10px; width: 98%; padding: 8px;">
+          <!-- Ende NEU -->
+
           <div class="scroll-container">
             <!-- Tabelle durch einfache Liste ersetzt für leichtere Klick-Interaktion -->
             <ul id="teilnehmerListe" class="teilnehmer-liste"></ul>
@@ -53,7 +59,7 @@
           <thead>
             <tr>
               <th>Teamname</th>
-              <th>Mitglieder (Lokale IDs)</th>
+              <th>Mitglieder</th>
               <th>Aktionen</th>
             </tr>
           </thead>
@@ -65,13 +71,8 @@
     </div>
 
     <script type="module">
-      // Firebase Imports werden hier nicht mehr direkt für CRUD benötigt,
-      // nur noch für den zentralen Sync-Prozess (der hier nicht definiert ist).
-      // import { db } from './firebase-config.js';
-      // import { collection, doc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
       // UI Utils Imports
-      import { zeigeStatus } from "./ui-utils.js"; // Annahme: zeigeConfirm wird hier nicht direkt gebraucht
+      import { zeigeStatus } from "./ui-utils.js";
 
       // Local Storage Utils Imports
       import {
@@ -79,21 +80,20 @@
         setLocalData,
         TEILNEHMER_KEY,
         TEAMS_KEY,
-        // generateLocalId, finalizeLocalItems werden hier nicht direkt gebraucht
       } from "./local-storage-utils.js";
 
       const teamAuswahl = document.getElementById("teamAuswahl");
-      const teilnehmerListeUl = document.getElementById("teilnehmerListe"); // Geändert zu ul
-      const teamsListeBody = document.getElementById("teamsListe"); // Geändert zu tbody
+      const teilnehmerListeUl = document.getElementById("teilnehmerListe");
+      const teamsListeBody = document.getElementById("teamsListe");
       const speichernButton = document.getElementById("speichern");
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const ladeAnzeigeTeams = document.getElementById("ladeAnzeigeTeams");
-      const statusMeldung = document.getElementById("statusMeldung"); // Für zeigeStatus
+      const statusMeldung = document.getElementById("statusMeldung");
+      const teilnehmerSucheInput = document.getElementById("teilnehmerSuche"); // NEU
 
       const ausgewaehlteTeilnehmerLocalIds = new Set();
       const maxTeilnehmer = 3;
 
-      // Lokale "Caches" - werden direkt aus localStorage befüllt
       let lokaleTeilnehmer = [];
       let lokaleTeams = [];
 
@@ -108,17 +108,14 @@
       function ladeTeamsLokal() {
         zeigeLoader(true);
         lokaleTeams = getLocalData(TEAMS_KEY);
-        // Filtere Teams, die zum Löschen markiert sind
         const anzeigbareTeams = lokaleTeams.filter(
           (team) => team._syncStatus !== "deleted"
         );
-
-        // Sortieren nach Teamnamen
         anzeigbareTeams.sort((a, b) =>
           (a.teamname || "").localeCompare(b.teamname || "")
         );
 
-        teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>'; // Reset Dropdown
+        teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
 
         if (anzeigbareTeams.length === 0) {
           teamAuswahl.innerHTML =
@@ -129,51 +126,77 @@
 
         anzeigbareTeams.forEach((team) => {
           const option = document.createElement("option");
-          // Wichtig: Wir verwenden jetzt localId als Value
           option.value = team.localId;
           option.textContent = team.teamname || "Unbenanntes Team";
-          // Optional: Sync-Status im Dropdown anzeigen? Eher nicht nötig.
           teamAuswahl.appendChild(option);
         });
         zeigeLoader(false);
+      }
+
+      // NEU: Funktion zum Filtern der Teilnehmerliste
+      function filterTeilnehmerListe() {
+          const suchBegriff = teilnehmerSucheInput.value.toLowerCase().trim();
+          const listItems = teilnehmerListeUl.querySelectorAll('li');
+
+          // Prüfen, ob überhaupt Listenelemente vorhanden sind
+          if (!listItems || listItems.length === 0) {
+              return; // Nichts zu filtern
+          }
+          // Prüfen, ob das erste Element ein Platzhalter ist (z.B. "Keine Teilnehmer...")
+          if (listItems.length === 1 && !listItems[0].dataset.localId) {
+               // Wenn nur der Platzhalter da ist, diesen nur anzeigen, wenn Suche leer ist
+               listItems[0].style.display = suchBegriff === '' ? '' : 'none';
+               return;
+          }
+
+          listItems.forEach(li => {
+              // Nur Elemente mit einer localId filtern (ignoriert Platzhalter)
+              if (li.dataset.localId) {
+                  const teilnehmerName = li.textContent.toLowerCase();
+                  if (teilnehmerName.includes(suchBegriff)) {
+                      li.style.display = ''; // Oder 'list-item'
+                  } else {
+                      li.style.display = 'none';
+                  }
+              }
+          });
       }
 
       // Lädt Teilnehmer aus localStorage und füllt die Auswahl-Liste
       function ladeTeilnehmerLokal() {
         zeigeLoader(true);
         lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
-        // Filtere Teilnehmer, die zum Löschen markiert sind
         const anzeigbareTeilnehmer = lokaleTeilnehmer.filter(
           (t) => t._syncStatus !== "deleted"
         );
-
-        // Sortieren nach Name
         anzeigbareTeilnehmer.sort((a, b) =>
           (a.name || "").localeCompare(b.name || "")
         );
 
-        teilnehmerListeUl.innerHTML = ""; // Liste leeren
+        teilnehmerListeUl.innerHTML = "";
 
         if (anzeigbareTeilnehmer.length === 0) {
           teilnehmerListeUl.innerHTML =
             "<li>Keine Teilnehmer lokal verfügbar</li>";
+          // Wichtig: Filter auch hier anwenden, um den Platzhalter ggf. auszublenden
+          filterTeilnehmerListe();
           zeigeLoader(false);
           return;
         }
 
         anzeigbareTeilnehmer.forEach((teilnehmer) => {
           const li = document.createElement("li");
-          // Wichtig: data-local-id verwenden
           li.dataset.localId = teilnehmer.localId;
           li.textContent = `${teilnehmer.vorname || ""} ${
             teilnehmer.name || ""
           }`.trim();
-          // Optional: Teilnehmer mit Sync-Status 'new' oder 'modified' markieren?
           li.addEventListener("click", function () {
             toggleTeilnehmerAuswahl(this);
           });
           teilnehmerListeUl.appendChild(li);
         });
+
+        filterTeilnehmerListe(); // NEU: Filter direkt nach dem Befüllen anwenden
         zeigeLoader(false);
       }
 
@@ -201,7 +224,6 @@
 
       function aktualisiereSpeichernButton() {
         const teamSelected = teamAuswahl.value !== "";
-        // Erlaube Speichern auch mit 0 Teilnehmern, um ein Team zu leeren? Nein, hier min 1.
         speichernButton.disabled = !(
           teamSelected &&
           ausgewaehlteTeilnehmerLocalIds.size > 0 &&
@@ -220,7 +242,6 @@
           );
           return;
         }
-        // Prüfe erneut die Teilnehmeranzahl (obwohl Button disabled sein sollte)
         if (
           ausgewaehlteTeilnehmerLocalIds.size === 0 ||
           ausgewaehlteTeilnehmerLocalIds.size > maxTeilnehmer
@@ -233,31 +254,26 @@
           return;
         }
 
-        speichernButton.disabled = true; // Button deaktivieren während Speichern
+        speichernButton.disabled = true;
         zeigeLoader(true);
 
         try {
-          // Aktuelle lokale Teams holen
           let aktuelleTeams = getLocalData(TEAMS_KEY);
           const teamIndex = aktuelleTeams.findIndex(
             (t) => t.localId === teamLocalId
           );
 
           if (teamIndex > -1) {
-            // Team gefunden, Mitglieder aktualisieren
             const teamToUpdate = aktuelleTeams[teamIndex];
             teamToUpdate.mitglieder = Array.from(
               ausgewaehlteTeilnehmerLocalIds
-            ); // Speichere Array der localIds
+            );
 
-            // Sync-Status aktualisieren: 'modified' setzen, außer es war 'new'
             if (teamToUpdate._syncStatus !== "new") {
               teamToUpdate._syncStatus = "modified";
             }
-            // Optional: Zeitstempel für letzte lokale Änderung hinzufügen
-            // teamToUpdate.lastModifiedLocal = new Date().toISOString();
+            // teamToUpdate.lastModifiedLocal = new Date().toISOString(); // Optional
 
-            // Aktualisierte Teamliste zurück in localStorage speichern
             const success = setLocalData(TEAMS_KEY, aktuelleTeams);
 
             if (success) {
@@ -266,18 +282,16 @@
                 "erfolg",
                 statusMeldung
               );
-              // Lokale Daten neu laden, um die "Alle Teams"-Liste zu aktualisieren
-              lokaleTeams = aktuelleTeams; // Update lokalen Cache direkt
-              displayTeamsListeLokal(); // Anzeige mit lokalen Daten neu aufbauen
+              lokaleTeams = aktuelleTeams;
+              displayTeamsListeLokal();
 
-              // Auswahl zurücksetzen
               ausgewaehlteTeilnehmerLocalIds.clear();
               document
                 .querySelectorAll(".teilnehmer-liste li.ausgewaehlt")
                 .forEach((li) => {
                   li.classList.remove("ausgewaehlt");
                 });
-              teamAuswahl.value = ""; // Team-Auswahl zurücksetzen
+              teamAuswahl.value = "";
               aktualisiereSpeichernButton();
             } else {
               zeigeStatus(
@@ -305,7 +319,6 @@
           );
         } finally {
           zeigeLoader(false);
-          // Button wieder aktivieren (oder im Erfolgsfall deaktiviert lassen bis neue Auswahl)
           aktualisiereSpeichernButton();
         }
       }
@@ -313,15 +326,12 @@
       // Zeigt die Teamliste basierend auf lokalen Daten an
       function displayTeamsListeLokal() {
         zeigeLoader(true, "ladeAnzeigeTeams");
-        teamsListeBody.innerHTML = ""; // Liste leeren
+        teamsListeBody.innerHTML = "";
 
-        // Stelle sicher, dass aktuelle Teilnehmerdaten geladen sind für die Namensauflösung
-        // Normalerweise sollten sie durch ladeTeilnehmerLokal() schon da sein.
         const teilnehmerMapLocal = new Map(
           lokaleTeilnehmer.map((t) => [t.localId, t])
         );
 
-        // Filtere gelöschte Teams und sortiere
         const anzeigbareTeams = lokaleTeams
           .filter((team) => team._syncStatus !== "deleted")
           .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
@@ -340,13 +350,11 @@
           const tdAktionen = document.createElement("td");
 
           tdName.textContent = team.teamname || "Unbenanntes Team";
-          // Sync-Status anzeigen?
           if (team._syncStatus && team._syncStatus !== "synced") {
             const statusSpan = document.createElement("span");
-
-            statusSpan.className = "sync-status-indicator"; // Klasse statt Inline-Styles
-            // --- Ende Änderung ---
-
+            statusSpan.style.fontSize = "0.8em";
+            statusSpan.style.marginLeft = "10px";
+            statusSpan.style.color = "#666";
             statusSpan.textContent = `(${team._syncStatus})`;
             tdName.appendChild(statusSpan);
           }
@@ -356,7 +364,6 @@
               .map((localId) => {
                 const teilnehmer = teilnehmerMapLocal.get(localId);
                 if (teilnehmer) {
-                  // Prüfe, ob der Teilnehmer selbst gelöscht wurde
                   if (teilnehmer._syncStatus === "deleted") {
                     return `(${teilnehmer.vorname || ""} ${
                       teilnehmer.name || ""
@@ -366,7 +373,7 @@
                     teilnehmer.name || ""
                   }`.trim();
                 }
-                return `Unbekannt (ID: ${localId.substring(0, 6)}...)`; // Fallback
+                return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
               })
               .join(", ");
             tdMitglieder.textContent = teilnehmerNamen;
@@ -377,7 +384,6 @@
           const bearbeitenButton = document.createElement("button");
           bearbeitenButton.textContent = "Bearbeiten";
           bearbeitenButton.className = "aktion-btn";
-          // Wichtig: Übergib die localId
           bearbeitenButton.addEventListener("click", () =>
             bearbeiteTeam(team.localId)
           );
@@ -402,10 +408,9 @@
           return;
         }
 
-        teamAuswahl.value = teamLocalId; // Team im Dropdown auswählen
-        ausgewaehlteTeilnehmerLocalIds.clear(); // Aktuelle Auswahl löschen
+        teamAuswahl.value = teamLocalId;
+        ausgewaehlteTeilnehmerLocalIds.clear();
 
-        // Teilnehmerliste durchgehen und die auswählen, die zum Team gehören (anhand localId)
         document.querySelectorAll(".teilnehmer-liste li").forEach((li) => {
           const currentLocalId = li.dataset.localId;
           if (
@@ -419,25 +424,23 @@
           }
         });
 
-        aktualisiereSpeichernButton(); // Button-Status aktualisieren
-        // Zum Formular scrollen für bessere UX
+        aktualisiereSpeichernButton();
         teamAuswahl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       // Event Listener
       teamAuswahl.addEventListener("change", aktualisiereSpeichernButton);
       speichernButton.addEventListener("click", speichereTeamLokal);
+      teilnehmerSucheInput.addEventListener('input', filterTeilnehmerListe); // NEU
 
       // Initialisierung beim Laden der Seite
       window.addEventListener("DOMContentLoaded", () => {
-        zeigeLoader(true); // Zeige Haupt-Loader
+        zeigeLoader(true);
         try {
-          // Lade zuerst Teilnehmer, dann Teams aus localStorage
           ladeTeilnehmerLokal();
           ladeTeamsLokal();
-          // Zeige die Liste der Teams an
           displayTeamsListeLokal();
-          aktualisiereSpeichernButton(); // Initialer Button-Status
+          aktualisiereSpeichernButton();
         } catch (error) {
           console.error("Fehler bei der Initialisierung:", error);
           zeigeStatus(
@@ -446,9 +449,8 @@
             statusMeldung
           );
         } finally {
-          zeigeLoader(false); // Verstecke Haupt-Loader
+          zeigeLoader(false);
         }
-        // Kein automatischer Sync-Start hier, das sollte zentral erfolgen.
       });
     </script>
   </body>
