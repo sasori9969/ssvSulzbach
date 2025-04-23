@@ -276,6 +276,7 @@
       });
 
       // --- Funktion zum Wiederherstellen aus Firebase ---
+      // *** ANGEPASSTE VERSION MIT KORREKTER localId BEHANDLUNG ***
       async function restoreLocalStorageFromFirebase() {
           console.log("restoreLocalStorageFromFirebase gestartet.");
           setButtonsDisabled(true);
@@ -283,43 +284,67 @@
           zeigeStatus("Starte Wiederherstellung aus Firebase...", "info", statusMeldung);
 
           try {
+              // Helper function to map Firebase doc to local object, preserving localId
+              const mapFirebaseDocToLocal = (doc) => {
+                  const data = doc.data();
+                  // *** WICHTIG: Prüfen, ob eine localId im Firebase-Dokument gespeichert wurde ***
+                  // Wenn ja, DIESE verwenden. Sonst Fallback (sollte aber nicht nötig sein).
+                  const localId = data.localId || doc.id; // Nimm die gespeicherte localId, wenn vorhanden!
+
+                  // Stelle sicher, dass die localId nicht versehentlich überschrieben wird,
+                  // falls sie auch in data direkt steht (durch ...data).
+                  const finalData = {
+                      firestoreId: doc.id, // Firestore ID immer speichern
+                      ...data,             // Alle anderen Felder aus Firebase übernehmen
+                      localId: localId,    // Sicherstellen, dass die korrekte localId gesetzt ist
+                      _syncStatus: 'synced' // Als synchronisiert markieren
+                  };
+                  // Entferne ggf. das Feld 'id', falls es aus Firebase kommt und stört
+                  // delete finalData.id; // Nur wenn nötig
+
+                  // Log zur Überprüfung der IDs
+                  // console.log(`Mapping Doc ID: ${doc.id}, Data.localId: ${data.localId}, Final localId: ${finalData.localId}`);
+
+                  return finalData;
+              };
+
+
               // 1. Alle relevanten Collections aus Firebase holen
               zeigeStatus("Lade Teilnehmer aus Firebase...", "info", statusMeldung);
               const teilnehmerSnap = await getDocs(collection(db, "teilnehmer"));
-              const teilnehmerData = teilnehmerSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
-              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge.`);
+              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
+              const teilnehmerData = teilnehmerSnap.docs.map(mapFirebaseDocToLocal);
+              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge. Erste localId: ${teilnehmerData[0]?.localId}`); // Log zur Prüfung
 
               zeigeStatus("Lade Teams aus Firebase...", "info", statusMeldung);
               const teamsSnap = await getDocs(collection(db, "teams"));
-              const teamsData = teamsSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
-              console.log(`Teams geladen: ${teamsData.length} Einträge.`);
+              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
+              const teamsData = teamsSnap.docs.map(mapFirebaseDocToLocal);
+              console.log(`Teams geladen: ${teamsData.length} Einträge. Erste localId: ${teamsData[0]?.localId}`); // Log zur Prüfung
 
               zeigeStatus("Lade Ergebnisse aus Firebase...", "info", statusMeldung);
               const ergebnisseSnap = await getDocs(collection(db, "ergebnisse"));
-              const ergebnisseData = ergebnisseSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
-              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge.`);
+              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
+              const ergebnisseData = ergebnisseSnap.docs.map(mapFirebaseDocToLocal);
+              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge. Erste localId: ${ergebnisseData[0]?.localId}`); // Log zur Prüfung
 
               zeigeStatus("Lade Zahlungsstatus aus Firebase...", "info", statusMeldung);
               const paymentSnap = await getDocs(collection(db, "paymentStatus"));
               const paymentData = {};
               paymentSnap.docs.forEach(doc => {
-                  paymentData[doc.id] = { ...doc.data(), _syncStatus: 'synced' };
+                  const data = doc.data();
+                  // Annahme: Key ist die teamLocalId, Status braucht keine eigene localId
+                  // Wichtig: Wenn paymentStatus auch eine localId hätte, müsste mapFirebaseDocToLocal verwendet werden.
+                  // Da der Key die teamLocalId ist, ist es hier einfacher.
+                  paymentData[doc.id] = {
+                      ...data,
+                      _syncStatus: 'synced'
+                  };
               });
               console.log(`Zahlungsstatus geladen für ${Object.keys(paymentData).length} Teams.`);
 
-              // --- START: Block für Scheibendaten entfernt ---
-              /*
-              // Prüfen, ob SCHEIBEN_KEY existiert, bevor Collection geladen wird
-              if (typeof SCHEIBEN_KEY !== 'undefined' && SCHEIBEN_KEY) {
-                  // ... Code zum Laden und Speichern von Scheibendaten ...
-              } else {
-                  console.log("SCHEIBEN_KEY nicht definiert oder leer, überspringe Laden/Speichern der Scheibendaten.");
-                  // Stelle sicher, dass der lokale Scheiben-Speicher geleert wird
-                  setLocalData(SCHEIBEN_KEY, []);
-              }
-              */
+              // Scheibendaten werden übersprungen (wie im Code)
               console.log("Laden/Speichern von Scheibendaten wird übersprungen.");
-              // --- ENDE: Block für Scheibendaten entfernt ---
 
 
               // 2. Lokalen Speicher überschreiben (mit Fehlerprüfung)
@@ -329,7 +354,6 @@
               success = success && setLocalData(TEAMS_KEY, teamsData);
               success = success && setLocalData(ERGEBNISSE_KEY, ergebnisseData);
               success = success && setLocalData(PAYMENT_STATUS_KEY, paymentData);
-              // Kein setLocalData für SCHEIBEN_KEY mehr
 
               if (!success) {
                   throw new Error("Fehler beim Schreiben der Hauptdaten in den lokalen Speicher während der Wiederherstellung.");
