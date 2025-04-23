@@ -329,33 +329,47 @@
       }
 
       // Zeigt die Teamliste basierend auf lokalen Daten an
-      // *** ANGEPASSTE VERSION ***
+      // *** ANGEPASSTE VERSION MIT MEHR LOGGING ***
       function displayTeamsListeLokal() {
+        console.log("displayTeamsListeLokal: Starte Anzeige..."); // LOG 1
         zeigeLoader(true, "ladeAnzeigeTeams");
         teamsListeBody.innerHTML = "";
 
-        // *** NEU: Lade die Daten direkt hier aus dem Local Storage ***
+        // *** Lade die Daten direkt hier aus dem Local Storage ***
         const currentLocalTeams = getLocalData(TEAMS_KEY);
         const currentLocalTeilnehmer = getLocalData(TEILNEHMER_KEY);
 
+        // LOG 2: Überprüfe die geladenen Teilnehmerdaten (nur die ersten 5 zur Übersicht)
+        console.log("displayTeamsListeLokal: Geladene Teilnehmer (Auszug):", JSON.stringify(currentLocalTeilnehmer.slice(0, 5), null, 2));
+
         // Erstelle die Map basierend auf den *aktuell* geladenen Teilnehmern
         const teilnehmerMapLocal = new Map(
-          currentLocalTeilnehmer.map((t) => [t.localId, t]) // Verwende currentLocalTeilnehmer
+          currentLocalTeilnehmer.map((t) => [t.localId, t])
         );
 
+        // LOG 3: Überprüfe die erstellte Map (Größe)
+        console.log(`displayTeamsListeLokal: Teilnehmer-Map erstellt (Größe: ${teilnehmerMapLocal.size})`);
+
         // Filtere und sortiere die *aktuell* geladenen Teams
-        const anzeigbareTeams = currentLocalTeams // Verwende currentLocalTeams
+        const anzeigbareTeams = currentLocalTeams
           .filter((team) => team._syncStatus !== "deleted")
           .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+
+        // LOG 4: Anzahl der anzuzeigenden Teams
+        console.log(`displayTeamsListeLokal: Anzahl anzuzeigender Teams: ${anzeigbareTeams.length}`);
 
         if (anzeigbareTeams.length === 0) {
           teamsListeBody.innerHTML =
             '<tr><td colspan="3">Keine Teams lokal verfügbar.</td></tr>';
           zeigeLoader(false, "ladeAnzeigeTeams");
+          console.log("displayTeamsListeLokal: Keine Teams zum Anzeigen."); // LOG
           return;
         }
 
         anzeigbareTeams.forEach((team) => {
+          // LOG 5: Für jedes Team, logge die Mitglieder-IDs
+          console.log(`displayTeamsListeLokal: Verarbeite Team "${team.teamname || 'Unbenannt'}" (ID: ${team.localId}), Mitglieder-IDs:`, team.mitglieder);
+
           const tr = document.createElement("tr");
           const tdName = document.createElement("td");
           const tdMitglieder = document.createElement("td");
@@ -374,22 +388,34 @@
           if (team.mitglieder && team.mitglieder.length > 0) {
             const teilnehmerNamen = team.mitglieder
               .map((localId) => {
-                // Suche in der *aktuell* erstellten Map
+                // LOG 6: Für jede Mitglieder-ID, logge den Lookup-Versuch
+                console.log(`  -> Suche Teilnehmer für localId "${localId}" in Map...`);
                 const teilnehmer = teilnehmerMapLocal.get(localId);
+
+                // LOG 7: Logge das Ergebnis des Lookups
                 if (teilnehmer) {
+                  console.log(`    => Teilnehmer gefunden: Vorname=${teilnehmer.vorname}, Name=${teilnehmer.name}, Status=${teilnehmer._syncStatus}`);
                   // Prüfe, ob der gefundene Teilnehmer als gelöscht markiert ist
                   if (teilnehmer._syncStatus === "deleted") {
+                     console.log(`    => Teilnehmer ${localId} ist als gelöscht markiert.`);
                     return `(${teilnehmer.vorname || ""} ${
                       teilnehmer.name || ""
                     } - gelöscht)`.trim();
                   }
                   // Gib den Namen des aktiven Teilnehmers zurück
-                  return `${teilnehmer.vorname || ""} ${
-                    teilnehmer.name || ""
-                  }`.trim();
+                  const nameString = `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim();
+                  console.log(`    => Name für ${localId} ist "${nameString || '(Leer)'}"`);
+                  // *** WICHTIG: Prüfen, ob der Name wirklich leer ist ***
+                  if (!nameString) {
+                      console.warn(`    => WARNUNG: Teilnehmer ${localId} gefunden, aber Vorname/Name sind leer!`, teilnehmer);
+                      return `Unbekannt (ID: ${localId.substring(0, 6)}...)`; // Fallback, wenn Name leer
+                  }
+                  return nameString;
+                } else {
+                  // LOG 8: Teilnehmer NICHT gefunden
+                  console.warn(`    => Teilnehmer für localId "${localId}" NICHT in Map gefunden!`);
+                  return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
                 }
-                // Wenn der Teilnehmer *überhaupt nicht* in der Map ist
-                return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
               })
               .join(", ");
             tdMitglieder.textContent = teilnehmerNamen;
@@ -411,7 +437,9 @@
           teamsListeBody.appendChild(tr);
         });
         zeigeLoader(false, "ladeAnzeigeTeams");
+        console.log("displayTeamsListeLokal: Anzeige abgeschlossen."); // LOG 9
       }
+
 
       function bearbeiteTeam(teamLocalId) {
         // Verwende die *aktuellsten* Daten aus dem Local Storage für die Bearbeitung
