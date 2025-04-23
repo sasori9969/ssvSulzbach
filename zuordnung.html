@@ -433,10 +433,11 @@
       speichernButton.addEventListener("click", speichereTeamLokal);
       teilnehmerSucheInput.addEventListener('input', filterTeilnehmerListe); // NEU
 
-      // Initialisierung beim Laden der Seite
+      // --- Initialisierung ---
       window.addEventListener("DOMContentLoaded", () => {
         zeigeLoader(true);
         try {
+          // Diese Reihenfolge ist korrekt für den initialen Ladevorgang
           ladeTeilnehmerLokal();
           ladeTeamsLokal();
           displayTeamsListeLokal();
@@ -452,6 +453,50 @@
           zeigeLoader(false);
         }
       });
+
+      // --- Listener für Datenänderungen ---
+
+      // Wenn sich Daten im LocalStorage ändern (z.B. durch Restore in anderem Tab oder Sync)
+      window.addEventListener("storage", (event) => {
+        // Prüfen, ob sich Teilnehmer oder Teams geändert haben
+        if (event.key === TEILNEHMER_KEY || event.key === TEAMS_KEY) {
+          console.log(`LocalStorage geändert (${event.key}), lade Zuordnungsdaten neu...`);
+          try {
+            // Wichtig: Beide Listen neu laden, da sich beide geändert haben könnten
+            // oder die Teamliste von der neuen Teilnehmerliste abhängt (für die Anzeige)
+            ladeTeilnehmerLokal();
+            ladeTeamsLokal();
+            // Erst DANACH die Anzeige aktualisieren
+            displayTeamsListeLokal();
+            // Ggf. auch den Button-Status prüfen
+            aktualisiereSpeichernButton();
+          } catch (error) {
+             console.error("Fehler beim Neuladen der Daten nach Storage Event:", error);
+             zeigeStatus("Fehler beim Aktualisieren der Ansicht nach Datenänderung.", "fehler", statusMeldung);
+          }
+        }
+      });
+
+      // Wenn der zentrale Sync abgeschlossen ist
+      window.addEventListener("datasync-complete", (event) => {
+        // Prüfen, ob der Sync erfolgreich war und ob Änderungen vorgenommen wurden (optional, aber gut)
+        if (event.detail?.success && event.detail?.changesMade) {
+          console.log("Datensynchronisation abgeschlossen, lade Zuordnungsdaten neu...");
+           try {
+              // Auch hier beide Listen neu laden und dann die Anzeige
+              ladeTeilnehmerLokal();
+              ladeTeamsLokal();
+              displayTeamsListeLokal();
+              aktualisiereSpeichernButton();
+           } catch (error) {
+               console.error("Fehler beim Neuladen der Daten nach Sync:", error);
+               zeigeStatus("Fehler beim Aktualisieren der Ansicht nach Synchronisation.", "fehler", statusMeldung);
+           }
+        } else if (event.detail?.success) {
+            console.log("Datensynchronisation abgeschlossen, keine Änderungen relevant für Zuordnung.");
+        }
+      });
+
     </script>
   </body>
 </html>
