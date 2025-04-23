@@ -276,7 +276,7 @@
       });
 
       // --- Funktion zum Wiederherstellen aus Firebase ---
-      // *** ANGEPASSTE VERSION MIT KORREKTER localId BEHANDLUNG ***
+      // *** ANGEPASSTE VERSION MIT KORREKTER localId UND FELDNAMEN-MAPPING ***
       async function restoreLocalStorageFromFirebase() {
           console.log("restoreLocalStorageFromFirebase gestartet.");
           setButtonsDisabled(true);
@@ -284,26 +284,45 @@
           zeigeStatus("Starte Wiederherstellung aus Firebase...", "info", statusMeldung);
 
           try {
-              // Helper function to map Firebase doc to local object, preserving localId
-              const mapFirebaseDocToLocal = (doc) => {
+              // Helper function to map Firebase doc to local object, preserving localId and mapping fields
+              const mapFirebaseDocToLocal = (doc, collectionName) => { // NEU: collectionName hinzugefügt
                   const data = doc.data();
-                  // *** WICHTIG: Prüfen, ob eine localId im Firebase-Dokument gespeichert wurde ***
-                  // Wenn ja, DIESE verwenden. Sonst Fallback (sollte aber nicht nötig sein).
                   const localId = data.localId || doc.id; // Nimm die gespeicherte localId, wenn vorhanden!
 
-                  // Stelle sicher, dass die localId nicht versehentlich überschrieben wird,
-                  // falls sie auch in data direkt steht (durch ...data).
+                  // Basisdaten
                   const finalData = {
-                      firestoreId: doc.id, // Firestore ID immer speichern
-                      ...data,             // Alle anderen Felder aus Firebase übernehmen
-                      localId: localId,    // Sicherstellen, dass die korrekte localId gesetzt ist
-                      _syncStatus: 'synced' // Als synchronisiert markieren
+                      firestoreId: doc.id,
+                      ...data,
+                      localId: localId,
+                      _syncStatus: 'synced'
                   };
-                  // Entferne ggf. das Feld 'id', falls es aus Firebase kommt und stört
-                  // delete finalData.id; // Nur wenn nötig
 
-                  // Log zur Überprüfung der IDs
-                  // console.log(`Mapping Doc ID: ${doc.id}, Data.localId: ${data.localId}, Final localId: ${finalData.localId}`);
+                  // *** NEU: Spezifisches Mapping für Ergebnisse ***
+                  if (collectionName === ERGEBNISSE_KEY) {
+                      // Benenne 'teilnehmerId' um zu 'teilnehmerLocalId', falls vorhanden
+                      if (data.teilnehmerId !== undefined) {
+                          finalData.teilnehmerLocalId = data.teilnehmerId;
+                          delete finalData.teilnehmerId; // Entferne das alte Feld
+                      }
+                      // Benenne 'teamId' um zu 'teamLocalId', falls vorhanden
+                      if (data.teamId !== undefined) {
+                          finalData.teamLocalId = data.teamId;
+                          delete finalData.teamId; // Entferne das alte Feld
+                      }
+                      // Stelle sicher, dass ringzahl eine Zahl ist (falls es als String gespeichert wurde)
+                      if (typeof finalData.ringzahl === 'string') {
+                          finalData.ringzahl = parseInt(finalData.ringzahl, 10);
+                          if (isNaN(finalData.ringzahl)) {
+                              finalData.ringzahl = 0; // Fallback, falls Konvertierung fehlschlägt
+                          }
+                      } else if (typeof finalData.ringzahl !== 'number') {
+                           finalData.ringzahl = 0; // Fallback, falls kein String oder Zahl
+                      }
+                  }
+                  // Hier könnten Mappings für andere Collections hinzugefügt werden, falls nötig
+
+                  // Entferne ggf. das Feld 'id', falls es aus Firebase kommt und stört
+                  // delete finalData.id;
 
                   return finalData;
               };
@@ -312,30 +331,33 @@
               // 1. Alle relevanten Collections aus Firebase holen
               zeigeStatus("Lade Teilnehmer aus Firebase...", "info", statusMeldung);
               const teilnehmerSnap = await getDocs(collection(db, "teilnehmer"));
-              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
-              const teilnehmerData = teilnehmerSnap.docs.map(mapFirebaseDocToLocal);
-              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge. Erste localId: ${teilnehmerData[0]?.localId}`); // Log zur Prüfung
+              const teilnehmerData = teilnehmerSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEILNEHMER_KEY)); // NEU: Key übergeben
+              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge.`);
 
               zeigeStatus("Lade Teams aus Firebase...", "info", statusMeldung);
               const teamsSnap = await getDocs(collection(db, "teams"));
-              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
-              const teamsData = teamsSnap.docs.map(mapFirebaseDocToLocal);
-              console.log(`Teams geladen: ${teamsData.length} Einträge. Erste localId: ${teamsData[0]?.localId}`); // Log zur Prüfung
+              const teamsData = teamsSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEAMS_KEY)); // NEU: Key übergeben
+              console.log(`Teams geladen: ${teamsData.length} Einträge.`);
 
               zeigeStatus("Lade Ergebnisse aus Firebase...", "info", statusMeldung);
               const ergebnisseSnap = await getDocs(collection(db, "ergebnisse"));
-              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden ***
-              const ergebnisseData = ergebnisseSnap.docs.map(mapFirebaseDocToLocal);
-              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge. Erste localId: ${ergebnisseData[0]?.localId}`); // Log zur Prüfung
+              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden mit Key ***
+              const ergebnisseData = ergebnisseSnap.docs.map(doc => mapFirebaseDocToLocal(doc, ERGEBNISSE_KEY)); // NEU: Key übergeben
+              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge.`);
+              // Log zur Prüfung des Mappings
+              if (ergebnisseData.length > 0) {
+                  console.log("Erstes wiederhergestelltes Ergebnis (lokal):", JSON.stringify(ergebnisseData[0], null, 2));
+              }
+
 
               zeigeStatus("Lade Zahlungsstatus aus Firebase...", "info", statusMeldung);
               const paymentSnap = await getDocs(collection(db, "paymentStatus"));
               const paymentData = {};
               paymentSnap.docs.forEach(doc => {
                   const data = doc.data();
-                  // Annahme: Key ist die teamLocalId, Status braucht keine eigene localId
-                  // Wichtig: Wenn paymentStatus auch eine localId hätte, müsste mapFirebaseDocToLocal verwendet werden.
-                  // Da der Key die teamLocalId ist, ist es hier einfacher.
+                  // Hier gehen wir davon aus, dass die ID des Dokuments die teamLocalId ist
+                  // und die Datenstruktur { basePaid: boolean, rebuys: number } hat.
+                  // Wenn paymentStatus auch eine localId hätte, müsste mapFirebaseDocToLocal verwendet werden.
                   paymentData[doc.id] = {
                       ...data,
                       _syncStatus: 'synced'
@@ -343,11 +365,9 @@
               });
               console.log(`Zahlungsstatus geladen für ${Object.keys(paymentData).length} Teams.`);
 
-              // Scheibendaten werden übersprungen (wie im Code)
-              console.log("Laden/Speichern von Scheibendaten wird übersprungen.");
+              // Scheibendaten werden übersprungen
 
-
-              // 2. Lokalen Speicher überschreiben (mit Fehlerprüfung)
+              // 2. Lokalen Speicher überschreiben
               zeigeStatus("Speichere Hauptdaten lokal...", "info", statusMeldung);
               let success = true;
               success = success && setLocalData(TEILNEHMER_KEY, teilnehmerData);
@@ -359,7 +379,7 @@
                   throw new Error("Fehler beim Schreiben der Hauptdaten in den lokalen Speicher während der Wiederherstellung.");
               }
 
-              // 3. Letzten Sync-Zeitpunkt aktualisieren (wichtig!)
+              // 3. Letzten Sync-Zeitpunkt aktualisieren
               const now = new Date().toISOString();
               setLocalData(LAST_SYNC_KEY, now);
               displayLastSyncTime(now);
