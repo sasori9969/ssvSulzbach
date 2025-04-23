@@ -39,6 +39,16 @@
         color: #666;
         display: block; /* Eigene Zeile für Status */
       }
+      /* Statusmeldungen (wie in ui-utils.js definiert) */
+      .status-meldung {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        display: none;
+      }
+      .status-meldung.erfolg { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+      .status-meldung.fehler { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+      .status-meldung.info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
     </style>
   </head>
   <body>
@@ -132,19 +142,20 @@
       const editLocalIdInput = document.getElementById("editLocalId");
       const cancelEditBtn = document.getElementById("cancelEditBtn");
 
-      // Globale Variablen für Daten und Maps
-      let teilnehmerMap = new Map();
-      let teamMap = new Map();
-      let aktiveTeilnehmer = []; // NEU: Globale Liste der aktiven Teilnehmer
+      // Globale Variablen für Daten und Maps (nur noch für Dropdowns und Validierung benötigt)
+      let teilnehmerMap = new Map(); // Wird in loadInitialData gefüllt
+      let teamMap = new Map();       // Wird in loadInitialData gefüllt
+      let aktiveTeilnehmer = []; // Wird in loadInitialData gefüllt
 
-      // Laden der initialen Daten (Teilnehmer, Teams)
+      // Laden der initialen Daten (Teilnehmer, Teams) für Dropdowns und Maps
       function loadInitialData() {
-        // NEU: Aktive Teilnehmer in globaler Variable speichern
+        console.log("loadInitialData: Lade Teilnehmer und Teams für Dropdowns...");
+        // Aktive Teilnehmer und Teams in globalen Variablen speichern
         aktiveTeilnehmer = getActiveTeilnehmer();
         const teams = getActiveTeams();
 
         // Teilnehmer-Dropdown initial mit allen füllen
-        populateTeilnehmerDropdown(); // NEU: Aufruf der Hilfsfunktion
+        populateTeilnehmerDropdown();
 
         // Team-Dropdown füllen
         teamSelect.innerHTML = '<option value="">-- Kein Team --</option>';
@@ -155,12 +166,14 @@
           teamSelect.appendChild(option);
         });
 
-        // Maps erstellen
-        teilnehmerMap = createTeilnehmerMap(aktiveTeilnehmer); // Nutzt jetzt globale Liste
+        // Maps erstellen (werden für Validierung und Edit-Funktion benötigt)
+        teilnehmerMap = createTeilnehmerMap(aktiveTeilnehmer);
         teamMap = createTeamMap(teams);
+        console.log(`loadInitialData: Teilnehmer-Map erstellt (Größe: ${teilnehmerMap.size})`);
+        console.log(`loadInitialData: Team-Map erstellt (Größe: ${teamMap.size})`);
       }
 
-      // NEU: Hilfsfunktion zum Füllen des Teilnehmer-Dropdowns
+      // Hilfsfunktion zum Füllen des Teilnehmer-Dropdowns
       /**
        * Füllt das Teilnehmer-Dropdown, optional gefiltert nach Teammitgliedern.
        * @param {Set<string>|null} [filterMitgliederIds=null] Ein Set mit localIds der anzuzeigenden Teilnehmer. Wenn null, werden alle angezeigt.
@@ -187,62 +200,98 @@
           }
       }
 
-      // Ergebnisse anzeigen - unverändert
+      // Ergebnisse anzeigen - *** ANGEPASSTE VERSION ***
       function displayErgebnisseFromLocal() {
-        const lokaleErgebnisse = getActiveErgebnisse();
-        ergebnisListe.innerHTML = "";
+        console.log("displayErgebnisseFromLocal: Starte Anzeige..."); // Logging hinzugefügt
+        ergebnisListe.innerHTML = ""; // Liste leeren
 
-        if (lokaleErgebnisse.length === 0) {
-          const row = ergebnisListe.insertRow();
-          const cell = row.insertCell();
-          cell.colSpan = 7;
-          cell.textContent = "Noch keine Ergebnisse lokal gespeichert.";
-          return;
+        try {
+            // *** NEU: Lade alle benötigten Daten direkt hier ***
+            const aktuelleAktiveTeilnehmer = getActiveTeilnehmer();
+            const aktuelleAktiveTeams = getActiveTeams();
+            const aktuelleAktiveErgebnisse = getActiveErgebnisse(); // Holt bereits gefiltert und sortiert
+
+            // *** NEU: Erstelle lokale Maps für diese Funktion ***
+            const localTeilnehmerMap = createTeilnehmerMap(aktuelleAktiveTeilnehmer);
+            const localTeamMap = createTeamMap(aktuelleAktiveTeams);
+
+            console.log(`displayErgebnisseFromLocal: Teilnehmer-Map erstellt (Größe: ${localTeilnehmerMap.size})`); // Logging
+            console.log(`displayErgebnisseFromLocal: Team-Map erstellt (Größe: ${localTeamMap.size})`); // Logging
+            console.log(`displayErgebnisseFromLocal: Anzahl anzuzeigender Ergebnisse: ${aktuelleAktiveErgebnisse.length}`); // Logging
+
+
+            if (aktuelleAktiveErgebnisse.length === 0) {
+              const row = ergebnisListe.insertRow();
+              const cell = row.insertCell();
+              cell.colSpan = 7;
+              cell.textContent = "Noch keine Ergebnisse lokal gespeichert.";
+              console.log("displayErgebnisseFromLocal: Keine Ergebnisse zum Anzeigen."); // Logging
+              return;
+            }
+
+            aktuelleAktiveErgebnisse.forEach((ergebnis) => {
+              console.log(`  -> Verarbeite Ergebnis ${ergebnis.localId} für Teilnehmer ${ergebnis.teilnehmerLocalId}`); // Logging
+
+              const row = ergebnisListe.insertRow();
+              row.dataset.localId = ergebnis.localId;
+              row.dataset.syncStatus = ergebnis._syncStatus;
+
+              // *** NEU: Verwende die lokalen Maps ***
+              const teilnehmer = localTeilnehmerMap.get(ergebnis.teilnehmerLocalId);
+              const team = ergebnis.teamLocalId ? localTeamMap.get(ergebnis.teamLocalId) : null;
+
+              const teilnehmerName = teilnehmer ? `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim() : "Unbekannt";
+              const teamName = team ? (team.teamname || "Unbekannt") : "-";
+              const ringe = ergebnis.ringzahl ?? "N/A";
+              const bemerkung = ergebnis.bemerkung || "-";
+              const datum = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString("de-DE", { dateStyle: 'short', timeStyle: 'short'}) : "-";
+
+              // Logging für den Lookup
+              if (!teilnehmer) {
+                  console.warn(`    => Teilnehmer für localId "${ergebnis.teilnehmerLocalId}" NICHT in lokaler Map gefunden!`);
+              } else {
+                  console.log(`    => Teilnehmer gefunden: "${teilnehmerName}"`);
+              }
+              if (ergebnis.teamLocalId && !team) {
+                  console.warn(`    => Team für localId "${ergebnis.teamLocalId}" NICHT in lokaler Map gefunden!`);
+              }
+
+
+              let syncStatusText = "";
+              let statusKurz = "";
+              if (ergebnis._syncStatus === "new") {
+                syncStatusText = "Neu, nicht synchronisiert"; statusKurz = "Neu";
+              } else if (ergebnis._syncStatus === "modified") {
+                syncStatusText = "Geändert, nicht synchronisiert"; statusKurz = "Geändert";
+              } else if (ergebnis._syncStatus === "deleted") {
+                syncStatusText = "Wird beim nächsten Sync gelöscht"; statusKurz = "Gelöscht"; row.classList.add("deleted");
+              } else {
+                 syncStatusText = "Synchronisiert"; statusKurz = "Synced";
+              }
+
+              row.insertCell().textContent = datum;
+              row.insertCell().textContent = teilnehmerName; // Hier wird der Name angezeigt
+              row.insertCell().textContent = teamName;
+              row.insertCell().textContent = ringe;
+              row.insertCell().textContent = bemerkung;
+              const statusCell = row.insertCell();
+              statusCell.innerHTML = `<span class="sync-status" title="${syncStatusText}">${statusKurz}</span>`;
+              const actionsCell = row.insertCell();
+              actionsCell.classList.add('actions-cell');
+              actionsCell.innerHTML = `
+                <button class="edit-btn btn btn-secondary" data-local-id="${ergebnis.localId}">Edit</button>
+                <button class="delete-btn btn btn-danger" data-local-id="${ergebnis.localId}">X</button>
+              `;
+            });
+            console.log("displayErgebnisseFromLocal: Anzeige abgeschlossen."); // Logging
+        } catch (error) {
+            console.error("Fehler in displayErgebnisseFromLocal:", error);
+            ergebnisListe.innerHTML = '<tr><td colspan="7">Fehler beim Laden der Ergebnisse.</td></tr>';
+            zeigeStatus("Fehler beim Anzeigen der Ergebnisse.", "fehler");
         }
-
-        lokaleErgebnisse.forEach((ergebnis) => {
-          const row = ergebnisListe.insertRow();
-          row.dataset.localId = ergebnis.localId;
-          row.dataset.syncStatus = ergebnis._syncStatus;
-
-          const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
-          const team = ergebnis.teamLocalId ? teamMap.get(ergebnis.teamLocalId) : null;
-
-          const teilnehmerName = teilnehmer ? `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim() : "Unbekannt";
-          const teamName = team ? (team.teamname || "Unbekannt") : "-";
-          const ringe = ergebnis.ringzahl ?? "N/A";
-          const bemerkung = ergebnis.bemerkung || "-";
-          const datum = ergebnis.createdAt ? new Date(ergebnis.createdAt).toLocaleString("de-DE", { dateStyle: 'short', timeStyle: 'short'}) : "-";
-
-          let syncStatusText = "";
-          let statusKurz = "";
-          if (ergebnis._syncStatus === "new") {
-            syncStatusText = "Neu, nicht synchronisiert"; statusKurz = "Neu";
-          } else if (ergebnis._syncStatus === "modified") {
-            syncStatusText = "Geändert, nicht synchronisiert"; statusKurz = "Geändert";
-          } else if (ergebnis._syncStatus === "deleted") {
-            syncStatusText = "Wird beim nächsten Sync gelöscht"; statusKurz = "Gelöscht"; row.classList.add("deleted");
-          } else {
-             syncStatusText = "Synchronisiert"; statusKurz = "Synced";
-          }
-
-          row.insertCell().textContent = datum;
-          row.insertCell().textContent = teilnehmerName;
-          row.insertCell().textContent = teamName;
-          row.insertCell().textContent = ringe;
-          row.insertCell().textContent = bemerkung;
-          const statusCell = row.insertCell();
-          statusCell.innerHTML = `<span class="sync-status" title="${syncStatusText}">${statusKurz}</span>`;
-          const actionsCell = row.insertCell();
-          actionsCell.classList.add('actions-cell');
-          actionsCell.innerHTML = `
-            <button class="edit-btn btn btn-secondary" data-local-id="${ergebnis.localId}">Edit</button>
-            <button class="delete-btn btn btn-danger" data-local-id="${ergebnis.localId}">X</button>
-          `;
-        });
       }
 
-      // Ergebnis speichern oder aktualisieren - unverändert
+      // Ergebnis speichern oder aktualisieren
       function saveOrUpdateErgebnisLokal(e) {
         e.preventDefault();
         const editLocalId = editLocalIdInput.value;
@@ -256,7 +305,8 @@
           return;
         }
 
-        // NEU: Zusätzliche Prüfung, ob der ausgewählte Teilnehmer zum ausgewählten Team passt
+        // Zusätzliche Prüfung, ob der ausgewählte Teilnehmer zum ausgewählten Team passt
+        // Nutzt die globalen Maps, die in loadInitialData gefüllt wurden
         if (teamLocalId) {
             const team = teamMap.get(teamLocalId);
             if (team && team.mitglieder && !team.mitglieder.includes(teilnehmerLocalId)) {
@@ -264,8 +314,8 @@
                  return; // Speichern verhindern
             }
         }
-        // Ende NEU
 
+        // Hole die aktuellsten Ergebnisse direkt aus dem Storage für den Schreibvorgang
         const alleErgebnisse = getLocalData(ERGEBNISSE_KEY);
         let status = "erfolg";
         let message = "";
@@ -326,23 +376,24 @@
 
         if (status !== "fehler") {
           resetForm();
-          displayErgebnisseFromLocal();
+          displayErgebnisseFromLocal(); // Anzeige neu rendern (holt sich Daten selbst)
         }
       }
 
-      // Formular zurücksetzen - unverändert
+      // Formular zurücksetzen
       function resetForm() {
         ergebnisForm.reset();
         editLocalIdInput.value = "";
         cancelEditBtn.style.display = "none";
-        // NEU: Teilnehmer-Dropdown wieder mit allen füllen, wenn Formular zurückgesetzt wird
+        // Teilnehmer-Dropdown wieder mit allen füllen, wenn Formular zurückgesetzt wird
         populateTeilnehmerDropdown();
         teilnehmerSelect.disabled = false;
         teamSelect.disabled = false;
       }
 
-      // Ergebnis zum Bearbeiten laden - unverändert
+      // Ergebnis zum Bearbeiten laden
       function loadErgebnisForEdit(localId) {
+        // Hole die aktuellsten Ergebnisse direkt aus dem Storage
         const alleErgebnisse = getLocalData(ERGEBNISSE_KEY);
         const ergebnis = alleErgebnisse.find((e) => e.localId === localId);
 
@@ -350,7 +401,8 @@
           editLocalIdInput.value = ergebnis.localId;
           teamSelect.value = ergebnis.teamLocalId || ""; // Team zuerst setzen
 
-          // NEU: Teilnehmer-Dropdown basierend auf dem geladenen Team filtern
+          // Teilnehmer-Dropdown basierend auf dem geladenen Team filtern
+          // Nutzt die globale teamMap, die in loadInitialData gefüllt wurde
           const team = ergebnis.teamLocalId ? teamMap.get(ergebnis.teamLocalId) : null;
           const mitgliederIds = team ? new Set(team.mitglieder || []) : null;
           populateTeilnehmerDropdown(mitgliederIds);
@@ -368,9 +420,10 @@
         }
       }
 
-      // Ergebnis löschen (LOKAL markieren) - unverändert
+      // Ergebnis löschen (LOKAL markieren)
       function deleteErgebnisLokal(localId) {
         zeigeConfirm("Möchtest du dieses Ergebnis wirklich löschen?", () => {
+          // Hole die aktuellsten Ergebnisse direkt aus dem Storage
           const alleErgebnisse = getLocalData(ERGEBNISSE_KEY);
           const index = alleErgebnisse.findIndex((e) => e.localId === localId);
 
@@ -386,7 +439,7 @@
             }
             const success = setLocalData(ERGEBNISSE_KEY, alleErgebnisse);
             if (success) {
-              displayErgebnisseFromLocal();
+              displayErgebnisseFromLocal(); // Anzeige neu rendern
             } else {
               message = "Fehler beim lokalen Speichern der Löschmarkierung!";
               status = "fehler";
@@ -417,10 +470,11 @@
         }
       });
 
-      // NEU: Event Listener für Team-Auswahl
+      // Event Listener für Team-Auswahl
       teamSelect.addEventListener('change', (event) => {
           const selectedTeamLocalId = event.target.value;
           if (selectedTeamLocalId) {
+              // Nutzt die globale teamMap
               const team = teamMap.get(selectedTeamLocalId);
               const mitgliederIds = team ? new Set(team.mitglieder || []) : null;
               populateTeilnehmerDropdown(mitgliederIds);
@@ -432,15 +486,36 @@
 
       // Initialisierung
       document.addEventListener("DOMContentLoaded", () => {
-        loadInitialData();
-        displayErgebnisseFromLocal();
+        loadInitialData(); // Lädt Dropdowns und füllt globale Maps
+        displayErgebnisseFromLocal(); // Zeigt Tabelle an (holt sich Daten selbst)
 
+        // Listener für Sync-Abschluss
         window.addEventListener('datasync-complete', (event) => {
             if (event.detail?.success && event.detail?.changesMade) { // Nur neu laden, wenn sich was geändert hat
                 console.log("Daten neu laden nach erfolgreichem Sync...");
-                // Wichtig: loadInitialData lädt alles neu, inkl. Dropdowns
+                // Wichtig: loadInitialData lädt Dropdowns und globale Maps neu
                 loadInitialData();
+                // displayErgebnisseFromLocal holt sich die Daten für die Tabelle selbst
                 displayErgebnisseFromLocal();
+            } else if (event.detail?.success) {
+                 console.log("Sync abgeschlossen, keine relevanten Änderungen für Ergebnis-Anzeige.");
+            }
+        });
+
+        // Listener für Storage-Änderungen (z.B. durch anderen Tab)
+        window.addEventListener('storage', (event) => {
+            // Prüfen, ob sich Teilnehmer, Teams oder Ergebnisse geändert haben
+            if (event.key === ERGEBNISSE_KEY || event.key === TEILNEHMER_KEY || event.key === TEAMS_KEY) {
+                console.log(`LocalStorage geändert (${event.key}), lade Ergebnisdaten neu...`);
+                try {
+                    // Dropdowns und globale Maps neu laden
+                    loadInitialData();
+                    // Tabelle neu anzeigen (holt sich Daten selbst)
+                    displayErgebnisseFromLocal();
+                } catch (error) {
+                    console.error("Fehler beim Neuladen der Daten nach Storage Event:", error);
+                    zeigeStatus("Fehler beim Aktualisieren der Ansicht nach Datenänderung.", "fehler");
+                }
             }
         });
       });
