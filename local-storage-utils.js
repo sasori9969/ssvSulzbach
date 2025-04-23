@@ -6,7 +6,7 @@ export const TEAMS_KEY = "teamsListe_v2";
 export const ERGEBNISSE_KEY = "ergebnisseListe_v2";
 export const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Für Abrechnung
 export const LAST_SYNC_KEY = "lastSyncTimestamp";
-// export const SCHEIBEN_KEY = "scheibenErgebnisse_v1"; // Auskommentiert, da scheibenErfassen.html ignoriert wird
+// export const SCHEIBEN_KEY = "scheibenErgebnisse_v1"; // AUSKOMMENTIERT/ENTFERNT
 
 // Array aller Schlüssel, die gelöscht werden sollen (für clearLocalStorageData)
 const ALL_DATA_KEYS = [
@@ -15,7 +15,7 @@ const ALL_DATA_KEYS = [
     ERGEBNISSE_KEY,
     PAYMENT_STATUS_KEY,
     LAST_SYNC_KEY,
-    // SCHEIBEN_KEY // Einkommentieren, falls benötigt
+    // SCHEIBEN_KEY // ENTFERNT
 ];
 
 
@@ -140,6 +140,7 @@ export function clearLocalStorageData() {
     console.log("Lösche alle lokalen Wettkampfdaten...");
     let success = true;
     try {
+        // Iteriert jetzt über das angepasste ALL_DATA_KEYS Array
         ALL_DATA_KEYS.forEach(key => {
             try {
                 localStorage.removeItem(key);
@@ -150,7 +151,7 @@ export function clearLocalStorageData() {
             }
         });
         if (success) {
-            console.log("Alle lokalen Wettkampfdaten erfolgreich gelöscht.");
+            console.log("Alle relevanten lokalen Wettkampfdaten erfolgreich gelöscht.");
         } else {
             console.warn("Einige lokale Daten konnten nicht gelöscht werden.");
         }

@@ -110,14 +110,14 @@
     </div>
 
     <script type="module">
-      // Firebase Imports (NEU: getDocs, collection hinzufügen)
+      // Firebase Imports
       import { db } from "./firebase-config.js";
       import { collection, getDocs } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js"; // Pfad ggf. anpassen
 
       // UI Utils Imports
       import { zeigeStatus, zeigeConfirm } from "./ui-utils.js";
 
-      // Local Storage Utils Imports (NEU: Alle relevanten Keys importieren)
+      // Local Storage Utils Imports
       import {
         getLocalData,
         setLocalData,
@@ -126,8 +126,8 @@
         TEILNEHMER_KEY,
         TEAMS_KEY,
         ERGEBNISSE_KEY,
-        PAYMENT_STATUS_KEY,
-        SCHEIBEN_KEY // Sicherstellen, dass dieser Key existiert und exportiert wird
+        PAYMENT_STATUS_KEY
+        // SCHEIBEN_KEY wurde entfernt
       } from "./local-storage-utils.js";
 
       // Importiere die zentrale Sync-Funktion und die neue Löschfunktion
@@ -160,16 +160,10 @@
 
       // --- Hilfsfunktion zum Sperren/Entsperren der Buttons ---
       function setButtonsDisabled(disabled) {
-          console.log(`Buttons werden ${disabled ? 'deaktiviert' : 'aktiviert'}.`); // Diagnose-Log
+          console.log(`Buttons werden ${disabled ? 'deaktiviert' : 'aktiviert'}.`);
           manualSyncBtn.disabled = disabled;
           deleteAllBtn.disabled = disabled;
-          restoreFromFirebaseBtn.disabled = disabled; // Stelle sicher, dass dieser Button auch gesteuert wird
-
-          // Visuelles Feedback (optional, aber hilfreich bei CSS-Problemen)
-          // Fügt eine Klasse hinzu/entfernt sie, falls das Styling über Klassen läuft
-          // manualSyncBtn.classList.toggle('disabled', disabled);
-          // deleteAllBtn.classList.toggle('disabled', disabled);
-          // restoreFromFirebaseBtn.classList.toggle('disabled', disabled);
+          restoreFromFirebaseBtn.disabled = disabled;
       }
 
       // --- Event Listener für manuellen Sync ---
@@ -183,7 +177,6 @@
           displayLastSyncTime(lastSyncTimestamp);
         } catch (error) {
           console.error("Fehler beim manuellen Sync (adminOnly):", error);
-          // Fehler wird bereits in synchronizeAllData behandelt, aber hier nochmal loggen
         } finally {
           syncSpinner.style.display = "none";
           setButtonsDisabled(false);
@@ -226,12 +219,14 @@
 
         try {
           zeigeStatus("Lösche lokale Daten...", "info", statusMeldung);
+          // clearLocalStorageData löscht jetzt SCHEIBEN_KEY nicht mehr (siehe Anpassung in local-storage-utils.js)
           localSuccess = clearLocalStorageData();
           if (!localSuccess) {
             throw new Error("Fehler beim Löschen der lokalen Daten.");
           }
           zeigeStatus("Lokale Daten gelöscht. Lösche Firebase Daten...", "info", statusMeldung);
 
+          // deleteAllFirebaseData sollte SCHEIBEN_KEY ebenfalls ignorieren (ggf. dort anpassen, falls nötig)
           firebaseSuccess = await deleteAllFirebaseData();
           if (!firebaseSuccess) {
              throw new Error("Fehler beim Löschen der Firebase Daten.");
@@ -258,8 +253,7 @@
 
       // --- Event Listener für "Wiederherstellen" Button ---
       restoreFromFirebaseBtn.addEventListener("click", () => {
-          console.log("Wiederherstellen Button geklickt."); // Diagnose-Log
-          // Prüfen ob Button disabled ist (sollte nicht sein, wenn Klick funktioniert, aber zur Sicherheit)
+          console.log("Wiederherstellen Button geklickt.");
           if (restoreFromFirebaseBtn.disabled) {
               console.warn("Wiederherstellen Button ist deaktiviert, Klick sollte nicht möglich sein.");
               return;
@@ -268,11 +262,11 @@
               zeigeConfirm(
                   "Möchtest du wirklich alle lokalen Daten mit dem Stand aus der Cloud überschreiben? Nicht synchronisierte lokale Änderungen gehen dabei verloren!",
                   async () => { // onConfirm Callback
-                      console.log("Wiederherstellung bestätigt, starte Funktion..."); // Diagnose-Log
+                      console.log("Wiederherstellung bestätigt, starte Funktion...");
                       await restoreLocalStorageFromFirebase();
                   },
                   () => { // onCancel Callback (optional)
-                      console.log("Wiederherstellung abgebrochen."); // Diagnose-Log
+                      console.log("Wiederherstellung abgebrochen.");
                   }
               );
           } catch (error) {
@@ -313,31 +307,19 @@
               });
               console.log(`Zahlungsstatus geladen für ${Object.keys(paymentData).length} Teams.`);
 
+              // --- START: Block für Scheibendaten entfernt ---
+              /*
               // Prüfen, ob SCHEIBEN_KEY existiert, bevor Collection geladen wird
               if (typeof SCHEIBEN_KEY !== 'undefined' && SCHEIBEN_KEY) {
-                  try {
-                      zeigeStatus("Lade Scheibendaten aus Firebase...", "info", statusMeldung);
-                      const scheibenSnap = await getDocs(collection(db, "scheiben"));
-                      const scheibenData = scheibenSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
-                      console.log(`Scheibendaten geladen: ${scheibenData.length} Einträge.`);
-
-                      // Nur speichern, wenn Daten geladen wurden
-                       zeigeStatus("Speichere Scheibendaten lokal...", "info", statusMeldung);
-                       if (!setLocalData(SCHEIBEN_KEY, scheibenData)) {
-                           throw new Error("Fehler beim Schreiben der Scheibendaten in den lokalen Speicher.");
-                       }
-                  } catch (scheibenError) {
-                      // Fehler beim Laden/Speichern der Scheiben, aber weitermachen
-                      console.error("Fehler beim Verarbeiten der Scheibendaten (Collection 'scheiben'):", scheibenError);
-                      zeigeStatus("Warnung: Fehler beim Laden/Speichern der Scheibendaten. Andere Daten werden trotzdem wiederhergestellt.", "fehler", statusMeldung);
-                      // Stelle sicher, dass der lokale Scheiben-Speicher geleert wird, um Inkonsistenzen zu vermeiden
-                      setLocalData(SCHEIBEN_KEY, []);
-                  }
+                  // ... Code zum Laden und Speichern von Scheibendaten ...
               } else {
                   console.log("SCHEIBEN_KEY nicht definiert oder leer, überspringe Laden/Speichern der Scheibendaten.");
                   // Stelle sicher, dass der lokale Scheiben-Speicher geleert wird
                   setLocalData(SCHEIBEN_KEY, []);
               }
+              */
+              console.log("Laden/Speichern von Scheibendaten wird übersprungen.");
+              // --- ENDE: Block für Scheibendaten entfernt ---
 
 
               // 2. Lokalen Speicher überschreiben (mit Fehlerprüfung)
@@ -347,7 +329,7 @@
               success = success && setLocalData(TEAMS_KEY, teamsData);
               success = success && setLocalData(ERGEBNISSE_KEY, ergebnisseData);
               success = success && setLocalData(PAYMENT_STATUS_KEY, paymentData);
-              // Scheiben wurden oben schon gespeichert oder geleert
+              // Kein setLocalData für SCHEIBEN_KEY mehr
 
               if (!success) {
                   throw new Error("Fehler beim Schreiben der Hauptdaten in den lokalen Speicher während der Wiederherstellung.");
@@ -363,7 +345,7 @@
 
               // Optional: Seite neu laden
               zeigeStatus("Seite wird in 2 Sekunden neu geladen...", "info", statusMeldung);
-              setTimeout(() => window.location.reload(), 2000); // Etwas längere Wartezeit
+              setTimeout(() => window.location.reload(), 2000);
 
           } catch (error) {
               console.error("Fehler bei der Wiederherstellung aus Firebase:", error);
@@ -379,7 +361,6 @@
       // --- Initialisierung ---
       document.addEventListener("DOMContentLoaded", () => {
         console.log("Admin Seite DOM geladen.");
-        // Stelle sicher, dass Buttons initial aktiv sind
         setButtonsDisabled(false);
 
         const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
@@ -393,7 +374,6 @@
         if (needsInitialSync) {
             console.log("Starte automatischen Sync-Check beim Laden...");
             setTimeout(async () => {
-                // Erneute Prüfung, ob inzwischen eine andere Aktion läuft
                 if (!manualSyncBtn.disabled && !restoreFromFirebaseBtn.disabled && !deleteAllBtn.disabled) {
                     console.log("Führe initialen Sync aus...");
                     setButtonsDisabled(true);
@@ -404,7 +384,6 @@
                         displayLastSyncTime(updatedTimestamp);
                     } catch(e) {
                         console.error("Fehler beim initialen Sync:", e);
-                        // Fehler wird von synchronizeAllData behandelt
                     } finally {
                         syncSpinner.style.display = 'none';
                         setButtonsDisabled(false);

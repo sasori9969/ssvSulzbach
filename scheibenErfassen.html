@@ -129,15 +129,15 @@
               </tr>
             </tfoot>
           </table>
-          <!-- NEU: Speicher-Button -->
-          <button id="speichernBtn" class="btn btn-primary">Scheibenwerte speichern</button>
+          <!-- Speicher-Button (ohne Funktion) -->
+          <button id="speichernBtn" class="btn btn-primary" disabled title="Speichern deaktiviert">Scheibenwerte speichern</button>
         </div>
       </main>
     </div>
     <!-- NEU: Skript als Modul -->
     <script type="module">
-      // NEU: Imports für Local Storage und UI Utils
-      import { getLocalData, setLocalData, generateLocalId, SCHEIBEN_KEY, TEILNEHMER_KEY } from './local-storage-utils.js';
+      // Imports für Local Storage (ohne SCHEIBEN_KEY) und UI Utils
+      import { getLocalData, generateLocalId, TEILNEHMER_KEY } from './local-storage-utils.js'; // setLocalData entfernt, SCHEIBEN_KEY entfernt
       import { zeigeStatus } from './ui-utils.js';
 
       document.addEventListener("DOMContentLoaded", () => {
@@ -147,11 +147,11 @@
         const tabelleBody = document.querySelector("#scheibenTabelle tbody");
         const gesamtSummeTd = document.getElementById("gesamtSumme");
         const durchschnittSummeTd = document.getElementById("durchschnittSumme");
-        const speichernBtn = document.getElementById('speichernBtn'); // NEU
-        const statusMeldung = document.getElementById('statusMeldung'); // NEU
+        const speichernBtn = document.getElementById('speichernBtn');
+        const statusMeldung = document.getElementById('statusMeldung');
         // TODO: const teilnehmerSelect = document.getElementById('scheibenTeilnehmerSelect');
 
-        // TODO: Teilnehmer-Dropdown füllen
+        // TODO: Teilnehmer-Dropdown füllen (Logik bleibt, falls benötigt)
         /*
         function ladeTeilnehmer() {
             const teilnehmer = getLocalData(TEILNEHMER_KEY)
@@ -173,7 +173,6 @@
           const anzahl = parseInt(anzahlInput.value);
 
           if (isNaN(anzahl) || anzahl < 1) {
-            // NEU: zeigeStatus verwenden
             zeigeStatus('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).', 'fehler', statusMeldung);
             return;
           }
@@ -235,81 +234,19 @@
           }
         }
 
-        // NEU: Event Listener für Speicher-Button
+        // --- START: Speicherfunktion und Listener entfernt ---
+        /*
+        // Event Listener für Speicher-Button
         speichernBtn.addEventListener('click', speichereScheibenWerte);
 
-        // NEU: Funktion zum Speichern der Werte
+        // Funktion zum Speichern der Werte
         function speichereScheibenWerte() {
-            const inputs = tabelleBody.querySelectorAll('.scheiben-wert-input');
-            const werte = [];
-            let alleGueltig = true;
-            // TODO: const ausgewaehlterTeilnehmerId = teilnehmerSelect.value;
-
-            /* TODO: Prüfen, ob Teilnehmer ausgewählt wurde
-            if (!ausgewaehlterTeilnehmerId) {
-                zeigeStatus('Bitte einen Teilnehmer auswählen.', 'fehler', statusMeldung);
-                return;
-            }
-            */
-
-            inputs.forEach(input => {
-                const wert = parseInt(input.value);
-                if (!isNaN(wert) && wert >= 0) {
-                    werte.push(wert);
-                    input.style.borderColor = '';
-                } else {
-                    input.style.borderColor = 'red';
-                    alleGueltig = false;
-                }
-            });
-
-            if (!alleGueltig) {
-                zeigeStatus('Bitte alle Scheibenwerte korrekt eingeben.', 'fehler', statusMeldung);
-                return;
-            }
-
-            if (werte.length === 0) {
-                 zeigeStatus('Keine Werte zum Speichern vorhanden.', 'info', statusMeldung);
-                 return;
-            }
-
-            const neuesScheibenErgebnis = {
-                localId: generateLocalId(),
-                firestoreId: null,
-                // TODO: teilnehmerLocalId: ausgewaehlterTeilnehmerId, // Die ID des ausgewählten Teilnehmers
-                werte: werte,
-                gesamt: werte.reduce((sum, val) => sum + val, 0),
-                durchschnitt: werte.length > 0 ? (werte.reduce((sum, val) => sum + val, 0) / werte.length) : 0,
-                createdAt: new Date().toISOString(),
-                _syncStatus: 'new'
-            };
-
-            try {
-                // Stelle sicher, dass SCHEIBEN_KEY definiert ist (in local-storage-utils.js)
-                if (typeof SCHEIBEN_KEY === 'undefined') {
-                    throw new Error("SCHEIBEN_KEY ist nicht definiert. Bitte in local-storage-utils.js hinzufügen.");
-                }
-                const aktuelleScheiben = getLocalData(SCHEIBEN_KEY);
-                aktuelleScheiben.push(neuesScheibenErgebnis);
-                const success = setLocalData(SCHEIBEN_KEY, aktuelleScheiben);
-
-                if (success) {
-                    zeigeStatus(`Scheibenwerte (${werte.length} Stück) lokal gespeichert.`, 'erfolg', statusMeldung);
-                    // Optional: Formular zurücksetzen
-                    // anzahlInput.value = 1;
-                    // erfassungsDiv.style.display = 'none';
-                    // tabelleBody.innerHTML = '';
-                    // gesamtSummeTd.textContent = '0';
-                    // durchschnittSummeTd.textContent = '-';
-                    // teilnehmerSelect.value = ''; // Auswahl zurücksetzen
-                } else {
-                    zeigeStatus('Fehler beim lokalen Speichern der Scheibenwerte!', 'fehler', statusMeldung);
-                }
-            } catch (error) {
-                 console.error("Fehler beim Speichern der Scheiben:", error);
-                 zeigeStatus(`Schwerwiegender Fehler beim Speichern: ${error.message}`, 'fehler', statusMeldung);
-            }
+            // ... (komplette Funktion entfernt) ...
         }
+        */
+        console.log("Speicherfunktion für Scheibenwerte ist deaktiviert.");
+        // --- ENDE: Speicherfunktion und Listener entfernt ---
+
 
         // Optional: Listener für Storage-Events oder Sync-Events, um Teilnehmerliste neu zu laden
         /*
