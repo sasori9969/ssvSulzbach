@@ -197,14 +197,31 @@ async function syncScheiben(batch, teilnehmerIdMap) {
 */
 
 // --- Sync-Funktion für Abrechnung ---
-async function syncAbrechnung(batch, teamIdMap) {
+/**
+ * Synchronisiert den Zahlungsstatus, indem das entsprechende Team-Dokument aktualisiert wird.
+ * Überspringt Updates für Teams, die im selben Batch gelöscht werden.
+ * @param {WriteBatch} batch Der Firestore WriteBatch.
+ * @param {Map<string, string>} teamIdMap Map von teamLocalId zu teamFirestoreId.
+ * @param {Array<string>} teamLocalIdsToDelete Array der localIds von Teams, die gelöscht werden sollen.
+ * @returns {{itemsToFinalize: Array<string>, changesDetected: boolean}}
+ */
+async function syncAbrechnung(batch, teamIdMap, teamLocalIdsToDelete) { // <-- Neuer Parameter
     console.log("SyncManager: Prüfe Abrechnung...");
     const paymentStatus = getLocalData(PAYMENT_STATUS_KEY) || {};
     let changesDetected = false;
     const itemsToFinalize = []; // Hier speichern wir teamLocalIds zum Finalisieren
+    const deletedIdsSet = new Set(teamLocalIdsToDelete); // Für schnellen Check
 
     for (const teamLocalId in paymentStatus) {
         const status = paymentStatus[teamLocalId];
+
+        // *** NEUE PRÜFUNG: Überspringe, wenn das Team gelöscht wird ***
+        if (deletedIdsSet.has(teamLocalId)) {
+            console.log(`Sync (Abrechnung): Überspringe Update für Team ${teamLocalId}, da es gelöscht wird.`);
+            // Wichtig: Status hier NICHT ändern, das Team wird ja eh entfernt.
+            continue; // Nächste Iteration
+        }
+
         // Nur modifizierte Einträge synchronisieren
         if (status && status._syncStatus === 'modified') {
             const teamFirestoreId = teamIdMap.get(teamLocalId);
@@ -229,7 +246,7 @@ async function syncAbrechnung(batch, teamIdMap) {
                 itemsToFinalize.push(teamLocalId);
 
             } else {
-                console.warn(`Sync (Abrechnung): Team ${teamLocalId} hat Zahlungsstatus 'modified', aber keine Firestore ID (wahrscheinlich noch 'new' oder gelöscht). Wird beim nächsten Mal synchronisiert.`);
+                console.warn(`Sync (Abrechnung): Team ${teamLocalId} hat Zahlungsstatus 'modified', aber keine Firestore ID (wahrscheinlich noch 'new' oder bereits gelöscht). Wird beim nächsten Mal synchronisiert.`);
                 // Status NICHT ändern, damit es beim nächsten Sync erneut versucht wird.
             }
         }
@@ -309,7 +326,7 @@ export async function synchronizeAllData(showStatus = true) {
         const { itemsToFinalize: teamsToFinalize, idsToDeleteLocally: teamsToDelete, changesDetected: teamChanges } = await syncTeams(batch, teilnehmerIdMap);
         if (teamChanges) anyChangesMade = true;
         allItemsToFinalize[TEAMS_KEY] = teamsToFinalize;
-        allIdsToDeleteLocally[TEAMS_KEY] = teamsToDelete;
+        allIdsToDeleteLocally[TEAMS_KEY] = teamsToDelete; // teamsToDelete enthält die localIds der zu löschenden Teams
 
         // --- ID Map für Teams erstellen (wird für Ergebnisse, Abrechnung benötigt) ---
         const currentTeams = getLocalData(TEAMS_KEY);
@@ -341,7 +358,8 @@ export async function synchronizeAllData(showStatus = true) {
         */
 
         // --- 5. Abrechnung synchronisieren ---
-        const { itemsToFinalize: paymentToFinalize, changesDetected: paymentChanges } = await syncAbrechnung(batch, teamIdMap);
+        // *** HIER DIE ÄNDERUNG: Übergebe teamsToDelete ***
+        const { itemsToFinalize: paymentToFinalize, changesDetected: paymentChanges } = await syncAbrechnung(batch, teamIdMap, teamsToDelete);
         if (paymentChanges) anyChangesMade = true;
         allItemsToFinalize[PAYMENT_STATUS_KEY] = paymentToFinalize; // Speichere teamLocalIds
 
@@ -381,8 +399,17 @@ export async function synchronizeAllData(showStatus = true) {
             let paymentStatusChanged = false;
             allItemsToFinalize[PAYMENT_STATUS_KEY].forEach(teamLocalId => {
                 if (paymentStatus[teamLocalId]) {
-                    paymentStatus[teamLocalId]._syncStatus = 'synced';
-                    paymentStatusChanged = true;
+                    // Prüfen, ob das Team nicht gerade gelöscht wurde (Sicherheitscheck)
+                    if (!allIdsToDeleteLocally[TEAMS_KEY].includes(teamLocalId)) {
+                        paymentStatus[teamLocalId]._syncStatus = 'synced';
+                        delete paymentStatus[teamLocalId].lastModifiedLocal; // Auch hier ggf. entfernen
+                        paymentStatusChanged = true;
+                    } else {
+                        // Wenn das Team gelöscht wurde, entferne den Zahlungsstatus-Eintrag
+                        delete paymentStatus[teamLocalId];
+                        paymentStatusChanged = true;
+                        console.log(`Sync (Abrechnung Finalize): Entferne Zahlungsstatus für gelöschtes Team ${teamLocalId}.`);
+                    }
                 }
             });
             if (paymentStatusChanged) {
