@@ -133,18 +133,18 @@
       // Importiere die zentrale Sync-Funktion und die neue Löschfunktion
       import { synchronizeAllData, deleteAllFirebaseData } from "./sync-manager.js";
 
+      // --- DOM Elemente ---
       const lastSyncTimeSpan = document.getElementById("lastSyncTime");
       const manualSyncBtn = document.getElementById("manualSyncBtn");
       const syncSpinner = document.getElementById("syncSpinner");
       const statusMeldung = document.getElementById("statusMeldung");
       const deleteAllBtn = document.getElementById("deleteAllBtn");
       const deleteSpinner = document.getElementById("deleteSpinner");
-      const restoreFromFirebaseBtn = document.getElementById("restoreFromFirebaseBtn"); // NEU
-      const restoreSpinner = document.getElementById("restoreSpinner"); // NEU
+      const restoreFromFirebaseBtn = document.getElementById("restoreFromFirebaseBtn");
+      const restoreSpinner = document.getElementById("restoreSpinner");
 
-      // --- Bestehende Funktionen (displayLastSyncTime) bleiben unverändert ---
+      // --- Bestehende Funktionen (displayLastSyncTime) ---
       function displayLastSyncTime(timestampString) {
-        // ... (Code bleibt gleich) ...
         if (timestampString) {
           try {
             const date = new Date(timestampString);
@@ -160,45 +160,62 @@
 
       // --- Hilfsfunktion zum Sperren/Entsperren der Buttons ---
       function setButtonsDisabled(disabled) {
+          console.log(`Buttons werden ${disabled ? 'deaktiviert' : 'aktiviert'}.`); // Diagnose-Log
           manualSyncBtn.disabled = disabled;
           deleteAllBtn.disabled = disabled;
-          restoreFromFirebaseBtn.disabled = disabled;
+          restoreFromFirebaseBtn.disabled = disabled; // Stelle sicher, dass dieser Button auch gesteuert wird
+
+          // Visuelles Feedback (optional, aber hilfreich bei CSS-Problemen)
+          // Fügt eine Klasse hinzu/entfernt sie, falls das Styling über Klassen läuft
+          // manualSyncBtn.classList.toggle('disabled', disabled);
+          // deleteAllBtn.classList.toggle('disabled', disabled);
+          // restoreFromFirebaseBtn.classList.toggle('disabled', disabled);
       }
 
-      // --- Event Listener für manuellen Sync (angepasst) ---
+      // --- Event Listener für manuellen Sync ---
       manualSyncBtn.addEventListener("click", async () => {
-        setButtonsDisabled(true); // Alle Buttons sperren
+        console.log("Manueller Sync gestartet...");
+        setButtonsDisabled(true);
         syncSpinner.style.display = "inline-block";
         try {
-          // Wichtig: Der Status wird jetzt direkt in synchronizeAllData angezeigt
-          await synchronizeAllData(true, statusMeldung); // true für manuell, statusMeldung übergeben
+          await synchronizeAllData(true, statusMeldung);
           const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
           displayLastSyncTime(lastSyncTimestamp);
         } catch (error) {
-          // Fehler wird bereits in synchronizeAllData behandelt und angezeigt
           console.error("Fehler beim manuellen Sync (adminOnly):", error);
+          // Fehler wird bereits in synchronizeAllData behandelt, aber hier nochmal loggen
         } finally {
           syncSpinner.style.display = "none";
-          setButtonsDisabled(false); // Alle Buttons entsperren
+          setButtonsDisabled(false);
+          console.log("Manueller Sync beendet.");
         }
       });
 
-      // --- Event Listener für "Alles Löschen" Button (angepasst) ---
+      // --- Event Listener für "Alles Löschen" Button ---
       deleteAllBtn.addEventListener("click", () => {
+        console.log("Alles Löschen Button geklickt.");
         zeigeConfirm(
           "ACHTUNG! Bist du sicher, dass du ALLE Teilnehmer, Teams, Ergebnisse und Zahlungsdaten unwiderruflich löschen möchtest? Dies ist für den Start eines NEUEN Wettbewerbs gedacht.",
           () => { // onConfirm Callback
+            console.log("Löschen bestätigt, fordere Code an...");
             const code = prompt("Bitte gib den Bestätigungscode '0009' ein, um fortzufahren:");
             if (code === "0009") {
+              console.log("Code korrekt, starte Löschvorgang...");
               performDeleteAllData();
             } else if (code !== null) {
+              console.log("Falscher Code eingegeben.");
               zeigeStatus("Falscher Bestätigungscode. Löschvorgang abgebrochen.", "fehler", statusMeldung);
+            } else {
+              console.log("Code-Eingabe abgebrochen.");
             }
+          },
+          () => { // onCancel Callback (optional)
+              console.log("Löschen abgebrochen.");
           }
         );
       });
 
-      // --- Funktion zum Ausführen des Löschvorgangs (angepasst) ---
+      // --- Funktion zum Ausführen des Löschvorgangs ---
       async function performDeleteAllData() {
         setButtonsDisabled(true);
         deleteSpinner.style.display = "inline-block";
@@ -209,19 +226,19 @@
 
         try {
           zeigeStatus("Lösche lokale Daten...", "info", statusMeldung);
-          localSuccess = clearLocalStorageData(); // Diese Funktion muss alle relevanten Keys löschen
+          localSuccess = clearLocalStorageData();
           if (!localSuccess) {
             throw new Error("Fehler beim Löschen der lokalen Daten.");
           }
           zeigeStatus("Lokale Daten gelöscht. Lösche Firebase Daten...", "info", statusMeldung);
 
-          firebaseSuccess = await deleteAllFirebaseData(); // Diese Funktion muss in sync-manager.js erstellt werden
+          firebaseSuccess = await deleteAllFirebaseData();
           if (!firebaseSuccess) {
              throw new Error("Fehler beim Löschen der Firebase Daten.");
           }
 
           zeigeStatus("Alle Wettkampfdaten erfolgreich gelöscht!", "erfolg", statusMeldung);
-          displayLastSyncTime(null); // Sync-Zeit zurücksetzen
+          displayLastSyncTime(null);
 
         } catch (error) {
           console.error("Fehler beim Löschen aller Daten:", error);
@@ -235,21 +252,38 @@
         } finally {
           deleteSpinner.style.display = "none";
           setButtonsDisabled(false);
+          console.log("Löschvorgang beendet.");
         }
       }
 
-      // --- NEU: Event Listener für "Wiederherstellen" Button ---
+      // --- Event Listener für "Wiederherstellen" Button ---
       restoreFromFirebaseBtn.addEventListener("click", () => {
-          zeigeConfirm(
-              "Möchtest du wirklich alle lokalen Daten mit dem Stand aus der Cloud überschreiben? Nicht synchronisierte lokale Änderungen gehen dabei verloren!",
-              async () => { // onConfirm Callback
-                  await restoreLocalStorageFromFirebase();
-              }
-          );
+          console.log("Wiederherstellen Button geklickt."); // Diagnose-Log
+          // Prüfen ob Button disabled ist (sollte nicht sein, wenn Klick funktioniert, aber zur Sicherheit)
+          if (restoreFromFirebaseBtn.disabled) {
+              console.warn("Wiederherstellen Button ist deaktiviert, Klick sollte nicht möglich sein.");
+              return;
+          }
+          try {
+              zeigeConfirm(
+                  "Möchtest du wirklich alle lokalen Daten mit dem Stand aus der Cloud überschreiben? Nicht synchronisierte lokale Änderungen gehen dabei verloren!",
+                  async () => { // onConfirm Callback
+                      console.log("Wiederherstellung bestätigt, starte Funktion..."); // Diagnose-Log
+                      await restoreLocalStorageFromFirebase();
+                  },
+                  () => { // onCancel Callback (optional)
+                      console.log("Wiederherstellung abgebrochen."); // Diagnose-Log
+                  }
+              );
+          } catch (error) {
+              console.error("Fehler beim Aufruf von zeigeConfirm für Wiederherstellung:", error);
+              zeigeStatus("Fehler beim Starten des Wiederherstellungsprozesses.", "fehler", statusMeldung);
+          }
       });
 
-      // --- NEU: Funktion zum Wiederherstellen aus Firebase ---
+      // --- Funktion zum Wiederherstellen aus Firebase ---
       async function restoreLocalStorageFromFirebase() {
+          console.log("restoreLocalStorageFromFirebase gestartet.");
           setButtonsDisabled(true);
           restoreSpinner.style.display = "inline-block";
           zeigeStatus("Starte Wiederherstellung aus Firebase...", "info", statusMeldung);
@@ -258,38 +292,65 @@
               // 1. Alle relevanten Collections aus Firebase holen
               zeigeStatus("Lade Teilnehmer aus Firebase...", "info", statusMeldung);
               const teilnehmerSnap = await getDocs(collection(db, "teilnehmer"));
-              const teilnehmerData = teilnehmerSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' })); // Wichtig: Status auf 'synced' setzen
+              const teilnehmerData = teilnehmerSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
+              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge.`);
 
               zeigeStatus("Lade Teams aus Firebase...", "info", statusMeldung);
               const teamsSnap = await getDocs(collection(db, "teams"));
               const teamsData = teamsSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
+              console.log(`Teams geladen: ${teamsData.length} Einträge.`);
 
               zeigeStatus("Lade Ergebnisse aus Firebase...", "info", statusMeldung);
               const ergebnisseSnap = await getDocs(collection(db, "ergebnisse"));
               const ergebnisseData = ergebnisseSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
+              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge.`);
 
               zeigeStatus("Lade Zahlungsstatus aus Firebase...", "info", statusMeldung);
-              const paymentSnap = await getDocs(collection(db, "paymentStatus")); // Annahme: Collection, ID = teamLocalId
+              const paymentSnap = await getDocs(collection(db, "paymentStatus"));
               const paymentData = {};
               paymentSnap.docs.forEach(doc => {
-                  paymentData[doc.id] = { ...doc.data(), _syncStatus: 'synced' }; // Status für jeden Eintrag setzen
+                  paymentData[doc.id] = { ...doc.data(), _syncStatus: 'synced' };
               });
+              console.log(`Zahlungsstatus geladen für ${Object.keys(paymentData).length} Teams.`);
 
-              zeigeStatus("Lade Scheibendaten aus Firebase...", "info", statusMeldung);
-              const scheibenSnap = await getDocs(collection(db, "scheiben")); // Annahme: Collection existiert
-              const scheibenData = scheibenSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
+              // Prüfen, ob SCHEIBEN_KEY existiert, bevor Collection geladen wird
+              if (typeof SCHEIBEN_KEY !== 'undefined' && SCHEIBEN_KEY) {
+                  try {
+                      zeigeStatus("Lade Scheibendaten aus Firebase...", "info", statusMeldung);
+                      const scheibenSnap = await getDocs(collection(db, "scheiben"));
+                      const scheibenData = scheibenSnap.docs.map(doc => ({ firestoreId: doc.id, ...doc.data(), _syncStatus: 'synced' }));
+                      console.log(`Scheibendaten geladen: ${scheibenData.length} Einträge.`);
+
+                      // Nur speichern, wenn Daten geladen wurden
+                       zeigeStatus("Speichere Scheibendaten lokal...", "info", statusMeldung);
+                       if (!setLocalData(SCHEIBEN_KEY, scheibenData)) {
+                           throw new Error("Fehler beim Schreiben der Scheibendaten in den lokalen Speicher.");
+                       }
+                  } catch (scheibenError) {
+                      // Fehler beim Laden/Speichern der Scheiben, aber weitermachen
+                      console.error("Fehler beim Verarbeiten der Scheibendaten (Collection 'scheiben'):", scheibenError);
+                      zeigeStatus("Warnung: Fehler beim Laden/Speichern der Scheibendaten. Andere Daten werden trotzdem wiederhergestellt.", "fehler", statusMeldung);
+                      // Stelle sicher, dass der lokale Scheiben-Speicher geleert wird, um Inkonsistenzen zu vermeiden
+                      setLocalData(SCHEIBEN_KEY, []);
+                  }
+              } else {
+                  console.log("SCHEIBEN_KEY nicht definiert oder leer, überspringe Laden/Speichern der Scheibendaten.");
+                  // Stelle sicher, dass der lokale Scheiben-Speicher geleert wird
+                  setLocalData(SCHEIBEN_KEY, []);
+              }
+
 
               // 2. Lokalen Speicher überschreiben (mit Fehlerprüfung)
-              zeigeStatus("Speichere Daten lokal...", "info", statusMeldung);
+              zeigeStatus("Speichere Hauptdaten lokal...", "info", statusMeldung);
               let success = true;
               success = success && setLocalData(TEILNEHMER_KEY, teilnehmerData);
               success = success && setLocalData(TEAMS_KEY, teamsData);
               success = success && setLocalData(ERGEBNISSE_KEY, ergebnisseData);
               success = success && setLocalData(PAYMENT_STATUS_KEY, paymentData);
-              success = success && setLocalData(SCHEIBEN_KEY, scheibenData);
+              // Scheiben wurden oben schon gespeichert oder geleert
 
               if (!success) {
-                  throw new Error("Fehler beim Schreiben in den lokalen Speicher während der Wiederherstellung.");
+                  throw new Error("Fehler beim Schreiben der Hauptdaten in den lokalen Speicher während der Wiederherstellung.");
               }
 
               // 3. Letzten Sync-Zeitpunkt aktualisieren (wichtig!)
@@ -298,49 +359,63 @@
               displayLastSyncTime(now);
 
               zeigeStatus("Lokaler Speicher erfolgreich aus Firebase wiederhergestellt!", "erfolg", statusMeldung);
+              console.log("Wiederherstellung erfolgreich abgeschlossen.");
 
-              // Optional: Seite neu laden, damit alle Komponenten die neuen Daten nutzen
-              setTimeout(() => window.location.reload(), 1500);
+              // Optional: Seite neu laden
+              zeigeStatus("Seite wird in 2 Sekunden neu geladen...", "info", statusMeldung);
+              setTimeout(() => window.location.reload(), 2000); // Etwas längere Wartezeit
 
           } catch (error) {
               console.error("Fehler bei der Wiederherstellung aus Firebase:", error);
-              zeigeStatus(`Fehler bei der Wiederherstellung: ${error.message}`, "fehler", statusMeldung);
+              zeigeStatus(`Fehler bei der Wiederherstellung: ${error.message}. Details siehe Konsole.`, "fehler", statusMeldung);
           } finally {
               restoreSpinner.style.display = "none";
               setButtonsDisabled(false);
+              console.log("restoreLocalStorageFromFirebase beendet (im finally Block).");
           }
       }
 
 
-      // --- Initialisierung (angepasst) ---
+      // --- Initialisierung ---
       document.addEventListener("DOMContentLoaded", () => {
+        console.log("Admin Seite DOM geladen.");
+        // Stelle sicher, dass Buttons initial aktiv sind
+        setButtonsDisabled(false);
+
         const lastSyncTimestamp = getLocalData(LAST_SYNC_KEY);
         displayLastSyncTime(lastSyncTimestamp);
 
-        // Optionaler initialer Sync-Check (angepasst)
-        // Startet nur, wenn länger als X Minuten nicht gesynct wurde oder noch nie
-        const syncIntervalMinutes = 15; // Z.B. alle 15 Minuten prüfen
+        // Optionaler initialer Sync-Check
+        const syncIntervalMinutes = 15;
         const lastSyncDate = lastSyncTimestamp ? new Date(lastSyncTimestamp) : null;
         const needsInitialSync = !lastSyncDate || (new Date() - lastSyncDate > syncIntervalMinutes * 60 * 1000);
 
         if (needsInitialSync) {
-            console.log("Starte automatischen Sync-Check beim Laden der Admin-Seite...");
-            // Kurze Verzögerung, um der Seite Zeit zum Rendern zu geben
+            console.log("Starte automatischen Sync-Check beim Laden...");
             setTimeout(async () => {
-                if (!manualSyncBtn.disabled) { // Nur wenn nicht gerade ein anderer Prozess läuft
+                // Erneute Prüfung, ob inzwischen eine andere Aktion läuft
+                if (!manualSyncBtn.disabled && !restoreFromFirebaseBtn.disabled && !deleteAllBtn.disabled) {
+                    console.log("Führe initialen Sync aus...");
                     setButtonsDisabled(true);
                     syncSpinner.style.display = 'inline-block';
                     try {
-                        await synchronizeAllData(false, statusMeldung); // false = nicht manuell
+                        await synchronizeAllData(false, statusMeldung);
                         const updatedTimestamp = getLocalData(LAST_SYNC_KEY);
                         displayLastSyncTime(updatedTimestamp);
-                    } catch(e) { /* Fehler wird von synchronizeAllData behandelt */ }
-                    finally {
+                    } catch(e) {
+                        console.error("Fehler beim initialen Sync:", e);
+                        // Fehler wird von synchronizeAllData behandelt
+                    } finally {
                         syncSpinner.style.display = 'none';
                         setButtonsDisabled(false);
+                        console.log("Initialer Sync beendet.");
                     }
+                } else {
+                    console.log("Initialen Sync übersprungen, da andere Aktion läuft.");
                 }
-            }, 2000); // 2 Sekunden Verzögerung
+            }, 2000);
+        } else {
+             console.log("Kein initialer Sync nötig.");
         }
       });
     </script>
