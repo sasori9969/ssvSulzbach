@@ -292,9 +292,9 @@
                   // Basisdaten
                   const finalData = {
                       firestoreId: doc.id,
-                      ...data,
-                      localId: localId,
-                      _syncStatus: 'synced'
+                      ...data, // Kopiere alle Felder aus Firebase
+                      localId: localId, // Stelle sicher, dass localId gesetzt ist
+                      _syncStatus: 'synced' // Setze Status auf synchronisiert
                   };
 
                   // *** NEU: Spezifisches Mapping für Ergebnisse ***
@@ -318,8 +318,48 @@
                       } else if (typeof finalData.ringzahl !== 'number') {
                            finalData.ringzahl = 0; // Fallback, falls kein String oder Zahl
                       }
+
+                      // --- NEU: Timestamp zu createdAt mappen ---
+                      if (data.timestamp) {
+                          // Prüfen, ob es ein Firestore Timestamp-Objekt ist
+                          if (data.timestamp.toDate && typeof data.timestamp.toDate === 'function') {
+                              finalData.createdAt = data.timestamp.toDate().toISOString();
+                          }
+                          // Prüfen, ob es bereits ein String ist (z.B. von älteren Daten oder direkt als ISO gespeichert)
+                          else if (typeof data.timestamp === 'string') {
+                              // Versuche, es als Datum zu parsen, um sicherzustellen, dass es gültig ist
+                              try {
+                                  const parsedDate = new Date(data.timestamp);
+                                  if (!isNaN(parsedDate)) {
+                                      finalData.createdAt = parsedDate.toISOString();
+                                  } else {
+                                      console.warn(`Ungültiger Timestamp-String in Ergebnis ${doc.id}:`, data.timestamp);
+                                      finalData.createdAt = new Date().toISOString(); // Fallback
+                                  }
+                              } catch (e) {
+                                  console.warn(`Fehler beim Parsen des Timestamp-Strings in Ergebnis ${doc.id}:`, data.timestamp, e);
+                                  finalData.createdAt = new Date().toISOString(); // Fallback
+                              }
+                          }
+                          // Prüfen, ob es eine Zahl ist (Millisekunden seit Epoche)
+                          else if (typeof data.timestamp === 'number') {
+                               finalData.createdAt = new Date(data.timestamp).toISOString();
+                          }
+                          // Optional: Fallback oder Warnung, wenn das Format unbekannt ist
+                          else {
+                              console.warn(`Unbekanntes Format für timestamp in Ergebnis ${doc.id}:`, data.timestamp);
+                              finalData.createdAt = new Date().toISOString(); // Fallback auf jetzt? Oder null?
+                          }
+                          delete finalData.timestamp; // Entferne das alte Feld 'timestamp'
+                      } else {
+                          // Fallback, wenn kein Timestamp in Firebase vorhanden ist
+                          finalData.createdAt = null; // Oder new Date().toISOString() wenn ein Datum immer da sein soll
+                          console.warn(`Kein Timestamp-Feld in Firebase-Dokument ${doc.id} gefunden.`);
+                      }
+                      // --- Ende NEU ---
                   }
                   // Hier könnten Mappings für andere Collections hinzugefügt werden, falls nötig
+                  // z.B. für Teams oder Teilnehmer, falls dort auch Felder umbenannt werden müssen.
 
                   // Entferne ggf. das Feld 'id', falls es aus Firebase kommt und stört
                   // delete finalData.id;
@@ -331,18 +371,17 @@
               // 1. Alle relevanten Collections aus Firebase holen
               zeigeStatus("Lade Teilnehmer aus Firebase...", "info", statusMeldung);
               const teilnehmerSnap = await getDocs(collection(db, "teilnehmer"));
-              const teilnehmerData = teilnehmerSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEILNEHMER_KEY)); // NEU: Key übergeben
+              const teilnehmerData = teilnehmerSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEILNEHMER_KEY));
               console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge.`);
 
               zeigeStatus("Lade Teams aus Firebase...", "info", statusMeldung);
               const teamsSnap = await getDocs(collection(db, "teams"));
-              const teamsData = teamsSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEAMS_KEY)); // NEU: Key übergeben
+              const teamsData = teamsSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEAMS_KEY));
               console.log(`Teams geladen: ${teamsData.length} Einträge.`);
 
               zeigeStatus("Lade Ergebnisse aus Firebase...", "info", statusMeldung);
               const ergebnisseSnap = await getDocs(collection(db, "ergebnisse"));
-              // *** ANPASSUNG HIER: mapFirebaseDocToLocal verwenden mit Key ***
-              const ergebnisseData = ergebnisseSnap.docs.map(doc => mapFirebaseDocToLocal(doc, ERGEBNISSE_KEY)); // NEU: Key übergeben
+              const ergebnisseData = ergebnisseSnap.docs.map(doc => mapFirebaseDocToLocal(doc, ERGEBNISSE_KEY));
               console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge.`);
               // Log zur Prüfung des Mappings
               if (ergebnisseData.length > 0) {
@@ -400,6 +439,7 @@
               console.log("restoreLocalStorageFromFirebase beendet (im finally Block).");
           }
       }
+
 
 
       // --- Initialisierung ---
