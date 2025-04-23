@@ -8,6 +8,17 @@ export const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Für Abrechnung
 export const LAST_SYNC_KEY = "lastSyncTimestamp";
 // export const SCHEIBEN_KEY = "scheibenErgebnisse_v1"; // Auskommentiert, da scheibenErfassen.html ignoriert wird
 
+// Array aller Schlüssel, die gelöscht werden sollen (für clearLocalStorageData)
+const ALL_DATA_KEYS = [
+    TEILNEHMER_KEY,
+    TEAMS_KEY,
+    ERGEBNISSE_KEY,
+    PAYMENT_STATUS_KEY,
+    LAST_SYNC_KEY,
+    // SCHEIBEN_KEY // Einkommentieren, falls benötigt
+];
+
+
 // --- Hilfsfunktionen für Local Storage Zugriff ---
 
 /**
@@ -121,6 +132,35 @@ export function removeDeletedLocalItems(key, deletedLocalIds) {
     }
 }
 
+/**
+ * Löscht alle wettkampfrelevanten Daten aus dem Local Storage.
+ * @returns {boolean} True bei Erfolg, False bei mindestens einem Fehler.
+ */
+export function clearLocalStorageData() {
+    console.log("Lösche alle lokalen Wettkampfdaten...");
+    let success = true;
+    try {
+        ALL_DATA_KEYS.forEach(key => {
+            try {
+                localStorage.removeItem(key);
+                console.log(`Schlüssel "${key}" aus Local Storage entfernt.`);
+            } catch (error) {
+                console.error(`Fehler beim Entfernen von Schlüssel "${key}":`, error);
+                success = false; // Markiere als fehlgeschlagen, wenn ein Schlüssel Probleme macht
+            }
+        });
+        if (success) {
+            console.log("Alle lokalen Wettkampfdaten erfolgreich gelöscht.");
+        } else {
+            console.warn("Einige lokale Daten konnten nicht gelöscht werden.");
+        }
+        return success;
+    } catch (error) {
+        console.error("Schwerwiegender Fehler beim Löschen lokaler Daten:", error);
+        return false;
+    }
+}
+
 
 // --- NEUE Hilfsfunktionen für Datenzugriff ---
 
@@ -133,6 +173,13 @@ export function getActiveLocalData(key) {
     const data = getLocalData(key);
     // Stelle sicher, dass es ein Array ist, bevor gefiltert wird
     if (!Array.isArray(data)) {
+        // Für PAYMENT_STATUS_KEY ist ein Objekt erwartet, kein Array
+        if (key === PAYMENT_STATUS_KEY) {
+            // Hier könnten wir aktive Zahlungsstati filtern, wenn nötig,
+            // aber die Funktion ist primär für Listen gedacht.
+            // Vorerst geben wir das Objekt zurück oder ein leeres Objekt.
+            return data || {};
+        }
         console.warn(`getActiveLocalData: Daten für Schlüssel "${key}" sind kein Array.`);
         return [];
     }
@@ -164,7 +211,12 @@ export function getActiveTeams() {
 export function getActiveErgebnisse() {
     const ergebnisse = getActiveLocalData(ERGEBNISSE_KEY);
     // Sortiere nach createdAt absteigend (neueste zuerst)
-    return ergebnisse.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    // Stelle sicher, dass createdAt existiert und ein vergleichbarer Wert ist (z.B. ISO String)
+    return ergebnisse.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA; // Neueste zuerst
+    });
 }
 
 /**

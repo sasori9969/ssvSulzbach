@@ -1,6 +1,13 @@
 // sync-manager.js
 import { db } from './firebase-config.js';
-import { collection, doc, serverTimestamp, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+import {
+    collection,
+    doc,
+    serverTimestamp,
+    writeBatch,
+    Timestamp,
+    getDocs // Hinzugefügt für deleteAllFirebaseData
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 import {
     getLocalData,
     setLocalData,
@@ -114,18 +121,49 @@ function processItemsForSync(items, collectionName, batch, teilnehmerIdMap = nul
             delete dataForFirestore.teilnehmerLocalId;
             delete dataForFirestore.teamLocalId;
             // Timestamp-Handling (siehe unten)
+            // Konvertiere createdAt zu Firestore Timestamp, falls es ein String ist
+            if (typeof dataForFirestore.createdAt === 'string') {
+                 try {
+                     dataForFirestore.timestamp = Timestamp.fromDate(new Date(dataForFirestore.createdAt));
+                 } catch (e) {
+                     console.warn(`Konnte createdAt "${dataForFirestore.createdAt}" nicht in Timestamp umwandeln. Verwende Server-Timestamp.`);
+                     dataForFirestore.timestamp = serverTimestamp();
+                 }
+            } else if (!dataForFirestore.createdAt) {
+                 dataForFirestore.timestamp = serverTimestamp(); // Fallback
+            } else {
+                 // Wenn es schon ein Timestamp-Objekt ist oder etwas anderes, nicht ändern
+                 dataForFirestore.timestamp = dataForFirestore.createdAt;
+            }
+            delete dataForFirestore.createdAt; // Entferne das Originalfeld
+
         } else if (collectionName === 'teilnehmer') {
              // Stelle sicher, dass vorname/name vorhanden sind
              dataForFirestore.vorname = item.vorname || "";
              dataForFirestore.name = item.name || "";
+             // Konvertiere createdAt zu Firestore Timestamp
+             if (typeof dataForFirestore.createdAt === 'string') {
+                 try {
+                     dataForFirestore.timestamp = Timestamp.fromDate(new Date(dataForFirestore.createdAt));
+                 } catch (e) {
+                     console.warn(`Konnte createdAt "${dataForFirestore.createdAt}" nicht in Timestamp umwandeln. Verwende Server-Timestamp.`);
+                     dataForFirestore.timestamp = serverTimestamp();
+                 }
+             } else if (!dataForFirestore.createdAt) {
+                 dataForFirestore.timestamp = serverTimestamp(); // Fallback
+             } else {
+                 dataForFirestore.timestamp = dataForFirestore.createdAt;
+             }
+             delete dataForFirestore.createdAt;
         }
 
         // --- Batch-Operationen hinzufügen ---
         if (item._syncStatus === 'new') {
             const docRef = doc(collection(db, collectionName));
-            // Setze den Timestamp nur für neue Dokumente
-            dataForFirestore.timestamp = serverTimestamp();
-            delete dataForFirestore.createdAt; // Lokales createdAt nicht nach Firestore
+            // Setze den Timestamp nur für neue Dokumente (oder verwende den konvertierten createdAt)
+            if (!dataForFirestore.timestamp) {
+                dataForFirestore.timestamp = serverTimestamp();
+            }
 
             batch.set(docRef, dataForFirestore);
             itemsToFinalize.push({ localId: item.localId, firestoreId: docRef.id });
@@ -134,9 +172,7 @@ function processItemsForSync(items, collectionName, batch, teilnehmerIdMap = nul
         } else if (item._syncStatus === 'modified' && item.firestoreId) {
             const docRef = doc(db, collectionName, item.firestoreId);
             // Timestamp bei Update nicht ändern, außer explizit gewünscht
-            delete dataForFirestore.timestamp;
-            // Lokales createdAt *nicht* als Timestamp verwenden, da es das Erstellungsdatum ist
-            delete dataForFirestore.createdAt;
+            delete dataForFirestore.timestamp; // Entferne Timestamp, um ihn nicht zu überschreiben
             // Optional: dataForFirestore.lastModified = serverTimestamp();
 
             batch.update(docRef, dataForFirestore);
@@ -359,7 +395,7 @@ export async function synchronizeAllData(showStatus = true) {
 
         // --- 5. Abrechnung synchronisieren ---
         // *** HIER DIE ÄNDERUNG: Übergebe teamsToDelete ***
-        const { itemsToFinalize: paymentToFinalize, changesDetected: paymentChanges } = await syncAbrechnung(batch, teamIdMap, teamsToDelete);
+        const { itemsToFinalize: paymentToFinalize, changesDetected: paymentChanges } = await syncAbrechnung(batch, teamIdMap, allIdsToDeleteLocally[TEAMS_KEY]); // Korrigiert: Übergebe die tatsächlichen IDs
         if (paymentChanges) anyChangesMade = true;
         allItemsToFinalize[PAYMENT_STATUS_KEY] = paymentToFinalize; // Speichere teamLocalIds
 
@@ -455,4 +491,70 @@ export async function synchronizeAllData(showStatus = true) {
         window.dispatchEvent(new CustomEvent('datasync-complete', { detail: { success: false, error: error.message } }));
         return false; // Sync fehlgeschlagen
     }
+}
+
+
+// --- NEU: Funktion zum Löschen aller Firebase-Daten ---
+
+/**
+ * Versucht, alle Dokumente aus den relevanten Firestore Collections zu löschen.
+ * ACHTUNG: Benötigt entsprechende Firestore-Regeln und kann bei vielen Daten langsam sein.
+ * Eine Cloud Function wäre für diesen Zweck oft besser geeignet.
+ * @returns {Promise<boolean>} True bei Erfolg, False bei Fehlern.
+ */
+export async function deleteAllFirebaseData() {
+    console.warn("Starte Löschung aller Firebase Wettkampfdaten...");
+    // Definiere die Collections, die geleert werden sollen
+    const collectionsToClear = ['teilnehmer', 'teams', 'ergebnisse' /*, 'scheiben' */]; // Füge 'scheiben' hinzu, falls nötig
+
+    let allSuccess = true;
+
+    for (const collectionName of collectionsToClear) {
+        console.log(`Lösche Dokumente in Collection: ${collectionName}...`);
+        try {
+            const collectionRef = collection(db, collectionName);
+            const querySnapshot = await getDocs(collectionRef);
+
+            if (querySnapshot.empty) {
+                console.log(`Collection "${collectionName}" ist bereits leer.`);
+                continue; // Nächste Collection
+            }
+
+            // Firestore erlaubt maximal 500 Operationen pro Batch
+            const batchLimit = 500;
+            let batch = writeBatch(db);
+            let count = 0;
+
+            for (const docSnapshot of querySnapshot.docs) {
+                batch.delete(docSnapshot.ref);
+                count++;
+                if (count === batchLimit) {
+                    console.log(`Committing batch delete for ${collectionName} (${count} docs)...`);
+                    await batch.commit();
+                    // Neuen Batch für die nächsten Dokumente starten
+                    batch = writeBatch(db);
+                    count = 0;
+                }
+            }
+
+            // Letzten Batch committen, falls noch Operationen offen sind
+            if (count > 0) {
+                console.log(`Committing final batch delete for ${collectionName} (${count} docs)...`);
+                await batch.commit();
+            }
+            console.log(`Alle Dokumente in "${collectionName}" erfolgreich gelöscht.`);
+
+        } catch (error) {
+            console.error(`Fehler beim Löschen der Collection "${collectionName}":`, error);
+            allSuccess = false;
+            // Optional: Hier aufhören oder weitermachen? Wir machen weiter, um möglichst viel zu löschen.
+        }
+    }
+
+    if (allSuccess) {
+        console.log("Alle definierten Firebase Collections erfolgreich geleert.");
+    } else {
+        console.error("Einige Firebase Collections konnten nicht vollständig geleert werden!");
+    }
+    return allSuccess;
 }
