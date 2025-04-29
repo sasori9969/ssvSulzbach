@@ -82,6 +82,7 @@
         TEAMS_KEY,
       } from "./local-storage-utils.js";
 
+      // --- DOM Elemente ---
       const teamAuswahl = document.getElementById("teamAuswahl");
       const teilnehmerListeUl = document.getElementById("teilnehmerListe");
       const teamsListeBody = document.getElementById("teamsListe");
@@ -89,14 +90,17 @@
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const ladeAnzeigeTeams = document.getElementById("ladeAnzeigeTeams");
       const statusMeldung = document.getElementById("statusMeldung");
-      const teilnehmerSucheInput = document.getElementById("teilnehmerSuche"); // NEU
+      const teilnehmerSucheInput = document.getElementById("teilnehmerSuche");
 
+      // --- Zustandsvariablen ---
       const ausgewaehlteTeilnehmerLocalIds = new Set();
       const maxTeilnehmer = 3;
 
-      let lokaleTeilnehmer = []; // Globale Variable für Teilnehmer
-      let lokaleTeams = []; // Globale Variable für Teams
+      // --- Globale Variablen entfernt ---
+      // let lokaleTeilnehmer = []; // Entfernt
+      // let lokaleTeams = []; // Entfernt
 
+      // --- Hilfsfunktionen ---
       function zeigeLoader(anzeigen, elementId = "ladeAnzeige") {
         const loader = document.getElementById(elementId);
         if (loader) {
@@ -104,104 +108,221 @@
         }
       }
 
-      // Lädt Teams aus localStorage und füllt das Dropdown
-      function ladeTeamsLokal() {
+      // --- Datenlade- und Anzeige-Funktionen ---
+
+      /**
+       * Lädt Teams aus localStorage und füllt das Dropdown.
+       */
+      function ladeTeamsDropdown() {
         zeigeLoader(true);
-        // Lade die aktuellsten Daten aus dem Local Storage in die globale Variable
-        lokaleTeams = getLocalData(TEAMS_KEY);
-        const anzeigbareTeams = lokaleTeams.filter(
-          (team) => team._syncStatus !== "deleted"
-        );
-        anzeigbareTeams.sort((a, b) =>
-          (a.teamname || "").localeCompare(b.teamname || "")
-        );
+        try {
+          // Lade die aktuellsten Daten direkt hier
+          const aktuelleTeams = getLocalData(TEAMS_KEY);
+          const anzeigbareTeams = aktuelleTeams.filter(
+            (team) => team._syncStatus !== "deleted"
+          );
+          anzeigbareTeams.sort((a, b) =>
+            (a.teamname || "").localeCompare(b.teamname || "")
+          );
 
-        teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
+          teamAuswahl.innerHTML = '<option value="">Bitte wählen...</option>';
 
-        if (anzeigbareTeams.length === 0) {
-          teamAuswahl.innerHTML =
-            '<option value="">Keine Teams lokal verfügbar</option>';
-          zeigeLoader(false);
-          return;
+          if (anzeigbareTeams.length === 0) {
+            teamAuswahl.innerHTML =
+              '<option value="">Keine Teams lokal verfügbar</option>';
+          } else {
+            anzeigbareTeams.forEach((team) => {
+              const option = document.createElement("option");
+              option.value = team.localId;
+              option.textContent = team.teamname || "Unbenanntes Team";
+              teamAuswahl.appendChild(option);
+            });
+          }
+        } catch (error) {
+            console.error("Fehler beim Laden des Team-Dropdowns:", error);
+            teamAuswahl.innerHTML = '<option value="">Fehler beim Laden</option>';
+            zeigeStatus("Fehler beim Laden der Teams für das Dropdown.", "fehler", statusMeldung);
+        } finally {
+            zeigeLoader(false);
         }
-
-        anzeigbareTeams.forEach((team) => {
-          const option = document.createElement("option");
-          option.value = team.localId;
-          option.textContent = team.teamname || "Unbenanntes Team";
-          teamAuswahl.appendChild(option);
-        });
-        zeigeLoader(false);
       }
 
-      // NEU: Funktion zum Filtern der Teilnehmerliste
+      /**
+       * Filtert die angezeigte Teilnehmerliste basierend auf dem Suchfeld.
+       */
       function filterTeilnehmerListe() {
           const suchBegriff = teilnehmerSucheInput.value.toLowerCase().trim();
           const listItems = teilnehmerListeUl.querySelectorAll('li');
 
-          // Prüfen, ob überhaupt Listenelemente vorhanden sind
           if (!listItems || listItems.length === 0) {
-              return; // Nichts zu filtern
+              return;
           }
-          // Prüfen, ob das erste Element ein Platzhalter ist (z.B. "Keine Teilnehmer...")
           if (listItems.length === 1 && !listItems[0].dataset.localId) {
-               // Wenn nur der Platzhalter da ist, diesen nur anzeigen, wenn Suche leer ist
                listItems[0].style.display = suchBegriff === '' ? '' : 'none';
                return;
           }
 
           listItems.forEach(li => {
-              // Nur Elemente mit einer localId filtern (ignoriert Platzhalter)
               if (li.dataset.localId) {
                   const teilnehmerName = li.textContent.toLowerCase();
-                  if (teilnehmerName.includes(suchBegriff)) {
-                      li.style.display = ''; // Oder 'list-item'
-                  } else {
-                      li.style.display = 'none';
-                  }
+                  li.style.display = teilnehmerName.includes(suchBegriff) ? '' : 'none';
               }
           });
       }
 
-      // Lädt Teilnehmer aus localStorage und füllt die Auswahl-Liste
-      function ladeTeilnehmerLokal() {
+      /**
+       * Lädt Teilnehmer aus localStorage und füllt die Auswahl-Liste (ul).
+       */
+      function ladeTeilnehmerAuswahlListe() {
         zeigeLoader(true);
-        // Lade die aktuellsten Daten aus dem Local Storage in die globale Variable
-        lokaleTeilnehmer = getLocalData(TEILNEHMER_KEY);
-        const anzeigbareTeilnehmer = lokaleTeilnehmer.filter(
-          (t) => t._syncStatus !== "deleted"
-        );
-        anzeigbareTeilnehmer.sort((a, b) =>
-          (a.name || "").localeCompare(b.name || "")
-        );
+        try {
+          // Lade die aktuellsten Daten direkt hier
+          const aktuelleTeilnehmer = getLocalData(TEILNEHMER_KEY);
+          const anzeigbareTeilnehmer = aktuelleTeilnehmer.filter(
+            (t) => t._syncStatus !== "deleted"
+          );
+          anzeigbareTeilnehmer.sort((a, b) =>
+            (a.name || "").localeCompare(b.name || "")
+          );
 
-        teilnehmerListeUl.innerHTML = "";
+          teilnehmerListeUl.innerHTML = "";
 
-        if (anzeigbareTeilnehmer.length === 0) {
-          teilnehmerListeUl.innerHTML =
-            "<li>Keine Teilnehmer lokal verfügbar</li>";
-          // Wichtig: Filter auch hier anwenden, um den Platzhalter ggf. auszublenden
-          filterTeilnehmerListe();
-          zeigeLoader(false);
-          return;
+          if (anzeigbareTeilnehmer.length === 0) {
+            teilnehmerListeUl.innerHTML =
+              "<li>Keine Teilnehmer lokal verfügbar</li>";
+          } else {
+            anzeigbareTeilnehmer.forEach((teilnehmer) => {
+              const li = document.createElement("li");
+              li.dataset.localId = teilnehmer.localId;
+              li.textContent = `${teilnehmer.vorname || ""} ${
+                teilnehmer.name || ""
+              }`.trim();
+              li.addEventListener("click", function () {
+                toggleTeilnehmerAuswahl(this);
+              });
+              teilnehmerListeUl.appendChild(li);
+            });
+          }
+          filterTeilnehmerListe(); // Filter direkt anwenden
+        } catch (error) {
+            console.error("Fehler beim Laden der Teilnehmer-Auswahlliste:", error);
+            teilnehmerListeUl.innerHTML = '<li>Fehler beim Laden</li>';
+            zeigeStatus("Fehler beim Laden der Teilnehmerliste.", "fehler", statusMeldung);
+        } finally {
+            zeigeLoader(false);
         }
-
-        anzeigbareTeilnehmer.forEach((teilnehmer) => {
-          const li = document.createElement("li");
-          li.dataset.localId = teilnehmer.localId;
-          li.textContent = `${teilnehmer.vorname || ""} ${
-            teilnehmer.name || ""
-          }`.trim();
-          li.addEventListener("click", function () {
-            toggleTeilnehmerAuswahl(this);
-          });
-          teilnehmerListeUl.appendChild(li);
-        });
-
-        filterTeilnehmerListe(); // NEU: Filter direkt nach dem Befüllen anwenden
-        zeigeLoader(false);
       }
 
+      /**
+       * Zeigt die Teamliste mit Mitgliedern basierend auf lokalen Daten an.
+       * Holt sich die Daten bei jedem Aufruf frisch aus dem Local Storage.
+       */
+      function displayTeamsListeLokal() {
+        console.log("displayTeamsListeLokal: Starte Anzeige...");
+        zeigeLoader(true, "ladeAnzeigeTeams");
+        teamsListeBody.innerHTML = "";
+
+        try {
+            const currentLocalTeams = getLocalData(TEAMS_KEY);
+            const currentLocalTeilnehmer = getLocalData(TEILNEHMER_KEY);
+
+            console.log("displayTeamsListeLokal: Geladene Teilnehmer (Auszug):", JSON.stringify(currentLocalTeilnehmer.slice(0, 5), null, 2));
+
+            const teilnehmerMapLocal = new Map(
+              currentLocalTeilnehmer.map((t) => [t.localId, t])
+            );
+            console.log(`displayTeamsListeLokal: Teilnehmer-Map erstellt (Größe: ${teilnehmerMapLocal.size})`);
+
+            const anzeigbareTeams = currentLocalTeams
+              .filter((team) => team._syncStatus !== "deleted")
+              .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
+            console.log(`displayTeamsListeLokal: Anzahl anzuzeigender Teams: ${anzeigbareTeams.length}`);
+
+            if (anzeigbareTeams.length === 0) {
+              teamsListeBody.innerHTML =
+                '<tr><td colspan="3">Keine Teams lokal verfügbar.</td></tr>';
+              console.log("displayTeamsListeLokal: Keine Teams zum Anzeigen.");
+              return;
+            }
+
+            anzeigbareTeams.forEach((team) => {
+              console.log(`displayTeamsListeLokal: Verarbeite Team "${team.teamname || 'Unbenannt'}" (ID: ${team.localId}), Mitglieder-IDs:`, team.mitglieder);
+
+              const tr = document.createElement("tr");
+              const tdName = document.createElement("td");
+              const tdMitglieder = document.createElement("td");
+              const tdAktionen = document.createElement("td");
+
+              tdName.textContent = team.teamname || "Unbenanntes Team";
+              if (team._syncStatus && team._syncStatus !== "synced") {
+                const statusSpan = document.createElement("span");
+                statusSpan.style.fontSize = "0.8em";
+                statusSpan.style.marginLeft = "10px";
+                statusSpan.style.color = "#666";
+                statusSpan.textContent = `(${team._syncStatus})`;
+                tdName.appendChild(statusSpan);
+              }
+
+              if (team.mitglieder && team.mitglieder.length > 0) {
+                const teilnehmerNamen = team.mitglieder
+                  .map((localId) => {
+                    console.log(`  -> Suche Teilnehmer für localId "${localId}" in Map...`);
+                    const teilnehmer = teilnehmerMapLocal.get(localId);
+                    if (teilnehmer) {
+                      console.log(`    => Teilnehmer gefunden: Vorname=${teilnehmer.vorname}, Name=${teilnehmer.name}, Status=${teilnehmer._syncStatus}`);
+                      if (teilnehmer._syncStatus === "deleted") {
+                         console.log(`    => Teilnehmer ${localId} ist als gelöscht markiert.`);
+                        return `(${teilnehmer.vorname || ""} ${
+                          teilnehmer.name || ""
+                        } - gelöscht)`.trim();
+                      }
+                      const nameString = `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim();
+                      console.log(`    => Name für ${localId} ist "${nameString || '(Leer)'}"`);
+                      if (!nameString) {
+                          console.warn(`    => WARNUNG: Teilnehmer ${localId} gefunden, aber Vorname/Name sind leer!`, teilnehmer);
+                          return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
+                      }
+                      return nameString;
+                    } else {
+                      console.warn(`    => Teilnehmer für localId "${localId}" NICHT in Map gefunden!`);
+                      return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
+                    }
+                  })
+                  .join(", ");
+                tdMitglieder.textContent = teilnehmerNamen;
+              } else {
+                tdMitglieder.textContent = "Keine Mitglieder";
+              }
+
+              const bearbeitenButton = document.createElement("button");
+              bearbeitenButton.textContent = "Bearbeiten";
+              bearbeitenButton.className = "aktion-btn";
+              bearbeitenButton.addEventListener("click", () =>
+                bearbeiteTeam(team.localId)
+              );
+              tdAktionen.appendChild(bearbeitenButton);
+
+              tr.appendChild(tdName);
+              tr.appendChild(tdMitglieder);
+              tr.appendChild(tdAktionen);
+              teamsListeBody.appendChild(tr);
+            });
+            console.log("displayTeamsListeLokal: Anzeige abgeschlossen.");
+        } catch (error) {
+            console.error("Fehler in displayTeamsListeLokal:", error);
+            teamsListeBody.innerHTML = '<tr><td colspan="3">Fehler beim Laden der Teamliste.</td></tr>';
+            zeigeStatus("Fehler beim Anzeigen der Teamliste.", "fehler", statusMeldung);
+        } finally {
+            zeigeLoader(false, "ladeAnzeigeTeams");
+        }
+      }
+
+      // --- Interaktionsfunktionen ---
+
+      /**
+       * Schaltet die Auswahl eines Teilnehmers in der Liste um.
+       * @param {HTMLElement} element Das geklickte Listenelement (li).
+       */
       function toggleTeilnehmerAuswahl(element) {
         const teilnehmerLocalId = element.dataset.localId;
         if (!teilnehmerLocalId) return;
@@ -224,6 +345,9 @@
         aktualisiereSpeichernButton();
       }
 
+      /**
+       * Aktiviert/Deaktiviert den Speichern-Button basierend auf der Auswahl.
+       */
       function aktualisiereSpeichernButton() {
         const teamSelected = teamAuswahl.value !== "";
         speichernButton.disabled = !(
@@ -233,214 +357,10 @@
         );
       }
 
-      // Speichert die Zuordnung LOKAL
-      function speichereTeamLokal() {
-        const teamLocalId = teamAuswahl.value;
-        if (!teamLocalId) {
-          zeigeStatus(
-            "Bitte wählen Sie ein Team aus.",
-            "fehler",
-            statusMeldung
-          );
-          return;
-        }
-        if (
-          ausgewaehlteTeilnehmerLocalIds.size === 0 ||
-          ausgewaehlteTeilnehmerLocalIds.size > maxTeilnehmer
-        ) {
-          zeigeStatus(
-            `Bitte wählen Sie 1 bis ${maxTeilnehmer} Teilnehmer aus.`,
-            "fehler",
-            statusMeldung
-          );
-          return;
-        }
-
-        speichernButton.disabled = true;
-        zeigeLoader(true);
-
-        try {
-          // Hole die aktuellsten Teams direkt aus dem Storage für den Schreibvorgang
-          let aktuelleTeams = getLocalData(TEAMS_KEY);
-          const teamIndex = aktuelleTeams.findIndex(
-            (t) => t.localId === teamLocalId
-          );
-
-          if (teamIndex > -1) {
-            const teamToUpdate = aktuelleTeams[teamIndex];
-            teamToUpdate.mitglieder = Array.from(
-              ausgewaehlteTeilnehmerLocalIds
-            );
-
-            if (teamToUpdate._syncStatus !== "new") {
-              teamToUpdate._syncStatus = "modified";
-            }
-            // teamToUpdate.lastModifiedLocal = new Date().toISOString(); // Optional
-
-            const success = setLocalData(TEAMS_KEY, aktuelleTeams);
-
-            if (success) {
-              zeigeStatus(
-                "Teamzuordnung lokal gespeichert. Wird beim nächsten Sync aktualisiert.",
-                "erfolg",
-                statusMeldung
-              );
-              // Aktualisiere die globale Variable, damit die Anzeige stimmt
-              lokaleTeams = aktuelleTeams;
-              displayTeamsListeLokal(); // Anzeige neu rendern
-
-              // Formular zurücksetzen
-              ausgewaehlteTeilnehmerLocalIds.clear();
-              document
-                .querySelectorAll(".teilnehmer-liste li.ausgewaehlt")
-                .forEach((li) => {
-                  li.classList.remove("ausgewaehlt");
-                });
-              teamAuswahl.value = "";
-              aktualisiereSpeichernButton();
-            } else {
-              zeigeStatus(
-                "Fehler beim lokalen Speichern der Teamzuordnung!",
-                "fehler",
-                statusMeldung
-              );
-            }
-          } else {
-            zeigeStatus(
-              "Ausgewähltes Team nicht im lokalen Speicher gefunden.",
-              "fehler",
-              statusMeldung
-            );
-          }
-        } catch (error) {
-          console.error(
-            "Fehler beim lokalen Speichern der Teamzuordnung:",
-            error
-          );
-          zeigeStatus(
-            "Ein unerwarteter Fehler ist beim lokalen Speichern aufgetreten.",
-            "fehler",
-            statusMeldung
-          );
-        } finally {
-          zeigeLoader(false);
-          aktualisiereSpeichernButton(); // Button-Status sicherheitshalber neu setzen
-        }
-      }
-
-      // Zeigt die Teamliste basierend auf lokalen Daten an
-      // *** ANGEPASSTE VERSION MIT MEHR LOGGING ***
-      function displayTeamsListeLokal() {
-        console.log("displayTeamsListeLokal: Starte Anzeige..."); // LOG 1
-        zeigeLoader(true, "ladeAnzeigeTeams");
-        teamsListeBody.innerHTML = "";
-
-        // *** Lade die Daten direkt hier aus dem Local Storage ***
-        const currentLocalTeams = getLocalData(TEAMS_KEY);
-        const currentLocalTeilnehmer = getLocalData(TEILNEHMER_KEY);
-
-        // LOG 2: Überprüfe die geladenen Teilnehmerdaten (nur die ersten 5 zur Übersicht)
-        console.log("displayTeamsListeLokal: Geladene Teilnehmer (Auszug):", JSON.stringify(currentLocalTeilnehmer.slice(0, 5), null, 2));
-
-        // Erstelle die Map basierend auf den *aktuell* geladenen Teilnehmern
-        const teilnehmerMapLocal = new Map(
-          currentLocalTeilnehmer.map((t) => [t.localId, t])
-        );
-
-        // LOG 3: Überprüfe die erstellte Map (Größe)
-        console.log(`displayTeamsListeLokal: Teilnehmer-Map erstellt (Größe: ${teilnehmerMapLocal.size})`);
-
-        // Filtere und sortiere die *aktuell* geladenen Teams
-        const anzeigbareTeams = currentLocalTeams
-          .filter((team) => team._syncStatus !== "deleted")
-          .sort((a, b) => (a.teamname || "").localeCompare(b.teamname || ""));
-
-        // LOG 4: Anzahl der anzuzeigenden Teams
-        console.log(`displayTeamsListeLokal: Anzahl anzuzeigender Teams: ${anzeigbareTeams.length}`);
-
-        if (anzeigbareTeams.length === 0) {
-          teamsListeBody.innerHTML =
-            '<tr><td colspan="3">Keine Teams lokal verfügbar.</td></tr>';
-          zeigeLoader(false, "ladeAnzeigeTeams");
-          console.log("displayTeamsListeLokal: Keine Teams zum Anzeigen."); // LOG
-          return;
-        }
-
-        anzeigbareTeams.forEach((team) => {
-          // LOG 5: Für jedes Team, logge die Mitglieder-IDs
-          console.log(`displayTeamsListeLokal: Verarbeite Team "${team.teamname || 'Unbenannt'}" (ID: ${team.localId}), Mitglieder-IDs:`, team.mitglieder);
-
-          const tr = document.createElement("tr");
-          const tdName = document.createElement("td");
-          const tdMitglieder = document.createElement("td");
-          const tdAktionen = document.createElement("td");
-
-          tdName.textContent = team.teamname || "Unbenanntes Team";
-          if (team._syncStatus && team._syncStatus !== "synced") {
-            const statusSpan = document.createElement("span");
-            statusSpan.style.fontSize = "0.8em";
-            statusSpan.style.marginLeft = "10px";
-            statusSpan.style.color = "#666";
-            statusSpan.textContent = `(${team._syncStatus})`;
-            tdName.appendChild(statusSpan);
-          }
-
-          if (team.mitglieder && team.mitglieder.length > 0) {
-            const teilnehmerNamen = team.mitglieder
-              .map((localId) => {
-                // LOG 6: Für jede Mitglieder-ID, logge den Lookup-Versuch
-                console.log(`  -> Suche Teilnehmer für localId "${localId}" in Map...`);
-                const teilnehmer = teilnehmerMapLocal.get(localId);
-
-                // LOG 7: Logge das Ergebnis des Lookups
-                if (teilnehmer) {
-                  console.log(`    => Teilnehmer gefunden: Vorname=${teilnehmer.vorname}, Name=${teilnehmer.name}, Status=${teilnehmer._syncStatus}`);
-                  // Prüfe, ob der gefundene Teilnehmer als gelöscht markiert ist
-                  if (teilnehmer._syncStatus === "deleted") {
-                     console.log(`    => Teilnehmer ${localId} ist als gelöscht markiert.`);
-                    return `(${teilnehmer.vorname || ""} ${
-                      teilnehmer.name || ""
-                    } - gelöscht)`.trim();
-                  }
-                  // Gib den Namen des aktiven Teilnehmers zurück
-                  const nameString = `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim();
-                  console.log(`    => Name für ${localId} ist "${nameString || '(Leer)'}"`);
-                  // *** WICHTIG: Prüfen, ob der Name wirklich leer ist ***
-                  if (!nameString) {
-                      console.warn(`    => WARNUNG: Teilnehmer ${localId} gefunden, aber Vorname/Name sind leer!`, teilnehmer);
-                      return `Unbekannt (ID: ${localId.substring(0, 6)}...)`; // Fallback, wenn Name leer
-                  }
-                  return nameString;
-                } else {
-                  // LOG 8: Teilnehmer NICHT gefunden
-                  console.warn(`    => Teilnehmer für localId "${localId}" NICHT in Map gefunden!`);
-                  return `Unbekannt (ID: ${localId.substring(0, 6)}...)`;
-                }
-              })
-              .join(", ");
-            tdMitglieder.textContent = teilnehmerNamen;
-          } else {
-            tdMitglieder.textContent = "Keine Mitglieder";
-          }
-
-          const bearbeitenButton = document.createElement("button");
-          bearbeitenButton.textContent = "Bearbeiten";
-          bearbeitenButton.className = "aktion-btn"; // Besser eine Klasse verwenden
-          bearbeitenButton.addEventListener("click", () =>
-            bearbeiteTeam(team.localId) // Übergibt die ID an die Bearbeiten-Funktion
-          );
-          tdAktionen.appendChild(bearbeitenButton);
-
-          tr.appendChild(tdName);
-          tr.appendChild(tdMitglieder);
-          tr.appendChild(tdAktionen);
-          teamsListeBody.appendChild(tr);
-        });
-        zeigeLoader(false, "ladeAnzeigeTeams");
-        console.log("displayTeamsListeLokal: Anzeige abgeschlossen."); // LOG 9
-      }
-
-
+      /**
+       * Lädt die Daten eines Teams in das Formular zur Bearbeitung.
+       * @param {string} teamLocalId Die lokale ID des zu bearbeitenden Teams.
+       */
       function bearbeiteTeam(teamLocalId) {
         // Verwende die *aktuellsten* Daten aus dem Local Storage für die Bearbeitung
         const aktuelleTeams = getLocalData(TEAMS_KEY);
@@ -475,27 +395,88 @@
         teamAuswahl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
-      // Event Listener
+      /**
+       * Speichert die aktuelle Teamzuordnung (Mitglieder) lokal.
+       */
+      function speichereTeamLokal() {
+        const teamLocalId = teamAuswahl.value;
+        if (!teamLocalId) {
+          zeigeStatus("Bitte wählen Sie ein Team aus.", "fehler", statusMeldung);
+          return;
+        }
+        if (
+          ausgewaehlteTeilnehmerLocalIds.size === 0 ||
+          ausgewaehlteTeilnehmerLocalIds.size > maxTeilnehmer
+        ) {
+          zeigeStatus(`Bitte wählen Sie 1 bis ${maxTeilnehmer} Teilnehmer aus.`, "fehler", statusMeldung);
+          return;
+        }
+
+        speichernButton.disabled = true;
+        zeigeLoader(true);
+
+        try {
+          // Hole die aktuellsten Teams direkt aus dem Storage für den Schreibvorgang
+          let aktuelleTeams = getLocalData(TEAMS_KEY);
+          const teamIndex = aktuelleTeams.findIndex(
+            (t) => t.localId === teamLocalId
+          );
+
+          if (teamIndex > -1) {
+            const teamToUpdate = aktuelleTeams[teamIndex];
+            teamToUpdate.mitglieder = Array.from(ausgewaehlteTeilnehmerLocalIds);
+
+            if (teamToUpdate._syncStatus !== "new") {
+              teamToUpdate._syncStatus = "modified";
+            }
+            teamToUpdate.lastModifiedLocal = new Date().toISOString(); // Zeitstempel hinzufügen/aktualisieren
+
+            const success = setLocalData(TEAMS_KEY, aktuelleTeams);
+
+            if (success) {
+              zeigeStatus("Teamzuordnung lokal gespeichert. Wird beim nächsten Sync aktualisiert.", "erfolg", statusMeldung);
+              // lokaleTeams = aktuelleTeams; // Entfernt: Globale Variable existiert nicht mehr
+              displayTeamsListeLokal(); // Anzeige neu rendern (liest selbst)
+
+              // Formular zurücksetzen
+              ausgewaehlteTeilnehmerLocalIds.clear();
+              document.querySelectorAll(".teilnehmer-liste li.ausgewaehlt").forEach((li) => {
+                  li.classList.remove("ausgewaehlt");
+              });
+              teamAuswahl.value = "";
+              aktualisiereSpeichernButton();
+            } else {
+              zeigeStatus("Fehler beim lokalen Speichern der Teamzuordnung!", "fehler", statusMeldung);
+            }
+          } else {
+            zeigeStatus("Ausgewähltes Team nicht im lokalen Speicher gefunden.", "fehler", statusMeldung);
+          }
+        } catch (error) {
+          console.error("Fehler beim lokalen Speichern der Teamzuordnung:", error);
+          zeigeStatus("Ein unerwarteter Fehler ist beim lokalen Speichern aufgetreten.", "fehler", statusMeldung);
+        } finally {
+          zeigeLoader(false);
+          aktualisiereSpeichernButton();
+        }
+      }
+
+      // --- Event Listener ---
       teamAuswahl.addEventListener("change", aktualisiereSpeichernButton);
       speichernButton.addEventListener("click", speichereTeamLokal);
-      teilnehmerSucheInput.addEventListener('input', filterTeilnehmerListe); // NEU
+      teilnehmerSucheInput.addEventListener('input', filterTeilnehmerListe);
 
       // --- Initialisierung ---
       window.addEventListener("DOMContentLoaded", () => {
         zeigeLoader(true);
         try {
-          // Diese Reihenfolge ist korrekt für den initialen Ladevorgang
-          ladeTeilnehmerLokal(); // Lädt in globale Variable lokaleTeilnehmer
-          ladeTeamsLokal();      // Lädt in globale Variable lokaleTeams
-          displayTeamsListeLokal(); // Liest direkt aus Local Storage für die Tabelle
+          // Lade UI-Elemente direkt
+          ladeTeilnehmerAuswahlListe(); // Füllt die Teilnehmer-Liste
+          ladeTeamsDropdown();          // Füllt das Team-Dropdown
+          displayTeamsListeLokal();     // Zeigt die Tabelle an (holt Daten selbst)
           aktualisiereSpeichernButton();
         } catch (error) {
           console.error("Fehler bei der Initialisierung:", error);
-          zeigeStatus(
-            "Es gab ein Problem beim Laden der lokalen Daten.",
-            "fehler",
-            statusMeldung
-          );
+          zeigeStatus("Es gab ein Problem beim Laden der lokalen Daten.", "fehler", statusMeldung);
         } finally {
           zeigeLoader(false);
         }
@@ -505,17 +486,13 @@
 
       // Wenn sich Daten im LocalStorage ändern (z.B. durch Restore in anderem Tab oder Sync)
       window.addEventListener("storage", (event) => {
-        // Prüfen, ob sich Teilnehmer oder Teams geändert haben
         if (event.key === TEILNEHMER_KEY || event.key === TEAMS_KEY) {
           console.log(`LocalStorage geändert (${event.key}), lade Zuordnungsdaten neu...`);
           try {
-            // Wichtig: Beide globalen Variablen neu laden, da sie von anderen Teilen
-            // der Seite (Dropdowns, Bearbeiten-Funktion) verwendet werden könnten.
-            ladeTeilnehmerLokal();
-            ladeTeamsLokal();
-            // Die Anzeige-Funktion holt sich die Daten selbst frisch.
-            displayTeamsListeLokal();
-            // Ggf. auch den Button-Status prüfen
+            // UI-Elemente direkt neu laden/anzeigen
+            ladeTeilnehmerAuswahlListe();
+            ladeTeamsDropdown();
+            displayTeamsListeLokal(); // Holt sich Daten selbst
             aktualisiereSpeichernButton();
           } catch (error) {
              console.error("Fehler beim Neuladen der Daten nach Storage Event:", error);
@@ -526,14 +503,13 @@
 
       // Wenn der zentrale Sync abgeschlossen ist
       window.addEventListener("datasync-complete", (event) => {
-        // Prüfen, ob der Sync erfolgreich war und ob Änderungen vorgenommen wurden (optional, aber gut)
         if (event.detail?.success && event.detail?.changesMade) {
           console.log("Datensynchronisation abgeschlossen, lade Zuordnungsdaten neu...");
            try {
-              // Auch hier beide globalen Variablen neu laden und dann die Anzeige
-              ladeTeilnehmerLokal();
-              ladeTeamsLokal();
-              displayTeamsListeLokal();
+              // UI-Elemente direkt neu laden/anzeigen
+              ladeTeilnehmerAuswahlListe();
+              ladeTeamsDropdown();
+              displayTeamsListeLokal(); // Holt sich Daten selbst
               aktualisiereSpeichernButton();
            } catch (error) {
                console.error("Fehler beim Neuladen der Daten nach Sync:", error);
