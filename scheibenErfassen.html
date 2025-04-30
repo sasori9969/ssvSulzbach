@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scheiben erfassen</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wettkampf erfassen</title> <!-- Titel geändert -->
     <link rel="stylesheet" href="style.css" />
-    <!-- Zentrales Auto-Sync Skript einbinden -->
     <script type="module" src="auto-sync.js" defer></script>
     <!-- NEU: Skript zum Laden der Navigation einbinden -->
     <script src="load-nav.js" defer></script>
@@ -13,37 +12,31 @@
     <style>
       #scheibenAnzahlForm {
         margin-bottom: 20px;
+        /* Wird nicht mehr benötigt, kann später entfernt werden */
       }
-      #scheibenAnzahlForm label {
+      .schuetzen-auswahl {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+      }
+      .schuetzen-auswahl label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .schuetzen-auswahl select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      #wettkampfTabelle {
+        width: 100%; /* Wieder 100% */
         margin-right: 10px;
-      }
-      #scheibenAnzahlForm input {
-        width: 50px;
-      }
-      #scheibenAnzahlForm button {
-        padding: 5px 10px;
-      }
-      #scheibenErfassung {
-        display: none;
-      }
-      #scheibenContainer {
-        margin-top: 20px;
-      }
-      #scheibenTabelle {
-        width: auto; /* Nicht mehr 100% breit */
-        border-collapse: collapse;
-        margin-top: 20px;
-        font-size: 14px; /* Kleinere Schrift */
-      }
-      #scheibenTabelle th,
-      #scheibenTabelle td {
-        border: 1px solid #ddd;
-        padding: 2px 8px; /* Oben/unten 2px, links/rechts 8px */
-        text-align: left;
-      }
-      #scheibenTabelle th {
-        background-color: #f0f0f0;
-        padding: 3px 8px; /* Etwas mehr Padding für Überschriften */
       }
       #scheibenTabelle td:first-child {
         width: 60px; /* Feste Breite für die Scheiben-Nummer */
@@ -53,9 +46,37 @@
         width: 80px; /* Feste Breite für den Wert */
         text-align: right; /* Rechtsbündige Zahlen */
       }
-      /* NEU: Stil für Speicher-Button und Statusmeldung */
+      #wettkampfTabelle {
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 14px;
+      }
+      #wettkampfTabelle th,
+      #wettkampfTabelle td {
+        border: 1px solid #ddd;
+        padding: 6px 10px; /* Mehr Padding */
+        text-align: center; /* Standardmäßig zentriert */
+      }
+      #wettkampfTabelle th {
+        background-color: #f0f0f0;
+      }
+      #wettkampfTabelle td.schuetze-name {
+        text-align: left;
+        font-weight: bold;
+        min-width: 150px;
+      }
+      #wettkampfTabelle td input[type="number"] {
+        width: 55px;
+        text-align: right;
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      #wettkampfTabelle td.gesamt, #wettkampfTabelle td.punkte {
+        font-weight: bold;
+      }
       #speichernBtn {
-          margin-top: 20px;
+        margin-top: 20px;
       }
       .status-meldung {
           padding: 10px;
@@ -79,6 +100,12 @@
           color: #0c5460;
           border: 1px solid #bee5eb;
       }
+      #gesamtStandAnzeige {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-top: 25px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -90,176 +117,433 @@
         <!-- Die Navigation wird hier von load-nav.js eingefügt -->
       </div>
       <main>
-        <h2>Scheiben erfassen</h2>
+        <h2>Wettkampf erfassen (Heim vs. Gast)</h2>
 
         <!-- NEU: Statusmeldung-Container -->
         <div id="statusMeldung" class="status-meldung"></div>
 
-        <form id="scheibenAnzahlForm">
-          <label for="anzahlScheiben">Anzahl Scheiben:</label>
-          <input type="number" id="anzahlScheiben" min="1" value="1" required />
-          <button type="submit">Bestätigen</button>
-        </form>
+        <h3>Schützen auswählen</h3>
+        <div class="schuetzen-auswahl">
+          <div>
+            <label for="heim1">Heim 1:</label>
+            <select id="heim1" class="schuetzen-select" data-position="heim1"></select>
+          </div>
+          <div>
+            <label for="gast1">Gast 1:</label>
+            <select id="gast1" class="schuetzen-select" data-position="gast1"></select>
+          </div>
+          <div>
+            <label for="heim2">Heim 2:</label>
+            <select id="heim2" class="schuetzen-select" data-position="heim2"></select>
+          </div>
+          <div>
+            <label for="gast2">Gast 2:</label>
+            <select id="gast2" class="schuetzen-select" data-position="gast2"></select>
+          </div>
+          <div>
+            <label for="heim3">Heim 3:</label>
+            <select id="heim3" class="schuetzen-select" data-position="heim3"></select>
+          </div>
+          <div>
+            <label for="gast3">Gast 3:</label>
+            <select id="gast3" class="schuetzen-select" data-position="gast3"></select>
+          </div>
+        </div>
 
-        <div id="scheibenErfassung">
-          <h3>Scheiben-Daten</h3>
-          <!-- TODO: Hier Dropdowns für Teilnehmer/Team hinzufügen -->
-          <!-- Beispiel:
-          <label for="scheibenTeilnehmerSelect">Teilnehmer:</label>
-          <select id="scheibenTeilnehmerSelect" required>
-              <option value="">-- Teilnehmer wählen --</option>
-          </select>
-          -->
-          <table id="scheibenTabelle">
+        <h3>Ergebnisse eintragen</h3>
+        <div style="overflow-x: auto;"> <!-- Für schmale Bildschirme scrollbar machen -->
+          <table id="wettkampfTabelle">
             <thead>
               <tr>
-                <th>Scheibe</th>
-                <th>Wert</th>
+                <th>Paarung</th>
+                <th>Schütze</th>
+                <th>Serie 1</th>
+                <th>Serie 2</th>
+                <th>Serie 3</th>
+                <th>Serie 4</th>
+                <th>Gesamt</th>
+                <th>Punkte</th>
               </tr>
             </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <th>Gesamt</th>
-                <td id="gesamtSumme"></td>
+            <tbody>
+              <!-- Paarung 1 -->
+              <tr data-paarung="1" data-position="heim1">
+                <td rowspan="2">1</td>
+                <td class="schuetze-name" id="name-heim1">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-heim1">0</td>
+                <td class="punkte" id="punkte-heim1">0</td>
               </tr>
-              <tr>
-                <th>Durchschnitt</th>
-                <td id="durchschnittSumme"></td>
+              <tr data-paarung="1" data-position="gast1">
+                <td class="schuetze-name" id="name-gast1">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-gast1">0</td>
+                <td class="punkte" id="punkte-gast1">0</td>
               </tr>
-            </tfoot>
+              <!-- Paarung 2 -->
+              <tr data-paarung="2" data-position="heim2">
+                <td rowspan="2">2</td>
+                <td class="schuetze-name" id="name-heim2">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-heim2">0</td>
+                <td class="punkte" id="punkte-heim2">0</td>
+              </tr>
+              <tr data-paarung="2" data-position="gast2">
+                <td class="schuetze-name" id="name-gast2">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-gast2">0</td>
+                <td class="punkte" id="punkte-gast2">0</td>
+              </tr>
+              <!-- Paarung 3 -->
+              <tr data-paarung="3" data-position="heim3">
+                <td rowspan="2">3</td>
+                <td class="schuetze-name" id="name-heim3">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-heim3">0</td>
+                <td class="punkte" id="punkte-heim3">0</td>
+              </tr>
+              <tr data-paarung="3" data-position="gast3">
+                <td class="schuetze-name" id="name-gast3">-</td>
+                <td><input type="number" min="0" class="serie-input" data-serie="1"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="2"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="3"></td>
+                <td><input type="number" min="0" class="serie-input" data-serie="4"></td>
+                <td class="gesamt" id="gesamt-gast3">0</td>
+                <td class="punkte" id="punkte-gast3">0</td>
+              </tr>
+            </tbody>
           </table>
-          <!-- Speicher-Button (ohne Funktion) -->
-          <button id="speichernBtn" class="btn btn-primary" disabled title="Speichern deaktiviert">Scheibenwerte speichern</button>
         </div>
+
+        <div id="gesamtStandAnzeige">Gesamtstand: Heim 0 : 0 Gast</div>
+
+        <button id="speichernBtn" class="btn btn-primary">Wettkampf speichern</button>
       </main>
     </div>
     <!-- NEU: Skript als Modul -->
     <script type="module">
-      // Imports für Local Storage (ohne SCHEIBEN_KEY) und UI Utils
-      import { getLocalData, generateLocalId, TEILNEHMER_KEY } from './local-storage-utils.js'; // setLocalData entfernt, SCHEIBEN_KEY entfernt
+      // Imports
+      import { getLocalData, setLocalData, TEILNEHMER_KEY, WETTKAMPF_KEY } from './local-storage-utils.js';
       import { zeigeStatus } from './ui-utils.js';
 
       document.addEventListener("DOMContentLoaded", () => {
-        const anzahlForm = document.getElementById("scheibenAnzahlForm");
-        const anzahlInput = document.getElementById("anzahlScheiben");
-        const erfassungsDiv = document.getElementById("scheibenErfassung");
-        const tabelleBody = document.querySelector("#scheibenTabelle tbody");
-        const gesamtSummeTd = document.getElementById("gesamtSumme");
-        const durchschnittSummeTd = document.getElementById("durchschnittSumme");
+        // DOM Elemente
+        const schuetzenSelects = document.querySelectorAll('.schuetzen-select');
+        const serieInputs = document.querySelectorAll('.serie-input');
         const speichernBtn = document.getElementById('speichernBtn');
         const statusMeldung = document.getElementById('statusMeldung');
-        // TODO: const teilnehmerSelect = document.getElementById('scheibenTeilnehmerSelect');
+        const gesamtStandAnzeige = document.getElementById('gesamtStandAnzeige');
 
-        // TODO: Teilnehmer-Dropdown füllen (Logik bleibt, falls benötigt)
-        /*
-        function ladeTeilnehmer() {
-            const teilnehmer = getLocalData(TEILNEHMER_KEY)
-                                .filter(t => t._syncStatus !== 'deleted')
-                                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            teilnehmerSelect.innerHTML = '<option value="">-- Teilnehmer wählen --</option>';
-            teilnehmer.forEach(t => {
+        // Globaler Zustand für den Wettkampf
+        let wettkampfData = {
+          heim1: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          gast1: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          heim2: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          gast2: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          heim3: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          gast3: { teilnehmerLocalId: null, serie1: null, serie2: null, serie3: null, serie4: null, gesamt: 0, punkte: 0 },
+          gesamtHeim: 0,
+          gesamtGast: 0,
+          _syncStatus: 'new' // Oder 'modified' wenn geladen
+        };
+
+        let teilnehmerListe = []; // Cache für Teilnehmer
+
+        // --- Initialisierung ---
+        async function initializePage() {
+          await loadTeilnehmer();
+          populateAllDropdowns();
+          loadWettkampfData(); // Lädt gespeicherte Daten und aktualisiert UI
+          addEventListeners();
+          updateAllCalculations(); // Berechnet alles basierend auf geladenen Daten
+        }
+
+        // --- Daten laden ---
+        async function loadTeilnehmer() {
+          try {
+            const teilnehmer = getLocalData(TEILNEHMER_KEY) || [];
+            teilnehmerListe = teilnehmer
+              .filter(t => t._syncStatus !== 'deleted')
+              .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          } catch (error) {
+            console.error("Fehler beim Laden der Teilnehmer:", error);
+            zeigeStatus("Fehler beim Laden der Teilnehmerliste.", "fehler", statusMeldung);
+            teilnehmerListe = [];
+          }
+        }
+
+        function loadWettkampfData() {
+          const savedData = getLocalData(WETTKAMPF_KEY);
+          if (savedData) {
+            wettkampfData = { ...wettkampfData, ...savedData }; // Merge, behalte Struktur
+            wettkampfData._syncStatus = 'modified'; // Wenn geladen, ist es nicht mehr 'new'
+            console.log("Gespeicherte Wettkampfdaten geladen:", wettkampfData);
+            updateUIFromData();
+          } else {
+             wettkampfData._syncStatus = 'new';
+             console.log("Keine gespeicherten Wettkampfdaten gefunden, starte neu.");
+          }
+        }
+
+        // --- Dropdowns füllen ---
+        function populateAllDropdowns() {
+          schuetzenSelects.forEach(select => {
+            populateDropdown(select);
+          });
+        }
+
+        function populateDropdown(selectElement) {
+          const currentSelectedValue = selectElement.value; // Aktuellen Wert merken
+          selectElement.innerHTML = '<option value="">-- Teilnehmer wählen --</option>';
+          teilnehmerListe.forEach(t => {
                 const option = document.createElement('option');
                 option.value = t.localId;
                 option.textContent = `${t.vorname || ''} ${t.name || ''}`.trim();
-                teilnehmerSelect.appendChild(option);
-            });
+                selectElement.appendChild(option);
+          });
+          // Versuchen, den alten Wert wiederherzustellen
+          if (teilnehmerListe.some(t => t.localId === currentSelectedValue)) {
+            selectElement.value = currentSelectedValue;
+          }
         }
-        ladeTeilnehmer(); // Beim Laden aufrufen
-        */
 
-        anzahlForm.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const anzahl = parseInt(anzahlInput.value);
+        // --- Event Listener ---
+        function addEventListeners() {
+          schuetzenSelects.forEach(select => {
+            select.addEventListener('change', handleSchuetzenChange);
+          });
+          serieInputs.forEach(input => {
+            input.addEventListener('input', handleSerieInputChange);
+          });
+          speichernBtn.addEventListener('click', saveWettkampfData);
+        }
 
-          if (isNaN(anzahl) || anzahl < 1) {
-            zeigeStatus('Bitte eine gültige Anzahl an Scheiben eingeben (mindestens 1).', 'fehler', statusMeldung);
+        function handleSchuetzenChange(event) {
+          const selectElement = event.target;
+          const position = selectElement.dataset.position;
+          const selectedLocalId = selectElement.value;
+
+          // Validierung: Ist der Schütze schon woanders ausgewählt?
+          let alreadySelected = false;
+          schuetzenSelects.forEach(otherSelect => {
+              if (otherSelect !== selectElement && otherSelect.value === selectedLocalId && selectedLocalId !== "") {
+                  alreadySelected = true;
+              }
+          });
+
+          if (alreadySelected) {
+              zeigeStatus("Dieser Teilnehmer ist bereits einer anderen Position zugewiesen.", "fehler", statusMeldung);
+              // Setze auf den vorherigen Wert zurück (oder auf "Bitte wählen")
+              selectElement.value = wettkampfData[position]?.teilnehmerLocalId || "";
+              return;
+          }
+
+          // Update im Zustand
+          if (wettkampfData[position]) {
+            wettkampfData[position].teilnehmerLocalId = selectedLocalId || null;
+            markDataAsModified();
+          }
+
+          // Update Name in der Tabelle
+          const nameCell = document.getElementById(`name-${position}`);
+          if (nameCell) {
+            const teilnehmer = teilnehmerListe.find(t => t.localId === selectedLocalId);
+            nameCell.textContent = teilnehmer ? `${teilnehmer.vorname || ''} ${teilnehmer.name || ''}`.trim() : '-';
+          }
+        }
+
+        function handleSerieInputChange(event) {
+          const inputElement = event.target;
+          const position = inputElement.closest('tr').dataset.position;
+          const serieNr = inputElement.dataset.serie;
+          const wert = inputElement.value.trim() === '' ? null : parseInt(inputElement.value, 10);
+
+          if (isNaN(wert) && wert !== null) {
+            inputElement.style.borderColor = 'red'; // Ungültige Eingabe
             return;
+          } else {
+            inputElement.style.borderColor = ''; // Zurücksetzen
           }
 
-          tabelleBody.innerHTML = "";
-          for (let i = 1; i <= anzahl; i++) {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                        <td>${i}</td>
-                        <td><input type="number" class="scheiben-wert-input" min="0" step="1" placeholder="Wert" required style="width: 60px; text-align: right; padding: 2px 4px;"></td>
-                    `;
-            tabelleBody.appendChild(row);
+          // Update im Zustand
+          if (wettkampfData[position] && `serie${serieNr}` in wettkampfData[position]) {
+            wettkampfData[position][`serie${serieNr}`] = (wert !== null && wert >= 0) ? wert : null;
+            markDataAsModified();
           }
 
-          gesamtSummeTd.textContent = "0";
-          durchschnittSummeTd.textContent = "-";
-          erfassungsDiv.style.display = "block";
+          // Neuberechnungen anstoßen
+          updateAllCalculations();
+        }
 
-          tabelleBody
-            .querySelectorAll(".scheiben-wert-input")
-            .forEach((input) => {
-              input.addEventListener("input", berechneUndZeigeSummen);
-              input.addEventListener("change", berechneUndZeigeSummen);
-            });
-
-          berechneUndZeigeSummen();
-
-          const firstInput = tabelleBody.querySelector(".scheiben-wert-input");
-          if (firstInput) {
-            firstInput.focus();
-          }
-        });
-
-        function berechneUndZeigeSummen() {
-          const inputs = tabelleBody.querySelectorAll(".scheiben-wert-input");
-          let gesamt = 0;
-          let anzahlGueltigerWerte = 0;
-
-          inputs.forEach((input) => {
-            const wert = parseInt(input.value);
-            if (!isNaN(wert) && wert >= 0) {
-              gesamt += wert;
-              anzahlGueltigerWerte++;
-              input.style.borderColor = ''; // Zurücksetzen, falls vorher rot
-            } else if (input.value.trim() !== "") {
-              input.style.borderColor = "red";
-            } else {
-              input.style.borderColor = "";
+        // --- Berechnungen ---
+        function updateAllCalculations() {
+          // 1. Gesamt pro Schütze berechnen
+          Object.keys(wettkampfData).forEach(pos => {
+            if (pos.startsWith('heim') || pos.startsWith('gast')) {
+              calculateShooterGesamt(pos);
             }
           });
 
-          gesamtSummeTd.textContent = gesamt;
+          // 2. Punkte pro Paarung berechnen
+          calculatePaarungPunkte(1);
+          calculatePaarungPunkte(2);
+          calculatePaarungPunkte(3);
 
-          if (anzahlGueltigerWerte > 0) {
-            const durchschnitt = gesamt / anzahlGueltigerWerte;
-            durchschnittSummeTd.textContent = durchschnitt.toFixed(2);
+          // 3. Gesamtstand berechnen
+          calculateGesamtstand();
+
+          // 4. UI für Berechnungen aktualisieren
+          updateCalculationUI();
+        }
+
+        function calculateShooterGesamt(position) {
+          const shooterData = wettkampfData[position];
+          if (!shooterData) return;
+
+          let gesamt = 0;
+          for (let i = 1; i <= 4; i++) {
+            gesamt += shooterData[`serie${i}`] || 0;
+          }
+          shooterData.gesamt = gesamt;
+        }
+
+        function calculatePaarungPunkte(paarungNr) {
+          const heimPos = `heim${paarungNr}`;
+          const gastPos = `gast${paarungNr}`;
+          const heimData = wettkampfData[heimPos];
+          const gastData = wettkampfData[gastPos];
+
+          if (!heimData || !gastData) return;
+
+          // Punkte nur vergeben, wenn beide Schützen Ergebnisse haben (Gesamt > 0 oder alle Serien gefüllt?)
+          // Einfache Regel: Wer mehr hat, kriegt den Punkt. Bei Gleichstand keiner.
+          if (heimData.gesamt > gastData.gesamt) {
+            heimData.punkte = 1;
+            gastData.punkte = 0;
+          } else if (gastData.gesamt > heimData.gesamt) {
+            heimData.punkte = 0;
+            gastData.punkte = 1;
           } else {
-            durchschnittSummeTd.textContent = "-";
+            heimData.punkte = 0;
+            gastData.punkte = 0;
           }
         }
 
-        // --- START: Speicherfunktion und Listener entfernt ---
-        /*
-        // Event Listener für Speicher-Button
-        speichernBtn.addEventListener('click', speichereScheibenWerte);
-
-        // Funktion zum Speichern der Werte
-        function speichereScheibenWerte() {
-            // ... (komplette Funktion entfernt) ...
+        function calculateGesamtstand() {
+          let heimPunkteTotal = 0;
+          let gastPunkteTotal = 0;
+          for (let i = 1; i <= 3; i++) {
+            heimPunkteTotal += wettkampfData[`heim${i}`]?.punkte || 0;
+            gastPunkteTotal += wettkampfData[`gast${i}`]?.punkte || 0;
+          }
+          wettkampfData.gesamtHeim = heimPunkteTotal;
+          wettkampfData.gesamtGast = gastPunkteTotal;
         }
-        */
-        console.log("Speicherfunktion für Scheibenwerte ist deaktiviert.");
-        // --- ENDE: Speicherfunktion und Listener entfernt ---
 
+        // --- UI Updates ---
+        function updateUIFromData() {
+          // Setze Dropdown-Werte
+          schuetzenSelects.forEach(select => {
+            const position = select.dataset.position;
+            select.value = wettkampfData[position]?.teilnehmerLocalId || "";
+            // Trigger change event manuell, um Namen zu aktualisieren (ohne Validierung)
+            const nameCell = document.getElementById(`name-${position}`);
+            if (nameCell) {
+                const teilnehmer = teilnehmerListe.find(t => t.localId === select.value);
+                nameCell.textContent = teilnehmer ? `${teilnehmer.vorname || ''} ${teilnehmer.name || ''}`.trim() : '-';
+            }
+          });
 
-        // Optional: Listener für Storage-Events oder Sync-Events, um Teilnehmerliste neu zu laden
-        /*
+          // Setze Input-Werte
+          serieInputs.forEach(input => {
+            const position = input.closest('tr').dataset.position;
+            const serieNr = input.dataset.serie;
+            const wert = wettkampfData[position]?.[`serie${serieNr}`];
+            input.value = (wert !== null && wert !== undefined) ? wert : '';
+          });
+
+          // Aktualisiere berechnete Felder (Gesamt, Punkte, Gesamtstand)
+          updateCalculationUI();
+        }
+
+        function updateCalculationUI() {
+           // Update Gesamt pro Schütze
+           Object.keys(wettkampfData).forEach(pos => {
+             if (pos.startsWith('heim') || pos.startsWith('gast')) {
+               const gesamtCell = document.getElementById(`gesamt-${pos}`);
+               if (gesamtCell) gesamtCell.textContent = wettkampfData[pos].gesamt;
+               const punkteCell = document.getElementById(`punkte-${pos}`);
+               if (punkteCell) punkteCell.textContent = wettkampfData[pos].punkte;
+             }
+           });
+
+           // Update Gesamtstand
+           gesamtStandAnzeige.textContent = `Gesamtstand: Heim ${wettkampfData.gesamtHeim} : ${wettkampfData.gesamtGast} Gast`;
+        }
+
+        // --- Speichern ---
+        function saveWettkampfData() {
+          wettkampfData.lastModifiedLocal = new Date().toISOString(); // Zeitstempel für Sync
+          const success = setLocalData(WETTKAMPF_KEY, wettkampfData);
+          if (success) {
+            zeigeStatus("Wettkampfdaten lokal gespeichert.", "erfolg", statusMeldung);
+            wettkampfData._syncStatus = 'modified'; // Nach dem ersten Speichern ist es 'modified'
+          } else {
+            zeigeStatus("Fehler beim Speichern der Wettkampfdaten!", "fehler", statusMeldung);
+          }
+        }
+
+        function markDataAsModified() {
+             if (wettkampfData._syncStatus !== 'new') {
+                 wettkampfData._syncStatus = 'modified';
+             }
+        }
+
+        // --- Start ---
+        initializePage();
+
+        // --- Listener für Datenänderungen von außen ---
         window.addEventListener('storage', (event) => {
             if (event.key === TEILNEHMER_KEY) {
-                ladeTeilnehmer();
+                console.log("Teilnehmerliste geändert, lade Dropdowns neu...");
+                loadTeilnehmer().then(() => {
+                    populateAllDropdowns();
+                    // Namen in Tabelle ggf. neu setzen basierend auf IDs im State
+                    updateUIFromData();
+                });
+            } else if (event.key === WETTKAMPF_KEY) {
+                 console.log("Wettkampfdaten extern geändert, lade neu...");
+                 loadWettkampfData(); // Lädt neu und aktualisiert UI
+                 updateAllCalculations();
             }
         });
-        window.addEventListener('datasync-complete', () => {
-             ladeTeilnehmer();
-        });
-        */
 
+        window.addEventListener('datasync-complete', (event) => {
+            // Wenn sich Wettkampfdaten geändert haben könnten (oder Teilnehmer)
+            if (event.detail?.keysChanged?.includes(WETTKAMPF_KEY) || event.detail?.keysChanged?.includes(TEILNEHMER_KEY)) {
+                console.log("Daten nach Sync geändert, lade Wettkampfseite neu...");
+                loadTeilnehmer().then(() => { // Teilnehmer zuerst laden
+                    populateAllDropdowns();
+                    loadWettkampfData();
+                    updateAllCalculations();
+                });
+            }
+        });
       });
     </script>
   </body>
