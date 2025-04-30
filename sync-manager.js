@@ -1,10 +1,13 @@
 // sync-manager.js
 import { db } from './firebase-config.js';
 import {
+    // Hinzugefügt: getDoc, setDoc, deleteDoc für einzelne Dokumente (Wettkampf)
+    // Hinzugefügt: query, where (optional für spätere Optimierungen)
     collection,
     doc,
     serverTimestamp,
     writeBatch,
+    getDoc, setDoc, deleteDoc, query, where, // Hinzugefügt
     Timestamp,
     getDocs // Hinzugefügt für deleteAllFirebaseData
 } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
@@ -16,9 +19,10 @@ import {
     TEILNEHMER_KEY,
     TEAMS_KEY,
     ERGEBNISSE_KEY,
-    // SCHEIBEN_KEY, // Auskommentiert
     PAYMENT_STATUS_KEY,
-    LAST_SYNC_KEY
+    LAST_SYNC_KEY,
+    WETTKAMPF_KEY, // NEU hinzugefügt
+    ALL_KEYS // NEU hinzugefügt (wird in local-storage-utils definiert)
 } from './local-storage-utils.js';
 import { zeigeStatus } from './ui-utils.js';
 
@@ -291,6 +295,85 @@ async function syncAbrechnung(batch, teamIdMap, teamLocalIdsToDelete) { // <-- N
     return { itemsToFinalize, changesDetected };
 }
 
+/**
+ * Synchronisiert die Wettkampfdaten (einzelnes Objekt) zwischen Local Storage und Firestore.
+ * Annahme: Es gibt nur EIN Dokument in der 'wettkampf'-Collection mit der ID 'current'.
+ * @param {Date | null} lastSyncTime - Der Zeitpunkt der letzten Synchronisation (wird hier nicht direkt verwendet, aber für Konsistenz übergeben).
+ * @param {Date} now - Der aktuelle Zeitpunkt (Start des Syncs).
+ * @returns {Promise<{changesDetected: boolean, needsFinalize: boolean}>} - True, wenn Änderungen vorgenommen wurden, needsFinalize, wenn lokale Daten aktualisiert werden müssen.
+ */
+async function syncWettkampfData(lastSyncTime, now) {
+  console.log(`Starte Sync für Wettkampfdaten (${WETTKAMPF_KEY})`);
+  let changesDetected = false; // Änderungen, die einen Batch-Commit erfordern
+  let needsFinalize = false; // Änderungen, die ein lokales Update nach dem Commit erfordern
+  const collectionName = "wettkampf"; // Name der Firestore Collection
+  const docId = "current"; // Feste ID für das Wettkampf-Dokument
+
+  try {
+    // 1. Lokale Wettkampfdaten holen
+    let localWettkampfData = getLocalData(WETTKAMPF_KEY);
+
+    // 2. Firestore Wettkampfdaten holen
+    const docRef = doc(db, collectionName, docId);
+    const docSnap = await getDoc(docRef);
+    let remoteWettkampfData = null;
+    let remoteTimestamp = null;
+
+    if (docSnap.exists()) {
+      remoteWettkampfData = docSnap.data();
+      remoteTimestamp = remoteWettkampfData.serverTimestamp?.toDate() || (remoteWettkampfData.lastModifiedLocal ? new Date(remoteWettkampfData.lastModifiedLocal) : null);
+      console.log(`Firestore Wettkampfdaten gefunden. Remote Timestamp: ${remoteTimestamp}`);
+    } else {
+      console.log(`Keine Wettkampfdaten in Firestore unter ${collectionName}/${docId} gefunden.`);
+    }
+
+    // 3. Vergleichen und Synchronisieren
+
+    // Fall A: Lokale Daten vorhanden
+    if (localWettkampfData) {
+      const localTimestamp = localWettkampfData.lastModifiedLocal ? new Date(localWettkampfData.lastModifiedLocal) : null;
+      const localSyncStatus = localWettkampfData._syncStatus;
+
+      // Fall A.1: Lokale Daten sind neu oder geändert -> Upload zu Firestore
+      if (localSyncStatus === 'new' || localSyncStatus === 'modified') {
+        console.log(`Lokale Wettkampfdaten (${localSyncStatus}) werden nach Firestore hochgeladen.`);
+        const dataToUpload = { ...localWettkampfData, serverTimestamp: serverTimestamp() };
+        delete dataToUpload._syncStatus;
+
+        // Direkt schreiben (kein Batch nötig, da nur ein Dokument)
+        await setDoc(docRef, dataToUpload, { merge: true });
+        changesDetected = true; // Markieren, dass eine Änderung stattgefunden hat
+        needsFinalize = true; // Lokaler Status muss auf 'synced' gesetzt werden
+      }
+      // Fall A.2: Lokale Daten sind synchronisiert, aber Firestore hat neuere Daten -> Download
+      else if (localSyncStatus === 'synced' && remoteTimestamp && localTimestamp && remoteTimestamp > localTimestamp) {
+        console.log("Neuere Wettkampfdaten in Firestore gefunden, aktualisiere lokale Daten.");
+        // Direkt lokal speichern (kein Batch nötig)
+        const updatedLocalData = { ...remoteWettkampfData, _syncStatus: 'synced', lastModifiedLocal: remoteTimestamp.toISOString() };
+        delete updatedLocalData.serverTimestamp;
+        setLocalData(WETTKAMPF_KEY, updatedLocalData);
+        // Keine Änderungen für den Batch, aber lokale Änderung wurde durchgeführt
+      }
+    }
+    // Fall B: Keine lokalen Daten, aber Daten in Firestore -> Download
+    else if (remoteWettkampfData) {
+      console.log("Keine lokalen Wettkampfdaten, aber Daten in Firestore gefunden. Lade herunter.");
+      const downloadedData = { ...remoteWettkampfData, _syncStatus: 'synced', lastModifiedLocal: remoteTimestamp ? remoteTimestamp.toISOString() : now.toISOString() };
+      delete downloadedData.serverTimestamp;
+      setLocalData(WETTKAMPF_KEY, downloadedData);
+    }
+  } catch (error) {
+    console.error(`Fehler beim Synchronisieren der Wettkampfdaten (${WETTKAMPF_KEY}):`, error);
+    throw error; // Fehler weitergeben
+  }
+
+  console.log(`Sync für Wettkampfdaten (${WETTKAMPF_KEY}) abgeschlossen. Batch-Änderungen: ${changesDetected}, Lokale Finalisierung nötig: ${needsFinalize}`);
+  // Wichtig: Diese Funktion verwendet keinen Batch, da sie direkt schreibt/liest.
+  // `changesDetected` hier bedeutet eher "Änderung in Firestore vorgenommen".
+  // `needsFinalize` bedeutet "lokaler Status muss nach Sync aktualisiert werden".
+  return { changesDetected, needsFinalize };
+}
+
 
 // --- Zentrale Synchronisationsfunktion ---
 export async function synchronizeAllData(showStatus = true) {
@@ -324,6 +407,7 @@ export async function synchronizeAllData(showStatus = true) {
         [TEAMS_KEY]: [],
         [ERGEBNISSE_KEY]: [],
         // [SCHEIBEN_KEY]: [], // Auskommentiert
+        [WETTKAMPF_KEY]: false, // Flag für Wettkampf-Finalisierung
         [PAYMENT_STATUS_KEY]: [] // Für Abrechnung
     };
     let allIdsToDeleteLocally = {
@@ -331,6 +415,7 @@ export async function synchronizeAllData(showStatus = true) {
         [TEAMS_KEY]: [],
         [ERGEBNISSE_KEY]: [],
         // [SCHEIBEN_KEY]: [] // Auskommentiert
+        [WETTKAMPF_KEY]: [] // Nicht benötigt für Wettkampf
     };
 
     try {
@@ -399,12 +484,19 @@ export async function synchronizeAllData(showStatus = true) {
         if (paymentChanges) anyChangesMade = true;
         allItemsToFinalize[PAYMENT_STATUS_KEY] = paymentToFinalize; // Speichere teamLocalIds
 
+        // --- 6. Wettkampfdaten synchronisieren (separat, da kein Batch nötig) ---
+        // Führe dies *vor* dem Batch-Commit aus, falls es Fehler wirft
+        const { changesDetected: wettkampfChanges, needsFinalize: wettkampfNeedsFinalize } = await syncWettkampfData(null, new Date()); // lastSyncTime nicht relevant hier
+        if (wettkampfChanges) anyChangesMade = true; // Wenn Firestore geändert wurde
+        if (wettkampfNeedsFinalize) {
+            allItemsToFinalize[WETTKAMPF_KEY] = true; // Markieren für lokale Finalisierung
+        }
 
-        // --- 6. Batch ausführen, wenn Änderungen vorhanden sind ---
+        // --- 7. Batch ausführen, wenn Änderungen vorhanden sind ---
         if (anyChangesMade) {
             displayStatus("Sende Änderungen an Server...", 'info');
             await batch.commit();
-            displayStatus("Änderungen erfolgreich gesendet.", 'info');
+            displayStatus("Batch-Änderungen erfolgreich gesendet.", 'info');
 
             // --- 7. Lokale Daten finalisieren (Status 'synced' setzen, Gelöschte entfernen) ---
             let localSaveSuccess = true;
@@ -455,6 +547,19 @@ export async function synchronizeAllData(showStatus = true) {
                 }
             }
 
+            // Wettkampfdaten finalisieren (Status 'synced' setzen)
+            if (allItemsToFinalize[WETTKAMPF_KEY]) {
+                let localWettkampfData = getLocalData(WETTKAMPF_KEY);
+                if (localWettkampfData) {
+                    localWettkampfData._syncStatus = 'synced';
+                    delete localWettkampfData.lastModifiedLocal; // Optional
+                    if (!setLocalData(WETTKAMPF_KEY, localWettkampfData)) {
+                        localSaveSuccess = false;
+                        syncErrors.push("Fehler beim Finalisieren der Wettkampfdaten.");
+                    }
+                }
+            }
+
             // Prüfe, ob lokales Speichern erfolgreich war
             if (!localSaveSuccess) {
                 overallSuccess = false; // Markieren als fehlgeschlagen
@@ -470,7 +575,7 @@ export async function synchronizeAllData(showStatus = true) {
             setLocalData(LAST_SYNC_KEY, new Date().toISOString());
         }
 
-        // --- 8. Gesamtergebnis verarbeiten ---
+        // --- 9. Gesamtergebnis verarbeiten ---
         if (overallSuccess) {
             displayStatus(anyChangesMade ? "Synchronisation erfolgreich abgeschlossen!" : "Keine Änderungen zum Synchronisieren.", anyChangesMade ? 'erfolg' : 'info');
             // Event auslösen, damit andere Seiten ggf. neu laden können
@@ -505,7 +610,13 @@ export async function synchronizeAllData(showStatus = true) {
 export async function deleteAllFirebaseData() {
     console.warn("Starte Löschung aller Firebase Wettkampfdaten...");
     // Definiere die Collections, die geleert werden sollen
-    const collectionsToClear = ['teilnehmer', 'teams', 'ergebnisse' /*, 'scheiben' */]; // Füge 'scheiben' hinzu, falls nötig
+    const collectionsToClear = [
+        'teilnehmer',
+        'teams',
+        'ergebnisse',
+        'paymentStatus', // NEU: Auch Zahlungsstatus-Dokumente löschen
+        // 'scheiben' // Auskommentiert
+    ];
 
     let allSuccess = true;
 
@@ -548,6 +659,22 @@ export async function deleteAllFirebaseData() {
             console.error(`Fehler beim Löschen der Collection "${collectionName}":`, error);
             allSuccess = false;
             // Optional: Hier aufhören oder weitermachen? Wir machen weiter, um möglichst viel zu löschen.
+        }
+    }
+
+    // --- NEU: Lösche das einzelne Wettkampf-Dokument ---
+    console.log("Lösche Wettkampf-Dokument...");
+    try {
+        const wettkampfDocRef = doc(db, "wettkampf", "current");
+        await deleteDoc(wettkampfDocRef);
+        console.log("Wettkampf-Dokument erfolgreich gelöscht.");
+    } catch (error) {
+        // Fehler nur loggen, wenn das Dokument nicht existiert (ist ok)
+        if (error.code !== 'not-found') {
+            console.error("Fehler beim Löschen des Wettkampf-Dokuments:", error);
+            allSuccess = false;
+        } else {
+            console.log("Wettkampf-Dokument existierte nicht (oder wurde bereits gelöscht).");
         }
     }
 
