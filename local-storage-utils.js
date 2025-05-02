@@ -6,7 +6,7 @@ export const TEAMS_KEY = "teamsListe_v2";
 export const ERGEBNISSE_KEY = "ergebnisseListe_v2";
 export const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Für Abrechnung
 export const LAST_SYNC_KEY = "lastSyncTimestamp";
-// export const SCHEIBEN_KEY = "scheibenErgebnisse_v1"; // AUSKOMMENTIERT/ENTFERNT
+export const WETTKAMPF_KEY = "wettkampf_v1"; // NEU für scheibenErfassen
 
 // Array aller Schlüssel, die gelöscht werden sollen (für clearLocalStorageData)
 const ALL_DATA_KEYS = [
@@ -15,9 +15,8 @@ const ALL_DATA_KEYS = [
     ERGEBNISSE_KEY,
     PAYMENT_STATUS_KEY,
     LAST_SYNC_KEY,
-    // SCHEIBEN_KEY // ENTFERNT
+    WETTKAMPF_KEY, // NEU
 ];
-
 
 // --- Hilfsfunktionen für Local Storage Zugriff ---
 
