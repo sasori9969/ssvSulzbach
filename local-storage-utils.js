@@ -1,242 +1,234 @@
-// local-storage-utils.js
+// /workspaces/ssvSulzbach/local-storage-utils.js
 
-// --- Schlüssel für Local Storage ---
+// --- Konstanten für Local Storage Keys ---
 export const TEILNEHMER_KEY = "teilnehmerListe_v2";
 export const TEAMS_KEY = "teamsListe_v2";
 export const ERGEBNISSE_KEY = "ergebnisseListe_v2";
-export const PAYMENT_STATUS_KEY = "paymentStatus_v2"; // Für Abrechnung
+export const PAYMENT_STATUS_KEY = "paymentStatus_v2";
+export const WETTKAMPF_KEY = "wettkampfData_v1"; // Key für scheibenErfassen.html
 export const LAST_SYNC_KEY = "lastSyncTimestamp";
-export const WETTKAMPF_KEY = "wettkampf_v1"; // NEU für scheibenErfassen
 
-// Array aller Schlüssel, die gelöscht werden sollen (für clearLocalStorageData)
-const ALL_DATA_KEYS = [
+// Array mit allen relevanten Daten-Keys für Lösch- und Sync-Operationen
+export const ALL_KEYS = [
     TEILNEHMER_KEY,
     TEAMS_KEY,
     ERGEBNISSE_KEY,
     PAYMENT_STATUS_KEY,
-    LAST_SYNC_KEY,
-    WETTKAMPF_KEY, // NEU
+    WETTKAMPF_KEY // WETTKAMPF_KEY hinzugefügt
 ];
 
-// --- Hilfsfunktionen für Local Storage Zugriff ---
+// --- Hilfsfunktionen ---
 
 /**
- * Holt Daten aus dem Local Storage für einen gegebenen Schlüssel.
- * Gibt ein leeres Array zurück, wenn nichts gefunden wird oder ein Fehler auftritt.
- * @param {string} key Der Schlüssel im Local Storage.
- * @returns {Array|Object} Die geparsten Daten oder ein leeres Array/Objekt.
+ * Holt Daten aus dem Local Storage und parsed sie als JSON.
+ * Gibt ein leeres Array zurück, wenn der Key nicht existiert oder der Wert ungültig ist (außer für spezielle Keys).
+ * @param {string} key Der Local Storage Key.
+ * @returns {any} Die geparsten Daten oder ein Standardwert (meist []).
  */
 export function getLocalData(key) {
   try {
     const data = localStorage.getItem(key);
     if (data === null) {
-      // Wenn der Schlüssel nicht existiert, gib je nach Schlüsseltyp ein leeres Array oder Objekt zurück
-      return key === PAYMENT_STATUS_KEY ? {} : [];
+      // Spezielle Behandlung für Keys, die Objekte sein können oder null/string
+      if (key === LAST_SYNC_KEY) return null;
+      if (key === PAYMENT_STATUS_KEY) return {}; // Leeres Objekt für Zahlungsstatus
+      if (key === WETTKAMPF_KEY) return null; // Null für Wettkampfdaten
+      return []; // Standard: leeres Array
     }
-    return JSON.parse(data);
+    // Für Zahlungsstatus und Wettkampfdaten direkt das Objekt zurückgeben
+    if (key === PAYMENT_STATUS_KEY || key === WETTKAMPF_KEY) {
+        return JSON.parse(data);
+    }
+    // Für Zeitstempel den String zurückgeben
+    if (key === LAST_SYNC_KEY) {
+        return data;
+    }
+    // Für Listen (Teilnehmer, Teams, Ergebnisse)
+    const parsedData = JSON.parse(data);
+    return Array.isArray(parsedData) ? parsedData : [];
+
   } catch (error) {
-    console.error(`Fehler beim Lesen von "${key}" aus Local Storage:`, error);
-    // Im Fehlerfall ebenfalls leeres Array/Objekt zurückgeben
-    return key === PAYMENT_STATUS_KEY ? {} : [];
+    console.error(`Fehler beim Lesen von Local Storage Key "${key}":`, error);
+    // Standardwerte bei Fehler
+    if (key === LAST_SYNC_KEY) return null;
+    if (key === PAYMENT_STATUS_KEY) return {};
+    if (key === WETTKAMPF_KEY) return null;
+    return [];
   }
 }
 
 /**
- * Speichert Daten im Local Storage unter einem gegebenen Schlüssel.
- * @param {string} key Der Schlüssel im Local Storage.
- * @param {any} data Die zu speichernden Daten (werden als JSON stringifiziert).
+ * Speichert Daten im Local Storage als JSON-String.
+ * @param {string} key Der Local Storage Key.
+ * @param {any} data Die zu speichernden Daten.
  * @returns {boolean} True bei Erfolg, False bei Fehler.
  */
 export function setLocalData(key, data) {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    // Zeitstempel direkt als String speichern
+    if (key === LAST_SYNC_KEY && typeof data === 'string') {
+        localStorage.setItem(key, data);
+    } else {
+        localStorage.setItem(key, JSON.stringify(data));
+    }
     return true;
   } catch (error) {
-    console.error(`Fehler beim Schreiben von "${key}" in Local Storage:`, error);
-    // Hier könnte man prüfen, ob es ein QuotaExceededError ist
+    console.error(`Fehler beim Schreiben von Local Storage Key "${key}":`, error);
+    // Hier könnte man spezifischer auf Quota-Fehler reagieren
     if (error.name === 'QuotaExceededError') {
-        alert('Speicherplatz im Browser ist voll! Synchronisation oder manuelle Bereinigung könnte nötig sein.');
+      alert("Speicherplatz im Browser ist voll! Daten konnten nicht gespeichert werden.");
     }
     return false;
   }
 }
 
 /**
- * Generiert eine eindeutige lokale ID.
- * @returns {string} Eine eindeutige ID (Kombination aus Zeitstempel und Zufallszahl).
+ * Generiert eine einfache lokale ID (Zeitstempel + Zufallszahl).
+ * @returns {string} Eine lokale ID.
  */
 export function generateLocalId() {
   return `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
- * Aktualisiert lokale Einträge nach erfolgreicher Synchronisation mit Firestore.
- * Setzt den _syncStatus auf 'synced' und speichert die Firestore ID.
- * @param {string} key Der Local Storage Schlüssel.
- * @param {Array<{localId: string, firestoreId: string}>} syncedItems Array von Objekten mit localId und der neuen firestoreId.
+ * Aktualisiert lokale Elemente nach einer erfolgreichen Synchronisation.
+ * Setzt firestoreId, ändert _syncStatus von 'new' zu 'synced' und entfernt 'deleted' Elemente.
+ * @param {string} key Der Local Storage Key der zu aktualisierenden Liste.
+ * @param {Array<{localId: string, firestoreId: string}>} syncedItems Eine Liste von Objekten mit localId und der neuen firestoreId.
  * @returns {boolean} True bei Erfolg, False bei Fehler.
  */
 export function finalizeLocalItems(key, syncedItems) {
-  if (!syncedItems || syncedItems.length === 0) {
-    return true; // Nichts zu tun
-  }
   try {
     const localData = getLocalData(key);
-    const localIdMap = new Map(syncedItems.map(item => [item.localId, item.firestoreId]));
-
+    const syncedMap = new Map(syncedItems.map(item => [item.localId, item.firestoreId]));
     let changed = false;
-    localData.forEach(item => {
-      if (localIdMap.has(item.localId)) {
-        item.firestoreId = localIdMap.get(item.localId);
-        item._syncStatus = 'synced'; // Status auf 'synced' setzen
-        // Entferne ggf. 'lastModifiedLocal', da jetzt synchronisiert
-        delete item.lastModifiedLocal;
+
+    // Filtere 'deleted' Elemente heraus und aktualisiere 'new' Elemente
+    const updatedData = localData.filter(item => {
+      if (item._syncStatus === 'deleted') {
+        changed = true;
+        return false; // Entfernen
+      }
+      return true;
+    }).map(item => {
+      if (item._syncStatus === 'new' && syncedMap.has(item.localId)) {
+        item.firestoreId = syncedMap.get(item.localId);
+        item._syncStatus = 'synced';
+        changed = true;
+      } else if (item._syncStatus === 'modified') {
+        // Nach erfolgreichem Update in Firestore wird der Status wieder 'synced'
+        item._syncStatus = 'synced';
         changed = true;
       }
+      return item;
     });
 
     if (changed) {
-      return setLocalData(key, localData);
+      return setLocalData(key, updatedData);
     }
-    return true; // Keine Änderungen nötig
+    return true; // Nichts geändert, aber kein Fehler
   } catch (error) {
-    console.error(`Fehler beim Finalisieren der lokalen Daten für Schlüssel "${key}":`, error);
+    console.error(`Fehler beim Finalisieren von Local Storage Key "${key}":`, error);
     return false;
   }
 }
 
+
 /**
- * Entfernt Einträge aus dem Local Storage, die erfolgreich in Firestore gelöscht wurden.
- * @param {string} key Der Local Storage Schlüssel.
- * @param {Array<string>} deletedLocalIds Array der localIds, die gelöscht wurden.
+ * Löscht alle wettkampfspezifischen Daten aus dem Local Storage.
+ * @param {string[]} [keysToClear=ALL_KEYS] Die Liste der zu löschenden Keys. Standardmäßig alle definierten Daten-Keys.
  * @returns {boolean} True bei Erfolg, False bei Fehler.
  */
-export function removeDeletedLocalItems(key, deletedLocalIds) {
-    if (!deletedLocalIds || deletedLocalIds.length === 0) {
-        return true; // Nichts zu tun
-    }
-    try {
-        let localData = getLocalData(key);
-        const initialLength = localData.length;
-        // Filtere alle Einträge heraus, deren localId in deletedLocalIds enthalten ist
-        localData = localData.filter(item => !deletedLocalIds.includes(item.localId));
-
-        if (localData.length < initialLength) {
-            return setLocalData(key, localData);
-        }
-        return true; // Keine Änderungen nötig
-    } catch (error) {
-        console.error(`Fehler beim Entfernen gelöschter lokaler Daten für Schlüssel "${key}":`, error);
-        return false;
-    }
+export function clearLocalStorageData(keysToClear = ALL_KEYS) {
+  try {
+    console.log("Lösche lokale Wettkampfdaten...");
+    keysToClear.forEach(key => {
+      localStorage.removeItem(key);
+      console.log(`  - Lokaler Key entfernt: ${key}`);
+    });
+    // Auch den Sync-Zeitstempel entfernen
+    localStorage.removeItem(LAST_SYNC_KEY);
+    console.log(`  - Lokaler Key entfernt: ${LAST_SYNC_KEY}`);
+    return true;
+  } catch (error) {
+    console.error("Fehler beim Löschen der Local Storage Daten:", error);
+    return false;
+  }
 }
 
-/**
- * Löscht alle wettkampfrelevanten Daten aus dem Local Storage.
- * @returns {boolean} True bei Erfolg, False bei mindestens einem Fehler.
- */
-export function clearLocalStorageData() {
-    console.log("Lösche alle lokalen Wettkampfdaten...");
-    let success = true;
-    try {
-        // Iteriert jetzt über das angepasste ALL_DATA_KEYS Array
-        ALL_DATA_KEYS.forEach(key => {
-            try {
-                localStorage.removeItem(key);
-                console.log(`Schlüssel "${key}" aus Local Storage entfernt.`);
-            } catch (error) {
-                console.error(`Fehler beim Entfernen von Schlüssel "${key}":`, error);
-                success = false; // Markiere als fehlgeschlagen, wenn ein Schlüssel Probleme macht
-            }
-        });
-        if (success) {
-            console.log("Alle relevanten lokalen Wettkampfdaten erfolgreich gelöscht.");
-        } else {
-            console.warn("Einige lokale Daten konnten nicht gelöscht werden.");
-        }
-        return success;
-    } catch (error) {
-        console.error("Schwerwiegender Fehler beim Löschen lokaler Daten:", error);
-        return false;
-    }
-}
-
-
-// --- NEUE Hilfsfunktionen für Datenzugriff ---
+// --- Hilfsfunktionen für aktiven Daten ---
 
 /**
- * Holt Daten für einen Schlüssel und filtert Einträge heraus, die zum Löschen markiert sind.
- * @param {string} key Der Local Storage Schlüssel.
- * @returns {Array} Ein Array mit den aktiven Daten.
+ * Generische Funktion zum Holen aktiver (nicht gelöschter) Elemente.
+ * @param {string} key Der Local Storage Key.
+ * @returns {Array<any>} Ein Array mit aktiven Elementen.
  */
-export function getActiveLocalData(key) {
-    const data = getLocalData(key);
-    // Stelle sicher, dass es ein Array ist, bevor gefiltert wird
-    if (!Array.isArray(data)) {
-        // Für PAYMENT_STATUS_KEY ist ein Objekt erwartet, kein Array
-        if (key === PAYMENT_STATUS_KEY) {
-            // Hier könnten wir aktive Zahlungsstati filtern, wenn nötig,
-            // aber die Funktion ist primär für Listen gedacht.
-            // Vorerst geben wir das Objekt zurück oder ein leeres Objekt.
-            return data || {};
-        }
-        console.warn(`getActiveLocalData: Daten für Schlüssel "${key}" sind kein Array.`);
+function getActiveItems(key) {
+    const items = getLocalData(key);
+    if (!Array.isArray(items)) {
+        console.warn(`Daten für Key "${key}" sind kein Array.`);
         return [];
     }
-    return data.filter(item => item._syncStatus !== 'deleted');
+    return items.filter(item => item._syncStatus !== 'deleted');
 }
 
 /**
- * Holt alle aktiven Teilnehmer aus dem Local Storage, sortiert nach Nachnamen.
- * @returns {Array} Ein sortiertes Array der aktiven Teilnehmer.
+ * Holt alle aktiven Teilnehmer (nicht als gelöscht markiert).
+ * @returns {Array<object>} Ein Array mit aktiven Teilnehmer-Objekten.
  */
 export function getActiveTeilnehmer() {
-    const teilnehmer = getActiveLocalData(TEILNEHMER_KEY);
-    return teilnehmer.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return getActiveItems(TEILNEHMER_KEY);
 }
 
 /**
- * Holt alle aktiven Teams aus dem Local Storage, sortiert nach Teamnamen.
- * @returns {Array} Ein sortiertes Array der aktiven Teams.
+ * Holt alle aktiven Teams (nicht als gelöscht markiert).
+ * @returns {Array<object>} Ein Array mit aktiven Team-Objekten.
  */
 export function getActiveTeams() {
-    const teams = getActiveLocalData(TEAMS_KEY);
-    return teams.sort((a, b) => (a.teamname || '').localeCompare(b.teamname || ''));
+    return getActiveItems(TEAMS_KEY);
 }
 
 /**
- * Holt alle aktiven Ergebnisse aus dem Local Storage, sortiert nach Erstellungsdatum (neueste zuerst).
- * @returns {Array} Ein sortiertes Array der aktiven Ergebnisse.
+ * Holt alle aktiven Ergebnisse (nicht als gelöscht markiert).
+ * Sortiert nach Erstellungsdatum (createdAt) absteigend.
+ * @returns {Array<object>} Ein Array mit aktiven Ergebnis-Objekten, sortiert.
  */
 export function getActiveErgebnisse() {
-    const ergebnisse = getActiveLocalData(ERGEBNISSE_KEY);
-    // Sortiere nach createdAt absteigend (neueste zuerst)
-    // Stelle sicher, dass createdAt existiert und ein vergleichbarer Wert ist (z.B. ISO String)
-    return ergebnisse.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA; // Neueste zuerst
+    const ergebnisse = getActiveItems(ERGEBNISSE_KEY);
+    // Sortieren nach Datum (neueste zuerst)
+    ergebnisse.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt) : 0;
+        return dateB - dateA; // Absteigend sortieren
     });
+    return ergebnisse;
+}
+
+
+// --- Hilfsfunktionen zum Erstellen von Maps ---
+
+/**
+ * Erstellt eine Map von Teilnehmern mit localId als Schlüssel.
+ * @param {Array<object>} teilnehmerListe Ein Array von Teilnehmer-Objekten.
+ * @returns {Map<string, object>} Eine Map mit localId => Teilnehmerobjekt.
+ */
+export function createTeilnehmerMap(teilnehmerListe) {
+    const map = new Map();
+    if (Array.isArray(teilnehmerListe)) {
+        teilnehmerListe.forEach(t => map.set(t.localId, t));
+    }
+    return map;
 }
 
 /**
- * Erstellt eine Map für schnellen Zugriff auf Teilnehmer über ihre localId.
- * Verwendet standardmäßig die aktiven Teilnehmer, kann aber auch eine Liste übergeben bekommen.
- * @param {Array} [teilnehmerList=getActiveTeilnehmer()] Optionale Liste von Teilnehmern.
- * @returns {Map<string, Object>} Eine Map mit localId als Schlüssel und Teilnehmerobjekt als Wert.
+ * Erstellt eine Map von Teams mit localId als Schlüssel.
+ * @param {Array<object>} teamListe Ein Array von Team-Objekten.
+ * @returns {Map<string, object>} Eine Map mit localId => Teamobjekt.
  */
-export function createTeilnehmerMap(teilnehmerList = getActiveTeilnehmer()) {
-    return new Map(teilnehmerList.map(t => [t.localId, t]));
+export function createTeamMap(teamListe) {
+    const map = new Map();
+     if (Array.isArray(teamListe)) {
+        teamListe.forEach(t => map.set(t.localId, t));
+    }
+    return map;
 }
-
-/**
- * Erstellt eine Map für schnellen Zugriff auf Teams über ihre localId.
- * Verwendet standardmäßig die aktiven Teams, kann aber auch eine Liste übergeben bekommen.
- * @param {Array} [teamList=getActiveTeams()] Optionale Liste von Teams.
- * @returns {Map<string, Object>} Eine Map mit localId als Schlüssel und Teamobjekt als Wert.
- */
-export function createTeamMap(teamList = getActiveTeams()) {
-    return new Map(teamList.map(t => [t.localId, t]));
-}
-
-// --- Ende NEUE Hilfsfunktionen ---
