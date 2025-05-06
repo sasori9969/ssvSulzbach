@@ -325,6 +325,12 @@
             const doc = new jsPDF();
             const table = document.getElementById(tableId);
 
+            // NEU: Aktuelle Uhrzeit für den Zeitstempel
+            const now = new Date();
+            const timeString = now.toLocaleTimeString("de-DE", { hour: '2-digit', minute: '2-digit' });
+            // Optional: Datum hinzufügen: const dateTimeString = now.toLocaleString("de-DE", { dateStyle: 'short', timeStyle: 'short' });
+            const standText = `Stand: ${timeString} Uhr`;
+
             // Prüfen, ob die Tabelle existiert und Zeilen hat
             if (!table) {
               throw new Error(`Tabelle mit ID "${tableId}" nicht gefunden.`);
@@ -342,6 +348,12 @@
             }
 
             doc.text(title, 14, 15); // Titel etwas eingerückt
+
+            // NEU: Zeitstempel oben rechts hinzufügen
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const textWidth = doc.getTextWidth(standText); // Breite des Textes ermitteln
+            const marginRight = 14; // Rechter Rand
+            doc.text(standText, pageWidth - marginRight, 15, { align: 'right' });
 
             // autoTable direkt auf das HTML-Element anwenden (einfacher)
             doc.autoTable({
