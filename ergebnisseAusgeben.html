@@ -42,6 +42,9 @@
             <button id="pdfEinzelButton" class="btn btn-primary">
               PDF erstellen
             </button>
+            <button id="csvEinzelButton" class="btn btn-secondary" style="margin-left: 10px;">
+              CSV Export
+            </button>
             <table id="einzelErgebnisseTabelle">
               <thead>
                 <tr>
@@ -58,6 +61,9 @@
             <h2>Mannschaftsergebnisse (Lokal)</h2>
             <button id="pdfTeamButton" class="btn btn-primary">
               PDF erstellen
+            </button>
+            <button id="csvTeamButton" class="btn btn-secondary" style="margin-left: 10px;">
+              CSV Export
             </button>
             <table id="teamErgebnisseTabelle">
               <thead>
@@ -207,6 +213,105 @@
         });
       }
 
+      // --- NEU: CSV Export Funktionen ---
+
+      /**
+       * Bereitet die Daten für den Export vor (Einzel oder Team).
+       * @param {'einzel' | 'team'} dataType Der Typ der zu exportierenden Daten.
+       * @returns {Array<Object>} Ein Array von Objekten mit Platz, Name und Ergebnis.
+       */
+      function prepareDataForExport(dataType) {
+        // 1. Lade alle benötigten *aktiven* Daten
+        const aktiveTeilnehmer = getActiveTeilnehmer();
+        const aktiveTeams = getActiveTeams();
+        const aktiveErgebnisse = getActiveErgebnisse();
+
+        // 2. Maps für schnellen Zugriff erstellen
+        const teilnehmerMap = createTeilnehmerMap(aktiveTeilnehmer);
+        const teamMap = createTeamMap(aktiveTeams);
+
+        let rawResults = {};
+
+        if (dataType === 'einzel') {
+          aktiveErgebnisse.forEach((ergebnis) => {
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
+            if (teilnehmer) {
+              const currentBest = rawResults[ergebnis.teilnehmerLocalId]?.ergebnis ?? -1;
+              const ergebnisWert = parseInt(ergebnis.ringzahl) || 0;
+              if (ergebnisWert > currentBest) {
+                rawResults[ergebnis.teilnehmerLocalId] = {
+                  name: `${teilnehmer.vorname || ""} ${teilnehmer.name || ""}`.trim(),
+                  ergebnis: ergebnisWert,
+                };
+              }
+            }
+          });
+        } else if (dataType === 'team') {
+          aktiveErgebnisse.forEach((ergebnis) => {
+            const team = teamMap.get(ergebnis.teamLocalId);
+            const teilnehmer = teilnehmerMap.get(ergebnis.teilnehmerLocalId);
+            if (team && teilnehmer) {
+              if (!rawResults[ergebnis.teamLocalId]) {
+                rawResults[ergebnis.teamLocalId] = {
+                  name: team.teamname || "Unbenanntes Team",
+                  ergebnis: 0,
+                };
+              }
+              rawResults[ergebnis.teamLocalId].ergebnis += parseInt(ergebnis.ringzahl) || 0;
+            }
+          });
+        }
+
+        // In sortiertes Array mit Platzierung umwandeln
+        const sortedData = Object.values(rawResults) // Array von {name, ergebnis} Objekten
+          .sort((a, b) => b.ergebnis - a.ergebnis)
+          .map((item, index) => ({
+            platz: index + 1,
+            name: item.name,
+            ergebnis: item.ergebnis,
+          }));
+        return sortedData;
+      }
+
+      function escapeCSVField(field) {
+        if (field === null || field === undefined) return '';
+        let stringField = String(field);
+        // Wenn das Feld ein Komma, Anführungszeichen oder einen Zeilenumbruch enthält,
+        // muss es in Anführungszeichen gesetzt und interne Anführungszeichen verdoppelt werden.
+        if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+          stringField = '"' + stringField.replace(/"/g, '""') + '"';
+        }
+        return stringField;
+      }
+
+      function convertToCSV(dataArray, headers) {
+        const headerRow = headers.map(escapeCSVField).join(',');
+        const dataRows = dataArray.map(row => {
+          // Stellt sicher, dass die Reihenfolge der Spalten den Headern entspricht
+          return [
+            escapeCSVField(row.platz),
+            escapeCSVField(row.name),
+            escapeCSVField(row.ergebnis)
+          ].join(',');
+        });
+        return [headerRow, ...dataRows].join('\n');
+      }
+
+      function downloadCSV(csvContent, filename) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) { // Feature detection
+          const url = URL.createObjectURL(blob);
+          link.setAttribute("href", url);
+          link.setAttribute("download", filename);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
+      // --- Ende NEU: CSV Export Funktionen ---
+
       // --- Initialisierung und PDF-Funktionen (unverändert) ---
       document.addEventListener("DOMContentLoaded", function () {
         // PDF-Generierungsfunktion (bleibt gleich, da sie die HTML-Tabelle liest)
@@ -266,6 +371,24 @@
           .addEventListener("click", () => {
             generatePDF("teamErgebnisseTabelle", "Mannschaftsergebnisse");
           });
+
+        // --- NEU: Event Listener für CSV Export ---
+        document.getElementById("csvEinzelButton").addEventListener("click", () => {
+            const data = prepareDataForExport('einzel');
+            if (data.length === 0) {
+                alert("Keine Einzelergebnisse zum Exportieren vorhanden."); return;
+            }
+            const csv = convertToCSV(data, ['Platz', 'Name', 'Bestes Ergebnis']);
+            downloadCSV(csv, 'Einzelergebnisse_Lokal.csv');
+        });
+        document.getElementById("csvTeamButton").addEventListener("click", () => {
+            const data = prepareDataForExport('team');
+            if (data.length === 0) {
+                alert("Keine Mannschaftsergebnisse zum Exportieren vorhanden."); return;
+            }
+            const csv = convertToCSV(data, ['Platz', 'Team', 'Gesamtergebnis']);
+            downloadCSV(csv, 'Mannschaftsergebnisse_Lokal.csv');
+        });
 
         // Daten aus Local Storage laden und anzeigen
         loadAndDisplayLocalData();
