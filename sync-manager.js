@@ -417,9 +417,15 @@ export async function synchronizeAllData(showStatus = true) {
         [WETTKAMPF_KEY]: [] // Nicht benötigt für Wettkampf
     };
 
+    let teilnehmerChanges = false; // Wird hier deklariert, um im Scope zu sein
+    let teamChanges = false;
+    let ergebnisChanges = false;
+    // let scheibenChanges = false; // Für den Fall, dass SCHEIBEN_KEY wieder aktiv wird
+
     try {
         // --- 1. Teilnehmer synchronisieren ---
-        const { itemsToFinalize: teilnehmerToFinalize, idsToDeleteLocally: teilnehmerToDelete, changesDetected: teilnehmerChanges } = await syncTeilnehmer(batch);
+        const { itemsToFinalize: teilnehmerToFinalize, idsToDeleteLocally: teilnehmerToDelete, changesDetected: tc } = await syncTeilnehmer(batch);
+        teilnehmerChanges = tc; // Wert zuweisen
         if (teilnehmerChanges) anyChangesMade = true;
         allItemsToFinalize[TEILNEHMER_KEY] = teilnehmerToFinalize;
         allIdsToDeleteLocally[TEILNEHMER_KEY] = teilnehmerToDelete;
@@ -443,7 +449,8 @@ export async function synchronizeAllData(showStatus = true) {
 
 
         // --- 2. Teams synchronisieren ---
-        const { itemsToFinalize: teamsToFinalize, idsToDeleteLocally: teamsToDelete, changesDetected: teamChanges } = await syncTeams(batch, teilnehmerIdMap);
+        const { itemsToFinalize: teamsToFinalize, idsToDeleteLocally: teamsToDelete, changesDetected: tmc } = await syncTeams(batch, teilnehmerIdMap);
+        teamChanges = tmc; // Wert zuweisen
         if (teamChanges) anyChangesMade = true;
         allItemsToFinalize[TEAMS_KEY] = teamsToFinalize;
         allIdsToDeleteLocally[TEAMS_KEY] = teamsToDelete; // teamsToDelete enthält die localIds der zu löschenden Teams
@@ -464,14 +471,16 @@ export async function synchronizeAllData(showStatus = true) {
         );
 
         // --- 3. Ergebnisse synchronisieren ---
-        const { itemsToFinalize: ergebnisseToFinalize, idsToDeleteLocally: ergebnisseToDelete, changesDetected: ergebnisChanges } = await syncErgebnisse(batch, teilnehmerIdMap, teamIdMap);
+        const { itemsToFinalize: ergebnisseToFinalize, idsToDeleteLocally: ergebnisseToDelete, changesDetected: ec } = await syncErgebnisse(batch, teilnehmerIdMap, teamIdMap);
+        ergebnisChanges = ec; // Wert zuweisen
         if (ergebnisChanges) anyChangesMade = true;
         allItemsToFinalize[ERGEBNISSE_KEY] = ergebnisseToFinalize;
         allIdsToDeleteLocally[ERGEBNISSE_KEY] = ergebnisseToDelete;
 
         // --- 4. Scheiben synchronisieren (AUSKOMMENTIERT) ---
         /*
-        const { itemsToFinalize: scheibenToFinalize, idsToDeleteLocally: scheibenToDelete, changesDetected: scheibenChanges } = await syncScheiben(batch, teilnehmerIdMap);
+        const { itemsToFinalize: scheibenToFinalize, idsToDeleteLocally: scheibenToDelete, changesDetected: sc } = await syncScheiben(batch, teilnehmerIdMap);
+        scheibenChanges = sc;
         if (scheibenChanges) anyChangesMade = true;
         allItemsToFinalize[SCHEIBEN_KEY] = scheibenToFinalize;
         allIdsToDeleteLocally[SCHEIBEN_KEY] = scheibenToDelete;
@@ -497,17 +506,28 @@ export async function synchronizeAllData(showStatus = true) {
             await batch.commit();
             displayStatus("Batch-Änderungen erfolgreich gesendet.", 'info');
 
-            // --- 7. Lokale Daten finalisieren (Status 'synced' setzen, Gelöschte entfernen) ---
+            // --- 8. Lokale Daten finalisieren (Status 'synced' setzen, Gelöschte entfernen) ---
             let localSaveSuccess = true;
 
             // Finalisiere Teilnehmer, Teams, Ergebnisse
             for (const key of [TEILNEHMER_KEY, TEAMS_KEY, ERGEBNISSE_KEY /*, SCHEIBEN_KEY*/]) { // Scheiben auskommentiert
                 const itemsToUpdate = allItemsToFinalize[key];
-                const idsToRemove = allIdsToDeleteLocally[key];
+                // const idsToRemove = allIdsToDeleteLocally[key]; // idsToRemove wird in finalizeLocalItems nicht direkt benötigt, da es alle 'deleted' Items verarbeitet
 
-                // Zuerst Status aktualisieren
-                if (itemsToUpdate && itemsToUpdate.length > 0) {
-                    if (!finalizeLocalItems(key, itemsToUpdate)) {
+                // Prüfen, ob für diesen Key überhaupt Änderungen (neue, modifizierte oder gelöschte)
+                // während des Sync-Vorgangs verarbeitet wurden.
+                let keySpecificChangesMade = false;
+                if (key === TEILNEHMER_KEY) keySpecificChangesMade = teilnehmerChanges;
+                else if (key === TEAMS_KEY) keySpecificChangesMade = teamChanges;
+                else if (key === ERGEBNISSE_KEY) keySpecificChangesMade = ergebnisChanges;
+                // Falls SCHEIBEN_KEY wieder verwendet wird, hier ergänzen:
+                // else if (key === SCHEIBEN_KEY) keySpecificChangesMade = scheibenChanges;
+
+                // Rufe finalizeLocalItems auf, wenn für diesen Key Änderungen verarbeitet wurden.
+                // finalizeLocalItems kümmert sich sowohl um das Aktualisieren von 'new'/'modified'-Items
+                // als auch um das Entfernen von 'deleted'-Items aus dem Local Storage.
+                if (keySpecificChangesMade) {
+                    if (!finalizeLocalItems(key, itemsToUpdate)) { // itemsToUpdate enthält die {localId, firestoreId} Paare für 'new'/'modified'
                         localSaveSuccess = false;
                         syncErrors.push(`Fehler beim Finalisieren von ${key}.`);
                     }
