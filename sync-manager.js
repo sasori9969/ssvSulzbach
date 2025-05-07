@@ -15,7 +15,7 @@ import {
     getLocalData,
     setLocalData,
     finalizeLocalItems,
-    removeDeletedLocalItems, // Hinzugefügt für das Entfernen nach Sync
+   // removeDeletedLocalItems, // Hinzugefügt für das Entfernen nach Sync
     TEILNEHMER_KEY,
     TEAMS_KEY,
     ERGEBNISSE_KEY,
