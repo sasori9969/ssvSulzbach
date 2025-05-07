@@ -15,7 +15,6 @@ import {
     getLocalData,
     setLocalData,
     finalizeLocalItems,
-   // removeDeletedLocalItems, // Hinzugefügt für das Entfernen nach Sync
     TEILNEHMER_KEY,
     TEAMS_KEY,
     ERGEBNISSE_KEY,
@@ -512,13 +511,6 @@ export async function synchronizeAllData(showStatus = true) {
                         localSaveSuccess = false;
                         syncErrors.push(`Fehler beim Finalisieren von ${key}.`);
                     }
-                }
-                // Dann Gelöschte entfernen
-                if (idsToRemove && idsToRemove.length > 0) {
-                     if (!removeDeletedLocalItems(key, idsToRemove)) {
-                         localSaveSuccess = false;
-                         syncErrors.push(`Fehler beim lokalen Löschen von ${key}.`);
-                     }
                 }
             }
 
