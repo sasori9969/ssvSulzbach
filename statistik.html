@@ -100,6 +100,40 @@
         </div>
 
         <div class="statistik-section">
+          <h3>Teilnehmer ohne jegliche Ergebnisse</h3>
+          <table id="teilnehmerOhneErgebnisseTable" class="statistik-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Lade...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="statistik-section">
+          <h3>Teams mit Abweichungen/fehlenden Ergebnissen</h3>
+          <table id="teamsMitAbweichungenTable" class="statistik-table">
+            <thead>
+              <tr>
+                <th>Teamname</th>
+                <th>Art der Abweichung</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="3">Lade...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="statistik-section">
           <h3>Gesamtleistung</h3>
           <p>
             Gesamt erzielte Ringzahl:
@@ -139,6 +173,12 @@
       const durchschnittTeamErgebnisseTableBody = document.querySelector(
         "#durchschnittTeamErgebnisseTable tbody"
       );
+      const teilnehmerOhneErgebnisseTableBody = document.querySelector(
+        "#teilnehmerOhneErgebnisseTable tbody"
+      );
+      const teamsMitAbweichungenTableBody = document.querySelector(
+        "#teamsMitAbweichungenTable tbody"
+      );
       const gesamtRingzahlSpan = document.getElementById("gesamtRingzahl"); // NEU
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const statusMeldung = document.getElementById("statusMeldung");
@@ -157,6 +197,10 @@
         besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
         durchschnittTeamErgebnisseTableBody.innerHTML =
           '<tr><td colspan="2">Lade...</td></tr>';
+        teilnehmerOhneErgebnisseTableBody.innerHTML =
+          '<tr><td>Lade...</td></tr>';
+        teamsMitAbweichungenTableBody.innerHTML =
+          '<tr><td colspan="3">Lade...</td></tr>';
         gesamtRingzahlSpan.textContent = "Lade..."; // NEU
 
         try {
@@ -228,10 +272,56 @@
           });
           gesamtRingzahlSpan.textContent = gesamtRingzahl;
 
-          // 7. Zeige Statistiken an
+          // 7. Identifiziere Teilnehmer ohne jegliche Ergebnisse
+          const teilnehmerMitErgebnissenIds = new Set(
+            aktiveErgebnisse.map((e) => e.teilnehmerLocalId)
+          );
+          const teilnehmerOhneErgebnisse = aktiveTeilnehmer.filter(
+            (t) => !teilnehmerMitErgebnissenIds.has(t.localId)
+          );
+
+          // 8. Identifiziere Teams mit Abweichungen
+          const teamsMitAbweichungen = [];
+          aktiveTeams.forEach((team) => {
+            const aktiveMitgliederDesTeams = (team.mitglieder || []).filter(
+              (memberId) => teilnehmerMap.has(memberId)
+            );
+            const anzahlAktiveMitglieder = aktiveMitgliederDesTeams.length;
+
+            if (anzahlAktiveMitglieder !== 3) {
+              teamsMitAbweichungen.push({
+                teamName: team.teamname || "Unbenanntes Team",
+                art: "Mitgliederzahl",
+                details: `Hat ${anzahlAktiveMitglieder} von 3 erwarteten aktiven Mitgliedern.`,
+              });
+            }
+
+            // Prüfe Ergebnisse für jedes aktive Mitglied dieses Teams
+            aktiveMitgliederDesTeams.forEach((memberId) => {
+              const teilnehmer = teilnehmerMap.get(memberId);
+              const hatErgebnisFürTeam = aktiveErgebnisse.some(
+                (ergebnis) =>
+                  ergebnis.teilnehmerLocalId === memberId &&
+                  ergebnis.teamLocalId === team.localId
+              );
+              if (!hatErgebnisFürTeam && teilnehmer) {
+                teamsMitAbweichungen.push({
+                  teamName: team.teamname || "Unbenanntes Team",
+                  art: "Fehlendes Ergebnis",
+                  details: `Aktives Mitglied "${
+                    teilnehmer.vorname || ""
+                  } ${teilnehmer.name || ""}" hat kein Ergebnis für dieses Team.`,
+                });
+              }
+            });
+          });
+
+          // 9. Zeige Statistiken an
           displayBesteSchuetzen(einzelErgebnisse);
           displayBesteTeams(teamErgebnisse);
           displayTeamAverages(teamErgebnisse); // Nutzt die bereits berechneten teamErgebnisse
+          displayTeilnehmerOhneErgebnisse(teilnehmerOhneErgebnisse);
+          displayTeamsMitAbweichungen(teamsMitAbweichungen);
         } catch (error) {
           console.error(
             "Fehler beim Laden oder Verarbeiten der lokalen Statistikdaten:",
@@ -249,13 +339,15 @@
             '<tr><td colspan="2">Fehler beim Laden</td></tr>';
           durchschnittTeamErgebnisseTableBody.innerHTML =
             '<tr><td colspan="2">Fehler beim Laden</td></tr>';
+          teilnehmerOhneErgebnisseTableBody.innerHTML =
+            '<tr><td>Fehler beim Laden</td></tr>';
+          teamsMitAbweichungenTableBody.innerHTML =
+            '<tr><td colspan="3">Fehler beim Laden</td></tr>';
           gesamtRingzahlSpan.textContent = "Fehler"; // NEU
         } finally {
           zeigeLoader(false);
         }
       }
-
-      // --- Anzeige-Funktionen (unverändert) ---
 
       function displayBesteSchuetzen(einzelErgebnisse) {
         besteSchuetzenTableBody.innerHTML = ""; // Leeren
@@ -325,6 +417,44 @@
             result.name
           }</td><td>${result.durchschnitt.toFixed(2)}</td>`;
           durchschnittTeamErgebnisseTableBody.appendChild(row);
+        });
+      }
+
+      function displayTeilnehmerOhneErgebnisse(teilnehmerArray) {
+        teilnehmerOhneErgebnisseTableBody.innerHTML = ""; // Leeren
+        if (teilnehmerArray.length === 0) {
+          teilnehmerOhneErgebnisseTableBody.innerHTML =
+            '<tr><td>Alle aktiven Teilnehmer haben Ergebnisse.</td></tr>';
+          return;
+        }
+        teilnehmerArray.forEach((teilnehmer) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${teilnehmer.vorname || ""} ${
+            teilnehmer.name || ""
+          }</td>`;
+          teilnehmerOhneErgebnisseTableBody.appendChild(row);
+        });
+      }
+
+      function displayTeamsMitAbweichungen(abweichungenArray) {
+        teamsMitAbweichungenTableBody.innerHTML = ""; // Leeren
+        if (abweichungenArray.length === 0) {
+          teamsMitAbweichungenTableBody.innerHTML =
+            '<tr><td colspan="3">Keine Abweichungen bei Teams gefunden (basierend auf aktiven Mitgliedern und deren Ergebnissen für das Team).</td></tr>';
+          return;
+        }
+        abweichungenArray.forEach((abweichung) => {
+          const row = document.createElement("tr");
+          const teamNameCell = document.createElement("td");
+          teamNameCell.textContent = abweichung.teamName;
+          const artCell = document.createElement("td");
+          artCell.textContent = abweichung.art;
+          const detailsCell = document.createElement("td");
+          detailsCell.textContent = abweichung.details;
+          row.appendChild(teamNameCell);
+          row.appendChild(artCell);
+          row.appendChild(detailsCell);
+          teamsMitAbweichungenTableBody.appendChild(row);
         });
       }
 
