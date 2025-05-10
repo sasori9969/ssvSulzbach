@@ -143,6 +143,10 @@
             Durchschnittliches Ergebnis:
             <span id="durchschnittsRingzahl" class="statistik-value">0</span>
           </p>
+          <p>
+            Durchschnittliche Ringzahl (pro Serie á 20 Schuss):
+            <span id="durchschnittlicheRingzahlProSerie" class="statistik-value">0</span>
+          </p>
         </div>
       </main>
     </div>
@@ -187,6 +191,9 @@
       const durchschnittsRingzahlSpan = document.getElementById(
         "durchschnittsRingzahl"
       ); // NEU
+      const durchschnittlicheRingzahlProSerieSpan = document.getElementById(
+        "durchschnittlicheRingzahlProSerie"
+      ); // NEU
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const statusMeldung = document.getElementById("statusMeldung");
 
@@ -210,6 +217,7 @@
           '<tr><td colspan="3">Lade...</td></tr>';
         gesamtRingzahlSpan.textContent = "Lade..."; // NEU
         durchschnittsRingzahlSpan.textContent = "Lade..."; // NEU
+        durchschnittlicheRingzahlProSerieSpan.textContent = "Lade..."; // NEU
 
         try {
           // 1. Lade alle benötigten *aktiven* Daten mit den neuen Hilfsfunktionen
@@ -281,10 +289,19 @@
           gesamtRingzahlSpan.textContent = gesamtRingzahl;
 
           // NEU: Durchschnittsringzahl berechnen und anzeigen
+          let durchschnittsRingzahlNumerisch = NaN;
           if (aktiveErgebnisse.length > 0) {
-            durchschnittsRingzahlSpan.textContent = (gesamtRingzahl / aktiveErgebnisse.length).toFixed(2);
+            durchschnittsRingzahlNumerisch = gesamtRingzahl / aktiveErgebnisse.length;
+            durchschnittsRingzahlSpan.textContent = durchschnittsRingzahlNumerisch.toFixed(2);
           } else {
             durchschnittsRingzahlSpan.textContent = "N/A";
+          }
+
+          // NEU: Durchschnittliche Ringzahl pro Serie (geteilt durch 20)
+          if (!isNaN(durchschnittsRingzahlNumerisch)) {
+            durchschnittlicheRingzahlProSerieSpan.textContent = (durchschnittsRingzahlNumerisch / 20).toFixed(2);
+          } else {
+            durchschnittlicheRingzahlProSerieSpan.textContent = "N/A";
           }
 
           // 7. Identifiziere Teilnehmer ohne jegliche Ergebnisse
@@ -360,6 +377,7 @@
             '<tr><td colspan="3">Fehler beim Laden</td></tr>';
           gesamtRingzahlSpan.textContent = "Fehler"; // NEU
           durchschnittsRingzahlSpan.textContent = "Fehler"; // NEU
+          durchschnittlicheRingzahlProSerieSpan.textContent = "Fehler"; // NEU
         } finally {
           zeigeLoader(false);
         }
