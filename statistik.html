@@ -98,6 +98,14 @@
             </tbody>
           </table>
         </div>
+
+        <div class="statistik-section">
+          <h3>Gesamtleistung</h3>
+          <p>
+            Gesamt erzielte Ringzahl:
+            <span id="gesamtRingzahl" class="statistik-value">0</span>
+          </p>
+        </div>
       </main>
     </div>
 
@@ -131,6 +139,7 @@
       const durchschnittTeamErgebnisseTableBody = document.querySelector(
         "#durchschnittTeamErgebnisseTable tbody"
       );
+      const gesamtRingzahlSpan = document.getElementById("gesamtRingzahl"); // NEU
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const statusMeldung = document.getElementById("statusMeldung");
 
@@ -148,6 +157,7 @@
         besteTeamsTableBody.innerHTML = '<tr><td colspan="2">Lade...</td></tr>';
         durchschnittTeamErgebnisseTableBody.innerHTML =
           '<tr><td colspan="2">Lade...</td></tr>';
+        gesamtRingzahlSpan.textContent = "Lade..."; // NEU
 
         try {
           // 1. Lade alle benötigten *aktiven* Daten mit den neuen Hilfsfunktionen
@@ -211,7 +221,14 @@
             }
           });
 
-          // 6. Zeige Statistiken an
+          // 6. Berechne die Gesamtringzahl aller Ergebnisse
+          let gesamtRingzahl = 0;
+          aktiveErgebnisse.forEach((ergebnis) => {
+            gesamtRingzahl += parseInt(ergebnis.ringzahl) || 0;
+          });
+          gesamtRingzahlSpan.textContent = gesamtRingzahl;
+
+          // 7. Zeige Statistiken an
           displayBesteSchuetzen(einzelErgebnisse);
           displayBesteTeams(teamErgebnisse);
           displayTeamAverages(teamErgebnisse); // Nutzt die bereits berechneten teamErgebnisse
@@ -232,6 +249,7 @@
             '<tr><td colspan="2">Fehler beim Laden</td></tr>';
           durchschnittTeamErgebnisseTableBody.innerHTML =
             '<tr><td colspan="2">Fehler beim Laden</td></tr>';
+          gesamtRingzahlSpan.textContent = "Fehler"; // NEU
         } finally {
           zeigeLoader(false);
         }
