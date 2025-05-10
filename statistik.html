@@ -139,6 +139,10 @@
             Gesamt erzielte Ringzahl:
             <span id="gesamtRingzahl" class="statistik-value">0</span>
           </p>
+          <p>
+            Durchschnittliches Ergebnis:
+            <span id="durchschnittsRingzahl" class="statistik-value">0</span>
+          </p>
         </div>
       </main>
     </div>
@@ -180,6 +184,9 @@
         "#teamsMitAbweichungenTable tbody"
       );
       const gesamtRingzahlSpan = document.getElementById("gesamtRingzahl"); // NEU
+      const durchschnittsRingzahlSpan = document.getElementById(
+        "durchschnittsRingzahl"
+      ); // NEU
       const ladeAnzeige = document.getElementById("ladeAnzeige");
       const statusMeldung = document.getElementById("statusMeldung");
 
@@ -202,6 +209,7 @@
         teamsMitAbweichungenTableBody.innerHTML =
           '<tr><td colspan="3">Lade...</td></tr>';
         gesamtRingzahlSpan.textContent = "Lade..."; // NEU
+        durchschnittsRingzahlSpan.textContent = "Lade..."; // NEU
 
         try {
           // 1. Lade alle benötigten *aktiven* Daten mit den neuen Hilfsfunktionen
@@ -271,6 +279,13 @@
             gesamtRingzahl += parseInt(ergebnis.ringzahl) || 0;
           });
           gesamtRingzahlSpan.textContent = gesamtRingzahl;
+
+          // NEU: Durchschnittsringzahl berechnen und anzeigen
+          if (aktiveErgebnisse.length > 0) {
+            durchschnittsRingzahlSpan.textContent = (gesamtRingzahl / aktiveErgebnisse.length).toFixed(2);
+          } else {
+            durchschnittsRingzahlSpan.textContent = "N/A";
+          }
 
           // 7. Identifiziere Teilnehmer ohne jegliche Ergebnisse
           const teilnehmerMitErgebnissenIds = new Set(
@@ -344,6 +359,7 @@
           teamsMitAbweichungenTableBody.innerHTML =
             '<tr><td colspan="3">Fehler beim Laden</td></tr>';
           gesamtRingzahlSpan.textContent = "Fehler"; // NEU
+          durchschnittsRingzahlSpan.textContent = "Fehler"; // NEU
         } finally {
           zeigeLoader(false);
         }
