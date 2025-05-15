@@ -276,6 +276,7 @@
       });
 
       // --- Funktion zum Wiederherstellen aus Firebase ---
+      // *** ANGEPASSTE VERSION MIT KORREKTER localId UND FELDNAMEN-MAPPING ***
       async function restoreLocalStorageFromFirebase() {
           console.log("restoreLocalStorageFromFirebase gestartet.");
           setButtonsDisabled(true);
@@ -283,74 +284,141 @@
           zeigeStatus("Starte Wiederherstellung aus Firebase...", "info", statusMeldung);
 
           try {
-              // Lade den aktuellen Stand der lokalen Daten
-              const localTeilnehmer = getLocalData(TEILNEHMER_KEY) || [];
-              const localTeams = getLocalData(TEAMS_KEY) || [];
-              const localErgebnisse = getLocalData(ERGEBNISSE_KEY) || [];
-              const localPaymentStatus = getLocalData(PAYMENT_STATUS_KEY) || {};
+              // Helper function to map Firebase doc to local object, preserving localId and mapping fields
+              const mapFirebaseDocToLocal = (doc, collectionName) => { // NEU: collectionName hinzugefügt
+                  const data = doc.data();
+                  const localId = data.localId || doc.id; // Nimm die gespeicherte localId, wenn vorhanden!
 
-              // Helper-Funktion, um nur neue oder geänderte Daten zu identifizieren
-              const filterDelta = (firebaseData, localData, keyField = "localId") => {
-                  const localDataMap = new Map(localData.map(item => [item[keyField], item]));
-                  return firebaseData.filter(firebaseItem => {
-                      const localItem = localDataMap.get(firebaseItem[keyField]);
-                      return !localItem || JSON.stringify(localItem) !== JSON.stringify(firebaseItem);
-                  });
+                  // Basisdaten
+                  const finalData = {
+                      firestoreId: doc.id,
+                      ...data, // Kopiere alle Felder aus Firebase
+                      localId: localId, // Stelle sicher, dass localId gesetzt ist
+                      _syncStatus: 'synced' // Setze Status auf synchronisiert
+                  };
+
+                  // *** NEU: Spezifisches Mapping für Ergebnisse ***
+                  if (collectionName === ERGEBNISSE_KEY) {
+                      // Benenne 'teilnehmerId' um zu 'teilnehmerLocalId', falls vorhanden
+                      if (data.teilnehmerId !== undefined) {
+                          finalData.teilnehmerLocalId = data.teilnehmerId;
+                          delete finalData.teilnehmerId; // Entferne das alte Feld
+                      }
+                      // Benenne 'teamId' um zu 'teamLocalId', falls vorhanden
+                      if (data.teamId !== undefined) {
+                          finalData.teamLocalId = data.teamId;
+                          delete finalData.teamId; // Entferne das alte Feld
+                      }
+                      // Stelle sicher, dass ringzahl eine Zahl ist (falls es als String gespeichert wurde)
+                      if (typeof finalData.ringzahl === 'string') {
+                          finalData.ringzahl = parseInt(finalData.ringzahl, 10);
+                          if (isNaN(finalData.ringzahl)) {
+                              finalData.ringzahl = 0; // Fallback, falls Konvertierung fehlschlägt
+                          }
+                      } else if (typeof finalData.ringzahl !== 'number') {
+                           finalData.ringzahl = 0; // Fallback, falls kein String oder Zahl
+                      }
+
+                      // --- NEU: Timestamp zu createdAt mappen ---
+                      if (data.timestamp) {
+                          // Prüfen, ob es ein Firestore Timestamp-Objekt ist
+                          if (data.timestamp.toDate && typeof data.timestamp.toDate === 'function') {
+                              finalData.createdAt = data.timestamp.toDate().toISOString();
+                          }
+                          // Prüfen, ob es bereits ein String ist (z.B. von älteren Daten oder direkt als ISO gespeichert)
+                          else if (typeof data.timestamp === 'string') {
+                              // Versuche, es als Datum zu parsen, um sicherzustellen, dass es gültig ist
+                              try {
+                                  const parsedDate = new Date(data.timestamp);
+                                  if (!isNaN(parsedDate)) {
+                                      finalData.createdAt = parsedDate.toISOString();
+                                  } else {
+                                      console.warn(`Ungültiger Timestamp-String in Ergebnis ${doc.id}:`, data.timestamp);
+                                      finalData.createdAt = new Date().toISOString(); // Fallback
+                                  }
+                              } catch (e) {
+                                  console.warn(`Fehler beim Parsen des Timestamp-Strings in Ergebnis ${doc.id}:`, data.timestamp, e);
+                                  finalData.createdAt = new Date().toISOString(); // Fallback
+                              }
+                          }
+                          // Prüfen, ob es eine Zahl ist (Millisekunden seit Epoche)
+                          else if (typeof data.timestamp === 'number') {
+                               finalData.createdAt = new Date(data.timestamp).toISOString();
+                          }
+                          // Optional: Fallback oder Warnung, wenn das Format unbekannt ist
+                          else {
+                              console.warn(`Unbekanntes Format für timestamp in Ergebnis ${doc.id}:`, data.timestamp);
+                              finalData.createdAt = new Date().toISOString(); // Fallback auf jetzt? Oder null?
+                          }
+                          delete finalData.timestamp; // Entferne das alte Feld 'timestamp'
+                      } else {
+                          // Fallback, wenn kein Timestamp in Firebase vorhanden ist
+                          finalData.createdAt = null; // Oder new Date().toISOString() wenn ein Datum immer da sein soll
+                          console.warn(`Kein Timestamp-Feld in Firebase-Dokument ${doc.id} gefunden.`);
+                      }
+                      // --- Ende NEU ---
+                  }
+                  // Hier könnten Mappings für andere Collections hinzugefügt werden, falls nötig
+                  // z.B. für Teams oder Teilnehmer, falls dort auch Felder umbenannt werden müssen.
+
+                  // Entferne ggf. das Feld 'id', falls es aus Firebase kommt und stört
+                  // delete finalData.id;
+
+                  return finalData;
               };
 
-              // 1. Teilnehmer aus Firebase laden und Delta ermitteln
+
+              // 1. Alle relevanten Collections aus Firebase holen
               zeigeStatus("Lade Teilnehmer aus Firebase...", "info", statusMeldung);
               const teilnehmerSnap = await getDocs(collection(db, "teilnehmer"));
-              const firebaseTeilnehmer = teilnehmerSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEILNEHMER_KEY));
-              const deltaTeilnehmer = filterDelta(firebaseTeilnehmer, localTeilnehmer);
-              console.log(`Teilnehmer: ${deltaTeilnehmer.length} Änderungen gefunden.`);
+              const teilnehmerData = teilnehmerSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEILNEHMER_KEY));
+              console.log(`Teilnehmer geladen: ${teilnehmerData.length} Einträge.`);
 
-              // 2. Teams aus Firebase laden und Delta ermitteln
               zeigeStatus("Lade Teams aus Firebase...", "info", statusMeldung);
               const teamsSnap = await getDocs(collection(db, "teams"));
-              const firebaseTeams = teamsSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEAMS_KEY));
-              const deltaTeams = filterDelta(firebaseTeams, localTeams);
-              console.log(`Teams: ${deltaTeams.length} Änderungen gefunden.`);
+              const teamsData = teamsSnap.docs.map(doc => mapFirebaseDocToLocal(doc, TEAMS_KEY));
+              console.log(`Teams geladen: ${teamsData.length} Einträge.`);
 
-              // 3. Ergebnisse aus Firebase laden und Delta ermitteln
               zeigeStatus("Lade Ergebnisse aus Firebase...", "info", statusMeldung);
               const ergebnisseSnap = await getDocs(collection(db, "ergebnisse"));
-              const firebaseErgebnisse = ergebnisseSnap.docs.map(doc => mapFirebaseDocToLocal(doc, ERGEBNISSE_KEY));
-              const deltaErgebnisse = filterDelta(firebaseErgebnisse, localErgebnisse);
-              console.log(`Ergebnisse: ${deltaErgebnisse.length} Änderungen gefunden.`);
+              const ergebnisseData = ergebnisseSnap.docs.map(doc => mapFirebaseDocToLocal(doc, ERGEBNISSE_KEY));
+              console.log(`Ergebnisse geladen: ${ergebnisseData.length} Einträge.`);
+              // Log zur Prüfung des Mappings
+              if (ergebnisseData.length > 0) {
+                  console.log("Erstes wiederhergestelltes Ergebnis (lokal):", JSON.stringify(ergebnisseData[0], null, 2));
+              }
 
-              // 4. Zahlungsstatus aus Firebase laden und Delta ermitteln
+
               zeigeStatus("Lade Zahlungsstatus aus Firebase...", "info", statusMeldung);
               const paymentSnap = await getDocs(collection(db, "paymentStatus"));
-              const firebasePaymentStatus = {};
+              const paymentData = {};
               paymentSnap.docs.forEach(doc => {
                   const data = doc.data();
-                  firebasePaymentStatus[doc.id] = {
+                  // Hier gehen wir davon aus, dass die ID des Dokuments die teamLocalId ist
+                  // und die Datenstruktur { basePaid: boolean, rebuys: number } hat.
+                  // Wenn paymentStatus auch eine localId hätte, müsste mapFirebaseDocToLocal verwendet werden.
+                  paymentData[doc.id] = {
                       ...data,
                       _syncStatus: 'synced'
                   };
               });
-              const deltaPaymentStatus = Object.keys(firebasePaymentStatus).filter(key => {
-                  return JSON.stringify(firebasePaymentStatus[key]) !== JSON.stringify(localPaymentStatus[key]);
-              });
-              console.log(`Zahlungsstatus: ${deltaPaymentStatus.length} Änderungen gefunden.`);
+              console.log(`Zahlungsstatus geladen für ${Object.keys(paymentData).length} Teams.`);
 
-              // 5. Nur die Deltas in den lokalen Speicher schreiben
-              zeigeStatus("Speichere Änderungen lokal...", "info", statusMeldung);
-              const updatedTeilnehmer = [...localTeilnehmer.filter(item => !deltaTeilnehmer.some(delta => delta.localId === item.localId)), ...deltaTeilnehmer];
-              const updatedTeams = [...localTeams.filter(item => !deltaTeams.some(delta => delta.localId === item.localId)), ...deltaTeams];
-              const updatedErgebnisse = [...localErgebnisse.filter(item => !deltaErgebnisse.some(delta => delta.localId === item.localId)), ...deltaErgebnisse];
-              const updatedPaymentStatus = { ...localPaymentStatus, ...deltaPaymentStatus.reduce((acc, key) => {
-                  acc[key] = firebasePaymentStatus[key];
-                  return acc;
-              }, {}) };
+              // Scheibendaten werden übersprungen
 
-              setLocalData(TEILNEHMER_KEY, updatedTeilnehmer);
-              setLocalData(TEAMS_KEY, updatedTeams);
-              setLocalData(ERGEBNISSE_KEY, updatedErgebnisse);
-              setLocalData(PAYMENT_STATUS_KEY, updatedPaymentStatus);
+              // 2. Lokalen Speicher überschreiben
+              zeigeStatus("Speichere Hauptdaten lokal...", "info", statusMeldung);
+              let success = true;
+              success = success && setLocalData(TEILNEHMER_KEY, teilnehmerData);
+              success = success && setLocalData(TEAMS_KEY, teamsData);
+              success = success && setLocalData(ERGEBNISSE_KEY, ergebnisseData);
+              success = success && setLocalData(PAYMENT_STATUS_KEY, paymentData);
 
-              // 6. Letzten Sync-Zeitpunkt aktualisieren
+              if (!success) {
+                  throw new Error("Fehler beim Schreiben der Hauptdaten in den lokalen Speicher während der Wiederherstellung.");
+              }
+
+              // 3. Letzten Sync-Zeitpunkt aktualisieren
               const now = new Date().toISOString();
               setLocalData(LAST_SYNC_KEY, now);
               displayLastSyncTime(now);
@@ -371,6 +439,8 @@
               console.log("restoreLocalStorageFromFirebase beendet (im finally Block).");
           }
       }
+
+
 
       // --- Initialisierung ---
       document.addEventListener("DOMContentLoaded", () => {

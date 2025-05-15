@@ -469,26 +469,6 @@
       speichernButton.addEventListener("click", speichereTeamLokal);
       teilnehmerSucheInput.addEventListener('input', filterTeilnehmerListe);
 
-      document.getElementById("saveAssignmentBtn").addEventListener("click", async () => {
-        const teamId = document.getElementById("teamSelect").value;
-        const newParticipants = Array.from(document.querySelectorAll(".participant-checkbox:checked"))
-            .map(checkbox => checkbox.value);
-
-        if (!teamId) {
-            alert("Bitte ein Team auswählen.");
-            return;
-        }
-
-        try {
-            // Backend-Funktion aufrufen, um Teilnehmer hinzuzufügen
-            await updateTeamParticipants(teamId, newParticipants);
-            alert("Teilnehmer erfolgreich zugeordnet.");
-        } catch (error) {
-            console.error("Fehler beim Speichern der Zuordnung:", error);
-            alert("Fehler beim Speichern der Zuordnung. Details siehe Konsole.");
-        }
-      });
-
       // --- Initialisierung ---
       window.addEventListener("DOMContentLoaded", () => {
         zeigeLoader(true);
