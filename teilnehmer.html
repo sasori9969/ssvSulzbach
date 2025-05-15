@@ -223,13 +223,30 @@
       // --- Initialisierung ---
       document.addEventListener("DOMContentLoaded", () => {
         displayTeilnehmerFromLocal(); // Beim Laden aus LocalStorage anzeigen
-
-        // GELÖSCHT: Interval-Logik für syncMitFirestore()
       });
 
       // --- KEIN onSnapshot mehr für die Hauptliste ---
       // Der alte onSnapshot-Code wurde entfernt. Die Liste wird nun durch
       // displayTeilnehmerFromLocal() gefüllt und aktualisiert.
+
+      // --- Listener für Datenänderungen ---
+      window.addEventListener("storage", (event) => {
+        if (event.key === TEILNEHMER_KEY) {
+          console.log(`LocalStorage geändert (${event.key}), lade Teilnehmerliste neu...`);
+          displayTeilnehmerFromLocal();
+        }
+      });
+
+      window.addEventListener("datasync-complete", (event) => {
+        // Nur neu laden, wenn sich Teilnehmerdaten geändert haben könnten und der Sync erfolgreich war
+        if (event.detail?.success && 
+            (event.detail?.changesMade || event.detail?.keysChanged?.includes(TEILNEHMER_KEY))) {
+          console.log("Datensynchronisation abgeschlossen, lade Teilnehmerliste neu...");
+          displayTeilnehmerFromLocal();
+        } else if (event.detail?.success) {
+          console.log("Datensynchronisation abgeschlossen, keine relevanten Änderungen für Teilnehmerliste.");
+        }
+      });
     </script>
   </body>
 </html>
