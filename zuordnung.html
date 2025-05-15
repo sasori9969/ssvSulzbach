@@ -197,6 +197,10 @@
               li.textContent = `${teilnehmer.vorname || ""} ${
                 teilnehmer.name || ""
               }`.trim();
+              // NEU: Prüfen, ob der Teilnehmer bereits im globalen Set der ausgewählten Teilnehmer ist
+              if (ausgewaehlteTeilnehmerLocalIds.has(teilnehmer.localId)) {
+                li.classList.add("ausgewaehlt");
+              }
               li.addEventListener("click", function () {
                 toggleTeilnehmerAuswahl(this);
               });
